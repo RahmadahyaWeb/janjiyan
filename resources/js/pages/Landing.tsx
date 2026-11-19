@@ -44,8 +44,8 @@ const OUTCOMES = [
     {
         icon: ShieldCheck,
         title: 'Jadwal terkunci, minim batal mendadak',
-        desc: 'Kunci setiap booking dengan DP yang langsung masuk ke rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, slot otomatis terbuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
-        highlights: ['DP 0% potongan', 'Slot terbuka otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
+        desc: 'Kunci setiap booking dengan DP yang langsung masuk ke rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, jam tersebut otomatis dibuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
+        highlights: ['DP 0% potongan', 'Jam dibuka lagi otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
     },
     {
         icon: QrCode,
@@ -124,7 +124,7 @@ const FAQS = [
     },
     {
         q: 'Bagaimana cara Janjiyan mencegah orang batal mendadak atau tidak datang?',
-        a: 'Pertama, setiap slot bisa dikunci dengan DP dan batas waktu bayar. Kalau lewat, jamnya otomatis terbuka lagi. Kedua, ada pengingat email di H-1 dan 2 jam sebelum jadwal, plus tombol simpan ke Google atau Apple Calendar. Ketiga, nomor yang tercatat sering tidak datang bisa otomatis diwajibkan DP penuh atau dibatasi.',
+        a: 'Pertama, setiap jadwal bisa dikunci dengan DP dan batas waktu bayar. Kalau lewat, jamnya otomatis terbuka lagi. Kedua, ada pengingat email di H-1 dan 2 jam sebelum jadwal, plus tombol simpan ke Google atau Apple Calendar. Ketiga, nomor yang tercatat sering tidak datang bisa otomatis diwajibkan DP penuh atau dibatasi.',
     },
     {
         q: 'Apakah komisi staff dihitung otomatis?',
@@ -146,7 +146,12 @@ export default function Landing({ plans }: LandingProps) {
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [marqueePaused, setMarqueePaused] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [servicePrice, setServicePrice] = useState(75000);
+    const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
     const pageRef = useRef<HTMLDivElement>(null);
+
+    const monthlyLoss = servicePrice * noShowsPerMonth;
+    const breakEvenBookings = Math.max(1, Math.ceil(49000 / servicePrice));
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
@@ -356,18 +361,111 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* Cost of no-show */}
-                <section className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
-                    <h2 className="text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Satu orang tidak jadi datang, satu slot ikut terbuang.
-                    </h2>
-                    <div className="mt-8 rounded-[24px] bg-bone p-6 sm:p-8">
-                        <p className="text-base leading-relaxed text-body sm:text-lg text-pretty">
-                            Bayangkan tarif layananmu Rp75.000, dan tiap hari ada satu orang yang sudah booking tapi tidak datang. Dalam 26 hari kerja, ada sekitar <strong className="font-semibold text-ink">Rp1.950.000</strong> yang melayang, belum termasuk orang lain yang terpaksa kamu tolak karena jamnya sudah terisi.
+                <section className="mx-auto max-w-4xl px-6 py-16 sm:py-24">
+                    <div className="mx-auto max-w-2xl text-center">
+                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Satu orang tidak jadi datang, satu jadwal ikut terbuang.
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
+                            Geser sesuai tarif rata-rata layananmu untuk lihat berapa pemasukan yang hilang tiap bulan saat jadwal batal tanpa kabar.
                         </p>
-                        <p className="mt-4 text-base leading-relaxed text-body sm:text-lg text-pretty">
-                            Bandingkan dengan biaya paket Basic Janjiyan: cuma <strong className="font-semibold text-ink">Rp49.000 per bulan</strong>.
-                        </p>
-                        <p className="mt-4 text-xs text-mute">
+                    </div>
+
+                    <div className="mt-10 rounded-[24px] border border-hairline-soft bg-canvas p-6 sm:p-8">
+                        <div className="grid gap-6 sm:grid-cols-2">
+                            <div>
+                                <div className="flex items-baseline justify-between gap-2">
+                                    <label htmlFor="calc-service-price" className="text-sm font-medium text-body">
+                                        Tarif rata-rata layanan
+                                    </label>
+                                    <span className="text-base font-semibold tabular-nums text-ink">
+                                        {formatRupiah(servicePrice)}
+                                    </span>
+                                </div>
+                                <input
+                                    id="calc-service-price"
+                                    type="range"
+                                    min={25000}
+                                    max={500000}
+                                    step={5000}
+                                    value={servicePrice}
+                                    onChange={(e) => setServicePrice(Number(e.target.value))}
+                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-bone accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                />
+                                <div className="mt-1.5 flex justify-between text-xs tabular-nums text-mute">
+                                    <span>Rp25.000</span>
+                                    <span>Rp500.000</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex items-baseline justify-between gap-2">
+                                    <label htmlFor="calc-no-shows" className="text-sm font-medium text-body">
+                                        Batal tanpa kabar per bulan
+                                    </label>
+                                    <span className="text-base font-semibold tabular-nums text-ink">
+                                        {noShowsPerMonth} kali
+                                    </span>
+                                </div>
+                                <input
+                                    id="calc-no-shows"
+                                    type="range"
+                                    min={2}
+                                    max={40}
+                                    step={1}
+                                    value={noShowsPerMonth}
+                                    onChange={(e) => setNoShowsPerMonth(Number(e.target.value))}
+                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-bone accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                />
+                                <div className="mt-1.5 flex justify-between text-xs tabular-nums text-mute">
+                                    <span>2 kali</span>
+                                    <span>40 kali</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                            <div className="flex flex-col justify-between rounded-[16px] bg-bone p-5 sm:p-6">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-mute">
+                                        Potensi pendapatan hilang
+                                    </p>
+                                    <div className="mt-2 flex items-baseline gap-1.5">
+                                        <span className="text-3xl font-semibold tabular-nums text-ink sm:text-4xl">
+                                            {formatRupiah(monthlyLoss)}
+                                        </span>
+                                        <span className="text-sm text-mute">/ bulan</span>
+                                    </div>
+                                </div>
+                                <p className="mt-4 text-xs leading-relaxed text-body">
+                                    Hitungan dari {noShowsPerMonth} jadwal × {formatRupiah(servicePrice)}, belum termasuk tamu lain yang sempat ditolak karena jamnya terisi.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col justify-between rounded-[16px] bg-dark p-5 text-on-dark sm:p-6">
+                                <div>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
+                                            Paket Basic Janjiyan
+                                        </p>
+                                        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-on-dark">
+                                            Balik modal dari {breakEvenBookings} booking
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 flex items-baseline gap-1.5">
+                                        <span className="text-3xl font-semibold tabular-nums text-on-dark sm:text-4xl">
+                                            Rp49.000
+                                        </span>
+                                        <span className="text-sm text-on-dark-mute">/ bulan</span>
+                                    </div>
+                                </div>
+                                <p className="mt-4 text-xs leading-relaxed text-on-dark-mute">
+                                    Kunci jadwal dengan DP langsung ke rekeningmu dan kirim pengingat otomatis sebelum tamu datang.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="mt-5 text-center text-xs text-mute">
                             Angka di atas hanya simulasi. Hitungannya tentu berbeda di tiap bisnis.
                         </p>
                     </div>
