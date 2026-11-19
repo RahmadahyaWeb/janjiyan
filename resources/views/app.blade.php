@@ -13,6 +13,11 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#141414" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="{{ $appName }}" />
+        <link rel="manifest" href="/manifest.webmanifest" />
         @if ($seoNoindex)
             <meta head-key="robots" name="robots" content="noindex, nofollow" />
         @endif
@@ -51,5 +56,12 @@
     </head>
     <body class="bg-canvas text-ink font-sans antialiased selection:bg-ink selection:text-canvas">
         @inertia
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+            }
+        </script>
     </body>
 </html>
