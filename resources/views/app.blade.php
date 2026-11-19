@@ -4,7 +4,7 @@
         @php
             $appName = config('app.name', 'Janjiyan');
             $seoTitle = $seo['title'] ?? "{$appName} — Sistem booking dan DP untuk bisnis jasa";
-            $seoDescription = $seo['description'] ?? 'Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. DP masuk langsung ke rekening kamu tanpa potongan, lengkap dengan pengingat otomatis. Gratis 14 hari.';
+            $seoDescription = $seo['description'] ?? 'Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. Kelola booking, DP, pengingat otomatis, dan jadwal staff dalam satu tempat. Gratis 14 hari.';
             $seoImage = $seo['image'] ?? url('/og-default.png');
             $seoUrl = $seo['url'] ?? url()->current();
             $seoNoindex = (bool) ($seo['noindex'] ?? false)

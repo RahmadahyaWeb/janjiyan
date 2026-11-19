@@ -44,8 +44,8 @@ const OUTCOMES = [
     {
         icon: ShieldCheck,
         title: 'Jadwal terkunci, minim batal mendadak',
-        desc: 'Kunci setiap booking dengan DP yang langsung masuk ke rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, jam tersebut otomatis dibuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
-        highlights: ['DP 0% potongan', 'Jam dibuka lagi otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
+        desc: 'Kunci setiap booking dengan DP lewat transfer rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, jam tersebut otomatis dibuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
+        highlights: ['Kunci jadwal dengan DP', 'Jam dibuka lagi otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
     },
     {
         icon: QrCode,
@@ -68,7 +68,7 @@ const OUTCOMES = [
 ];
 
 const INCLUDED_IN_ALL_PLANS = [
-    'DP masuk langsung ke rekening/QRIS (0% fee)',
+    'Pembayaran DP via rekening atau QRIS sendiri',
     'Aturan DP penuh untuk yang sering no-show',
     'Pengingat email H-1 dan 2 jam sebelumnya',
     'Poster QR booking siap cetak',
@@ -104,7 +104,7 @@ const TESTIMONIALS = [
     {
         name: 'Bima Santoso',
         role: 'Pengelola Ruang Padel Club',
-        quote: 'Uang booking lapangan langsung masuk ke rekening kami tanpa potongan sama sekali. Begitu bukti transfer diunggah, notifnya langsung masuk ke grup Telegram admin.',
+        quote: 'Begitu penyewa unggah bukti DP, notifnya langsung masuk ke grup Telegram admin. Tidak perlu cek chat dan mutasi satu per satu di WhatsApp lagi.',
     },
     {
         name: 'Sinta Larasati',
@@ -115,8 +115,8 @@ const TESTIMONIALS = [
 
 const FAQS = [
     {
-        q: 'Apakah Janjiyan memotong uang DP dari booking?',
-        a: 'Tidak sama sekali. Pembayaran ditransfer langsung ke rekening atau QRIS bisnis kamu, lalu bukti transfernya diunggah di halaman invoice. Uangnya tidak lewat Janjiyan.',
+        q: 'Bagaimana sistem pembayaran DP di Janjiyan?',
+        a: 'Pembayaran DP dilakukan lewat transfer ke rekening atau QRIS yang kamu pasang di profil bisnis, lalu bukti bayarnya diunggah di halaman invoice untuk kamu konfirmasi.',
     },
     {
         q: 'Apakah orang yang mau booking harus download aplikasi dulu?',
@@ -208,7 +208,7 @@ export default function Landing({ plans }: LandingProps) {
                 <meta
                     head-key="description"
                     name="description"
-                    content="Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. DP masuk langsung ke rekening kamu tanpa potongan, lengkap dengan pengingat otomatis. Gratis 14 hari."
+                    content="Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. Kelola booking, DP, pengingat otomatis, dan jadwal staff dalam satu tempat. Gratis 14 hari."
                 />
             </Head>
 
@@ -316,7 +316,7 @@ export default function Landing({ plans }: LandingProps) {
                         data-hero-item
                         className="mt-4 text-xs font-medium text-mute"
                     >
-                        Gratis 14 hari. DP masuk langsung ke rekening kamu tanpa potongan.
+                        Coba gratis 14 hari. Bisa dibatalkan kapan saja.
                     </p>
                 </section>
 
@@ -460,7 +460,7 @@ export default function Landing({ plans }: LandingProps) {
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-on-dark-mute">
-                                    Kunci jadwal dengan DP langsung ke rekeningmu dan kirim pengingat otomatis sebelum tamu datang.
+                                    Kunci jadwal dengan DP dan kirim pengingat otomatis sebelum tamu datang.
                                 </p>
                             </div>
                         </div>
