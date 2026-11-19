@@ -50,19 +50,19 @@ const OUTCOMES = [
     {
         icon: QrCode,
         title: 'Satu link di bio, satu QR di kasir',
-        desc: 'Bagikan link booking di Instagram atau cetak poster QR langsung dari dashboard untuk meja kasir. Pengunjung bisa lihat portofolio hasil kerjamu, pilih layanan dan staff favorit, lalu booking dalam hitungan detik—tanpa perlu download aplikasi atau bikin akun.',
+        desc: 'Bagikan link booking di Instagram atau cetak poster QR langsung dari dashboard untuk meja kasir. Pengunjung bisa lihat portofolio hasil kerjamu, pilih layanan dan staff favorit, lalu booking tanpa perlu download aplikasi atau bikin akun.',
         highlights: ['Link booking siap pakai', 'Poster QR siap cetak', 'Galeri portofolio', 'Tanpa install aplikasi'],
     },
     {
         icon: Calendar,
         title: 'Kalender semua staff dalam satu layar',
-        desc: 'Pantau jadwal harian tiap staff—termasuk tamu walk-in, jeda antar sesi, shift, dan cuti. Setiap ada booking baru atau bukti transfer masuk, notif langsung muncul di Telegram. Mau follow up? Tinggal klik template WhatsApp yang sudah disiapkan.',
+        desc: 'Pantau jadwal harian tiap staff, termasuk tamu walk-in, jeda antar sesi, shift, dan cuti. Setiap ada booking baru atau bukti transfer masuk, notif langsung muncul di Telegram. Mau follow up? Tinggal klik template WhatsApp yang sudah disiapkan.',
         highlights: ['Kalender per staff', 'Atur shift & cuti', 'Notif Telegram', 'Template WhatsApp'],
     },
     {
         icon: BadgePercent,
         title: 'Komisi staff beres tanpa hitung manual',
-        desc: 'Atur komisi tiap staff sekali di awal, mau pakai persentase atau nominal tetap. Setiap sesi selesai, komisinya langsung tercatat rapi—akhir bulan tidak perlu buka catatan lagi. Tersedia juga catatan khusus pelanggan setia dan dukungan hingga 10 cabang dalam satu akun.',
+        desc: 'Atur komisi tiap staff sekali di awal, mau pakai persentase atau nominal tetap. Setiap sesi selesai, komisinya langsung tercatat rapi, jadi akhir bulan tidak perlu buka catatan lagi. Tersedia juga catatan khusus pelanggan setia dan dukungan hingga 10 cabang dalam satu akun.',
         highlights: ['Komisi persen / nominal', 'Export CSV (Professional+)', 'Catatan pelanggan', 'Hingga 10 cabang'],
     },
 ];
@@ -124,11 +124,11 @@ const FAQS = [
     },
     {
         q: 'Bagaimana cara Janjiyan mencegah orang batal mendadak atau tidak datang?',
-        a: 'Pertama, setiap slot bisa dikunci dengan DP dan batas waktu bayar—kalau lewat, jamnya otomatis terbuka lagi. Kedua, ada pengingat email di H-1 dan 2 jam sebelum jadwal, plus tombol simpan ke Google atau Apple Calendar. Ketiga, nomor yang tercatat sering tidak datang bisa otomatis diwajibkan DP penuh atau dibatasi.',
+        a: 'Pertama, setiap slot bisa dikunci dengan DP dan batas waktu bayar. Kalau lewat, jamnya otomatis terbuka lagi. Kedua, ada pengingat email di H-1 dan 2 jam sebelum jadwal, plus tombol simpan ke Google atau Apple Calendar. Ketiga, nomor yang tercatat sering tidak datang bisa otomatis diwajibkan DP penuh atau dibatasi.',
     },
     {
         q: 'Apakah komisi staff dihitung otomatis?',
-        a: 'Ya. Kamu cukup atur tarif komisi tiap staff sekali—bisa persen atau nominal tetap. Setiap booking selesai, komisinya langsung masuk ke rekap. Export CSV tersedia mulai paket Professional.',
+        a: 'Ya. Kamu cukup atur tarif komisi tiap staff sekali, bisa persen atau nominal tetap. Setiap booking selesai, komisinya langsung masuk ke rekap. Export CSV tersedia mulai paket Professional.',
     },
     {
         q: 'Notifikasi booking baru dikirim ke mana?',
@@ -362,7 +362,7 @@ export default function Landing({ plans }: LandingProps) {
                     </h2>
                     <div className="mt-8 rounded-[24px] bg-bone p-6 sm:p-8">
                         <p className="text-base leading-relaxed text-body sm:text-lg text-pretty">
-                            Bayangkan tarif layananmu Rp75.000, dan tiap hari ada satu orang yang sudah booking tapi tidak datang. Dalam 26 hari kerja, ada sekitar <strong className="font-semibold text-ink">Rp1.950.000</strong> yang melayang—belum termasuk orang lain yang terpaksa kamu tolak karena jamnya sudah terisi.
+                            Bayangkan tarif layananmu Rp75.000, dan tiap hari ada satu orang yang sudah booking tapi tidak datang. Dalam 26 hari kerja, ada sekitar <strong className="font-semibold text-ink">Rp1.950.000</strong> yang melayang, belum termasuk orang lain yang terpaksa kamu tolak karena jamnya sudah terisi.
                         </p>
                         <p className="mt-4 text-base leading-relaxed text-body sm:text-lg text-pretty">
                             Bandingkan dengan biaya paket Basic Janjiyan: cuma <strong className="font-semibold text-ink">Rp49.000 per bulan</strong>.
@@ -678,7 +678,7 @@ export default function Landing({ plans }: LandingProps) {
                                 Cobain dulu 14 hari, gratis.
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
-                                Buat link booking pertamamu hari ini, lalu rasakan sendiri bedanya buat operasional harian.
+                                Buat link booking pertamamu hari ini, lalu lihat sendiri apakah cocok untuk jadwal harianmu.
                             </p>
                         </div>
                         <Button

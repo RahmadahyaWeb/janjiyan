@@ -78,6 +78,13 @@
       "skillPath": "skills/explain-interface/SKILL.md",
       "computedHash": "21ac62910306392f1ba935a1fd1d80dfd87e4ba0d83fefcfc3206043fd8d2c2e"
     },
+    "humanizer": {
+      "source": "blader/humanizer",
+      "commit": "a48c60c2a3f7a0f6ecc8f9b8d2b1ef71c7927155",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1506560b8bd833588a9db8ee48b0d41f911142f843912e9cad1003c9fe86e6f4"
+    },
     "interface-review": {
       "source": "jakubkrehel/skills",
       "commit": "276449adf5fa509adaab842b3559cb375ca868a4",
