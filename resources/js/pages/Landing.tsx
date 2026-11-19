@@ -43,100 +43,100 @@ const VERTICALS = [
 const OUTCOMES = [
     {
         icon: ShieldCheck,
-        title: 'Lebih sedikit pelanggan yang tidak datang',
-        desc: 'Setiap booking bisa dikunci dengan DP. Pelanggan transfer langsung ke rekening atau QRIS kamu. Kalau DP belum dibayar sampai batas waktunya, jam tersebut otomatis dibuka lagi untuk orang lain. Pelanggan yang sudah beberapa kali tidak datang bisa diwajibkan membayar DP penuh. Sehari sebelum jadwal dan dua jam sebelumnya, pelanggan mendapat email pengingat.',
-        highlights: ['DP tanpa potongan', 'Jam dibuka lagi kalau DP tidak dibayar', 'DP penuh untuk yang sering tidak datang', 'Pengingat H-1 dan 2 jam sebelumnya'],
+        title: 'Jadwal terkunci, minim batal mendadak',
+        desc: 'Kunci setiap booking dengan DP yang langsung masuk ke rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, slot otomatis terbuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
+        highlights: ['DP 0% potongan', 'Slot terbuka otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
     },
     {
         icon: QrCode,
-        title: 'Satu link untuk Instagram dan meja kasir',
-        desc: 'Pasang link booking di bio, atau cetak Poster QR dari dashboard lalu tempel di meja kasir. Pelanggan bisa melihat foto hasil kerja kamu, memilih layanan dan staff, lalu booking. Mereka tidak perlu mengunduh aplikasi atau membuat akun.',
-        highlights: ['Link booking sendiri', 'Poster QR siap cetak', 'Galeri foto hasil kerja', 'Pelanggan tidak perlu akun'],
+        title: 'Satu link di bio, satu QR di kasir',
+        desc: 'Bagikan link booking di Instagram atau cetak poster QR langsung dari dashboard untuk meja kasir. Pengunjung bisa lihat portofolio hasil kerjamu, pilih layanan dan staff favorit, lalu booking dalam hitungan detik—tanpa perlu download aplikasi atau bikin akun.',
+        highlights: ['Link booking siap pakai', 'Poster QR siap cetak', 'Galeri portofolio', 'Tanpa install aplikasi'],
     },
     {
         icon: Calendar,
-        title: 'Jadwal semua staff dalam satu kalender',
-        desc: 'Lihat booking hari ini untuk tiap staff, termasuk pelanggan walk-in, jeda antar sesi, shift, dan cuti. Setiap ada booking baru atau bukti DP masuk, kamu mendapat notifikasi di Telegram. Kalau perlu menghubungi pelanggan, sudah ada template pesan WhatsApp yang tinggal diklik.',
-        highlights: ['Kalender per staff', 'Shift dan cuti', 'Template WhatsApp', 'Notifikasi Telegram'],
+        title: 'Kalender semua staff dalam satu layar',
+        desc: 'Pantau jadwal harian tiap staff—termasuk tamu walk-in, jeda antar sesi, shift, dan cuti. Setiap ada booking baru atau bukti transfer masuk, notif langsung muncul di Telegram. Mau follow up? Tinggal klik template WhatsApp yang sudah disiapkan.',
+        highlights: ['Kalender per staff', 'Atur shift & cuti', 'Notif Telegram', 'Template WhatsApp'],
     },
     {
         icon: BadgePercent,
-        title: 'Komisi staff dihitung otomatis',
-        desc: 'Atur komisi tiap staff sekali saja, dalam persen atau nominal tetap. Setiap booking yang selesai langsung tercatat komisinya, jadi di akhir bulan kamu tidak perlu menghitung ulang dari catatan. Kamu juga bisa menandai pelanggan langganan, menyimpan catatan tentang mereka, dan mengelola sampai 10 cabang dari satu akun.',
-        highlights: ['Komisi persen atau nominal', 'Laporan dan export CSV (paket Professional ke atas)', 'Catatan pelanggan', 'Sampai 10 cabang'],
+        title: 'Komisi staff beres tanpa hitung manual',
+        desc: 'Atur komisi tiap staff sekali di awal, mau pakai persentase atau nominal tetap. Setiap sesi selesai, komisinya langsung tercatat rapi—akhir bulan tidak perlu buka catatan lagi. Tersedia juga catatan khusus pelanggan setia dan dukungan hingga 10 cabang dalam satu akun.',
+        highlights: ['Komisi persen / nominal', 'Export CSV (Professional+)', 'Catatan pelanggan', 'Hingga 10 cabang'],
     },
 ];
 
 const INCLUDED_IN_ALL_PLANS = [
-    'DP langsung ke rekening atau QRIS, tanpa potongan',
-    'DP penuh otomatis untuk pelanggan yang sering tidak datang',
-    'Email pengingat sehari dan dua jam sebelum jadwal',
+    'DP masuk langsung ke rekening/QRIS (0% fee)',
+    'Aturan DP penuh untuk yang sering no-show',
+    'Pengingat email H-1 dan 2 jam sebelumnya',
     'Poster QR booking siap cetak',
-    'Template pesan WhatsApp',
-    'Notifikasi booking lewat Telegram',
-    'Rekap komisi dan performa staff',
-    'Simpan jadwal ke Google Calendar dan Apple Calendar',
+    'Template chat WhatsApp siap klik',
+    'Notifikasi booking via Telegram',
+    'Rekap komisi & performa staff',
+    'Simpan ke Google & Apple Calendar',
 ];
 
 const PLAN_TAGLINES: Record<string, string> = {
-    basic: 'Cocok kalau kamu pemilik sekaligus yang melayani pelanggan.',
-    professional: 'Cocok kalau kamu sudah punya beberapa staff dan perlu menghitung komisi mereka.',
-    enterprise: 'Cocok kalau kamu punya lebih dari satu cabang.',
+    basic: 'Pas untuk kamu yang masih turun tangan melayani sendiri.',
+    professional: 'Pas untuk tim dengan beberapa staff dan butuh rekap komisi otomatis.',
+    enterprise: 'Pas untuk bisnis yang sudah punya banyak cabang.',
 };
 
 const STEPS = [
-    'Daftar, lalu isi data bisnis kamu, termasuk rekening atau QRIS untuk menerima DP.',
-    'Masukkan layanan, harga, durasi, besaran DP, dan staff yang melayani.',
-    'Bagikan link booking kamu, atau cetak Poster QR dan tempel di meja kasir.',
+    'Daftar dan lengkapi profil bisnis, lengkap dengan rekening atau QRIS tujuan pembayaran.',
+    'Atur daftar layanan, harga, durasi, aturan DP, serta jadwal staff kamu.',
+    'Pasang link di bio media sosial atau cetak poster QR untuk meja kasir.',
 ];
 
 const TESTIMONIALS = [
     {
         name: 'Raka Pratama',
         role: 'Founder, Barber Rapi Studio',
-        quote: 'Dulu admin kami kewalahan membalas DM satu per satu. Sekarang pelanggan langsung pilih kapster dan jam kosong sendiri lewat link booking, dan rekap komisi staff tiap bulan jauh lebih cepat.',
+        quote: 'Dulu admin sering kewalahan balas DM satu-satu. Sekarang orang tinggal pilih kapster dan jam kosong sendiri lewat link di bio, rekap komisi bulanan juga langsung beres.',
     },
     {
         name: 'drg. Nadia Kusuma',
         role: 'Klinik Gigi Senopati',
-        quote: 'Jeda 15 menit antar pasien membuat jadwal dokter tidak pernah bentrok lagi. Email pengingat H-1 dan H-2 jam juga terasa menurunkan pasien yang lupa jadwal kontrol.',
+        quote: 'Jeda 15 menit antar pasien bikin jadwal dokter tidak pernah bentrok lagi. Email pengingat H-1 dan 2 jam sebelumnya juga terasa banget bikin pasien jarang lupa jadwal kontrol.',
     },
     {
         name: 'Bima Santoso',
         role: 'Pengelola Ruang Padel Club',
-        quote: 'DP lapangan langsung masuk ke rekening kami tanpa potongan perantara. Begitu ada bukti transfer masuk, notifikasi langsung muncul di grup Telegram admin.',
+        quote: 'Uang booking lapangan langsung masuk ke rekening kami tanpa potongan sama sekali. Begitu bukti transfer diunggah, notifnya langsung masuk ke grup Telegram admin.',
     },
     {
         name: 'Sinta Larasati',
         role: 'Owner, Lumiere Nail & Lash',
-        quote: 'Satu akun cukup untuk memantau tiga cabang sekaligus. Data pelanggan VIP, catatan preferensi, jadwal staff, sampai rekening tiap cabang tetap tersimpan rapi dan terpisah.',
+        quote: 'Satu akun sudah cukup buat pantau tiga cabang sekaligus. Data tamu VIP, catatan preferensi, jadwal terapis, sampai rekening tiap cabang tetap terpisah rapi.',
     },
 ];
 
 const FAQS = [
     {
-        q: 'Apakah Janjiyan mengambil potongan dari DP pelanggan?',
-        a: 'Tidak. Pelanggan mentransfer DP langsung ke rekening atau QRIS bisnis kamu, lalu mengunggah bukti transfer di halaman invoice. Uangnya tidak melewati Janjiyan.',
+        q: 'Apakah Janjiyan memotong uang DP dari booking?',
+        a: 'Tidak sama sekali. Pembayaran ditransfer langsung ke rekening atau QRIS bisnis kamu, lalu bukti transfernya diunggah di halaman invoice. Uangnya tidak lewat Janjiyan.',
     },
     {
-        q: 'Apakah pelanggan harus mengunduh aplikasi atau membuat akun?',
-        a: 'Tidak. Pelanggan cukup membuka link atau memindai Poster QR, memilih layanan dan jam, lalu mengisi nama dan nomor WhatsApp.',
+        q: 'Apakah orang yang mau booking harus download aplikasi dulu?',
+        a: 'Tidak perlu. Cukup buka link atau scan poster QR, pilih layanan dan jam yang tersedia, lalu isi nama dan nomor WhatsApp.',
     },
     {
-        q: 'Bagaimana Janjiyan mengurangi pelanggan yang tidak datang?',
-        a: 'Pertama, booking dikunci dengan DP dan ada batas waktu pembayaran. Kalau lewat, jamnya dibuka lagi. Kedua, pelanggan mendapat email pengingat sehari dan dua jam sebelum jadwal, dan bisa menyimpan jadwalnya ke Google Calendar atau Apple Calendar. Ketiga, nomor yang sudah beberapa kali tidak datang bisa otomatis diwajibkan membayar DP penuh, atau dibatasi untuk booking online.',
+        q: 'Bagaimana cara Janjiyan mencegah orang batal mendadak atau tidak datang?',
+        a: 'Pertama, setiap slot bisa dikunci dengan DP dan batas waktu bayar—kalau lewat, jamnya otomatis terbuka lagi. Kedua, ada pengingat email di H-1 dan 2 jam sebelum jadwal, plus tombol simpan ke Google atau Apple Calendar. Ketiga, nomor yang tercatat sering tidak datang bisa otomatis diwajibkan DP penuh atau dibatasi.',
     },
     {
         q: 'Apakah komisi staff dihitung otomatis?',
-        a: 'Ya. Kamu mengatur tarif komisi tiap staff sekali, dalam persen atau nominal tetap. Setiap booking mencatat komisinya dan semuanya terkumpul di halaman Komisi Staff. Export ke CSV tersedia di paket Professional dan Enterprise.',
+        a: 'Ya. Kamu cukup atur tarif komisi tiap staff sekali—bisa persen atau nominal tetap. Setiap booking selesai, komisinya langsung masuk ke rekap. Export CSV tersedia mulai paket Professional.',
     },
     {
-        q: 'Notifikasi booking baru masuk ke mana?',
-        a: 'Ke Telegram dan email kamu serta tim, setiap ada booking baru atau bukti DP yang diunggah. Untuk menghubungi pelanggan, ada tombol template WhatsApp di daftar booking.',
+        q: 'Notifikasi booking baru dikirim ke mana?',
+        a: 'Langsung ke Telegram dan email kamu atau tim setiap ada booking baru maupun bukti transfer yang masuk. Untuk follow up, sudah ada tombol template WhatsApp di daftar booking.',
     },
     {
-        q: 'Apakah satu akun bisa dipakai untuk beberapa cabang?',
-        a: 'Bisa, sampai 10 cabang. Link booking, layanan, jadwal staff, data pelanggan, dan rekening tiap cabang tetap terpisah.',
+        q: 'Bisa dipakai untuk lebih dari satu cabang?',
+        a: 'Bisa, hingga 10 cabang dalam satu akun. Link booking, layanan, jadwal staff, data tamu, dan rekening tiap cabang tetap terpisah.',
     },
 ];
 
@@ -203,7 +203,7 @@ export default function Landing({ plans }: LandingProps) {
                 <meta
                     head-key="description"
                     name="description"
-                    content="Pelanggan booking sendiri lewat link di bio Instagram atau Poster QR di meja kasir. DP masuk langsung ke rekening kamu tanpa potongan, dan pelanggan diingatkan sebelum datang. Gratis 14 hari."
+                    content="Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. DP masuk langsung ke rekening kamu tanpa potongan, lengkap dengan pengingat otomatis. Gratis 14 hari."
                 />
             </Head>
 
@@ -279,14 +279,16 @@ export default function Landing({ plans }: LandingProps) {
                         data-hero-item
                         className="text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl md:text-[72px] text-balance"
                     >
-                        Pelanggan booking sendiri, kamu tidak perlu balas chat sampai malam.
+                        Janji temu lebih pasti.
+                        <br />
+                        Kelola bisnis lebih rapi.
                     </h1>
 
                     <p
                         data-hero-item
                         className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-mute sm:mt-6 sm:text-xl text-pretty"
                     >
-                        Taruh link Janjiyan di bio Instagram atau tempel Poster QR di meja kasir. Pelanggan bisa lihat jam yang masih kosong, bayar DP ke rekening kamu, lalu dapat pengingat sebelum datang. Janjiyan tidak mengambil potongan dari DP itu.
+                        Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pengunjung tinggal pilih layanan, cek jam kosong, dan booking sendiri tanpa perlu repot balas chat satu per satu.
                     </p>
 
                     <div
@@ -309,7 +311,7 @@ export default function Landing({ plans }: LandingProps) {
                         data-hero-item
                         className="mt-4 text-xs font-medium text-mute"
                     >
-                        Gratis 14 hari. DP masuk utuh ke rekening kamu.
+                        Gratis 14 hari. DP masuk langsung ke rekening kamu tanpa potongan.
                     </p>
                 </section>
 
@@ -356,17 +358,17 @@ export default function Landing({ plans }: LandingProps) {
                 {/* Cost of no-show */}
                 <section className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
                     <h2 className="text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Pelanggan yang tidak datang itu ada harganya.
+                        Satu orang tidak jadi datang, satu slot ikut terbuang.
                     </h2>
                     <div className="mt-8 rounded-[24px] bg-bone p-6 sm:p-8">
                         <p className="text-base leading-relaxed text-body sm:text-lg text-pretty">
-                            Misalnya harga layanan kamu Rp75.000, dan dalam sehari ada satu pelanggan yang sudah booking tapi tidak datang. Dalam sebulan dengan 26 hari kerja, itu sekitar <strong className="font-semibold text-ink">Rp1.950.000</strong> yang hilang. Belum lagi pelanggan lain yang sempat kamu tolak karena jam itu sudah dipesan.
+                            Bayangkan tarif layananmu Rp75.000, dan tiap hari ada satu orang yang sudah booking tapi tidak datang. Dalam 26 hari kerja, ada sekitar <strong className="font-semibold text-ink">Rp1.950.000</strong> yang melayang—belum termasuk orang lain yang terpaksa kamu tolak karena jamnya sudah terisi.
                         </p>
                         <p className="mt-4 text-base leading-relaxed text-body sm:text-lg text-pretty">
-                            Sebagai perbandingan, paket Basic Janjiyan <strong className="font-semibold text-ink">Rp49.000 per bulan</strong>.
+                            Bandingkan dengan biaya paket Basic Janjiyan: cuma <strong className="font-semibold text-ink">Rp49.000 per bulan</strong>.
                         </p>
                         <p className="mt-4 text-xs text-mute">
-                            Angka di atas hanya contoh. Hitungannya akan berbeda di tiap bisnis.
+                            Angka di atas hanya simulasi. Hitungannya tentu berbeda di tiap bisnis.
                         </p>
                     </div>
                 </section>
@@ -375,10 +377,10 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="fitur" className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Apa saja yang dikerjakan Janjiyan
+                            Yang beres otomatis pakai Janjiyan
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Mulai dari pelanggan booking, bayar DP, diingatkan, sampai komisi staff dihitung di akhir bulan.
+                            Dari pilih jadwal, kunci DP, pengingat otomatis, sampai hitung komisi staff di akhir bulan.
                         </p>
                     </div>
 
@@ -422,7 +424,7 @@ export default function Landing({ plans }: LandingProps) {
                 {/* How to start */}
                 <section id="cara-mulai" className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
                     <h2 className="text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Cara mulai pakai Janjiyan
+                        Tiga langkah, langsung jalan
                     </h2>
                     <ol className="mt-10 space-y-4">
                         {STEPS.map((step, idx) => (
@@ -445,10 +447,10 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="harga" className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
                     <div className="text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Pilih paket sesuai ukuran bisnis kamu
+                            Pilih paket yang pas buat bisnismu
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Semua paket bisa dicoba gratis selama 14 hari. Fitur DP, pengingat, dan perlindungan dari pelanggan yang tidak datang sudah ada sejak paket Basic.
+                            Coba gratis 14 hari untuk semua paket. Fitur DP, pengingat otomatis, dan proteksi no-show sudah aktif sejak paket Basic.
                         </p>
 
                         {/* Segmented Control */}
@@ -585,7 +587,7 @@ export default function Landing({ plans }: LandingProps) {
                 <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
                     <div className="mb-12 text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Cerita dari pemilik usaha yang sudah memakai Janjiyan
+                            Kata mereka yang sudah pakai Janjiyan
                         </h2>
                     </div>
 
@@ -614,7 +616,7 @@ export default function Landing({ plans }: LandingProps) {
                 {/* FAQ */}
                 <section id="faq" className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
                     <h2 className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Pertanyaan yang sering ditanyakan
+                        Yang sering ditanyakan
                     </h2>
 
                     <div className="space-y-3">
@@ -673,10 +675,10 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
                         <div>
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
-                                Coba dulu 14 hari, gratis.
+                                Cobain dulu 14 hari, gratis.
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
-                                Buat link booking pertama kamu hari ini, lalu lihat sendiri apakah Janjiyan cocok untuk bisnis kamu.
+                                Buat link booking pertamamu hari ini, lalu rasakan sendiri bedanya buat operasional harian.
                             </p>
                         </div>
                         <Button
@@ -726,8 +728,8 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
 
                     <div className="mt-14 flex flex-col justify-between gap-4 border-t border-white/10 pt-8 text-xs text-on-dark-mute sm:flex-row">
-                        <span>© {new Date().getFullYear()} Janjiyan. Seluruh hak cipta dilindungi.</span>
-                        <span>Dibuat untuk pelaku usaha jasa di Indonesia.</span>
+                        <span>© {new Date().getFullYear()} Janjiyan.</span>
+                        <span>Dibuat untuk bisnis jasa di Indonesia.</span>
                     </div>
                 </div>
             </footer>

@@ -19,7 +19,8 @@ Description: Pelanggan booking sendiri lewat link di bio Instagram atau Poster Q
 Label kecil: Untuk barbershop, salon, klinik, dan studio
 
 Judul:
-Pelanggan booking sendiri, kamu tidak perlu balas chat sampai malam.
+Janji temu lebih pasti.
+Kelola bisnis lebih rapi.
 
 Paragraf:
 Taruh link Janjiyan di bio Instagram atau tempel Poster QR di meja kasir. Pelanggan bisa lihat jam yang masih kosong, bayar DP ke rekening kamu, lalu dapat pengingat sebelum datang. Janjiyan tidak mengambil potongan dari DP itu.
