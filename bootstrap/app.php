@@ -8,6 +8,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -34,4 +36,33 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->respond(function (Response $response, Throwable $exception, Request $request) {
+            $status = $response->getStatusCode();
+
+            if ($status === 419) {
+                return back()->with('error', 'Sesi halaman telah berakhir, silakan coba lagi.');
+            }
+
+            if (
+                $request->header('X-Inertia')
+                && ! $request->isMethod('GET')
+                && in_array($status, [500, 503], true)
+            ) {
+                return back()->with('error', 'Terjadi gangguan pada server. Silakan coba beberapa saat lagi.');
+            }
+
+            if (
+                ! $request->is('api/*')
+                && ! $request->expectsJson()
+                && in_array($status, [403, 404, 500, 503], true)
+                && ($request->header('X-Inertia') || ! app()->hasDebugModeEnabled())
+            ) {
+                return Inertia::render('Error', ['status' => $status])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
+            }
+
+            return $response;
+        });
     })->create();
