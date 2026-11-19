@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Service extends Model
+{
+    protected $fillable = [
+        'business_id',
+        'name',
+        'description',
+        'image_path',
+        'price',
+        'duration_minutes',
+        'buffer_minutes',
+        'capacity',
+        'assignment_mode',
+        'dp_type',
+        'dp_value',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function business(): BelongsTo
+    {
+        return $this->belongsTo(Business::class);
+    }
+
+    public function staff(): BelongsToMany
+    {
+        return $this->belongsToMany(Staff::class, 'service_staff');
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function calculateDpAmount(): int
+    {
+        if ($this->dp_type === 'fixed') {
+            return min($this->price, (int) $this->dp_value);
+        }
+
+        if ($this->dp_type === 'percentage') {
+            return (int) round($this->price * ($this->dp_value / 100));
+        }
+
+        return 0;
+    }
+}

@@ -1,0 +1,268 @@
+import { Head, Link, router } from '@inertiajs/react';
+import { ChevronRight, Download, MessageCircle, Search, StickyNote, X } from 'lucide-react';
+import { useState } from 'react';
+import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import DashboardLayout from '@/layouts/DashboardLayout';
+import { buildWhatsAppUrl, formatRupiah } from '@/lib/format';
+
+interface CustomerRow {
+    id: number;
+    name: string;
+    phone: string;
+    email: string | null;
+    notes: string | null;
+    tags?: string[];
+    is_blocked?: boolean;
+    bookings_count: number;
+    no_show_count: number;
+    total_spent: number | null;
+}
+
+interface CustomersIndexProps {
+    customers: CustomerRow[];
+    pagination?: PaginationMeta | null;
+    search: string;
+    filters?: {
+        search: string;
+        segment: string;
+        sort: string;
+    };
+    canExportCsv: boolean;
+}
+
+export default function CustomersIndex({
+    customers,
+    pagination,
+    search: initialSearch,
+    filters,
+    canExportCsv,
+}: CustomersIndexProps) {
+    const activeFilters = {
+        search: filters?.search ?? initialSearch,
+        segment: filters?.segment ?? 'all',
+        sort: filters?.sort ?? 'latest',
+    };
+    const [search, setSearch] = useState(activeFilters.search);
+
+    const hasActiveFilter = Boolean(
+        activeFilters.search || activeFilters.segment !== 'all' || activeFilters.sort !== 'latest'
+    );
+
+    const applyFilters = (next: Partial<typeof activeFilters>) => {
+        router.get(
+            route('dashboard.customers'),
+            { ...activeFilters, search, ...next },
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        router.get(
+            route('dashboard.customers'),
+            {},
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
+
+    return (
+        <DashboardLayout title="Direktori Pelanggan (CRM)">
+            <Head title="Pelanggan" />
+
+            <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="grid w-full flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:max-w-3xl lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="relative flex min-w-0 items-center sm:col-span-2 lg:col-span-1">
+                            <label htmlFor="customer-search" className="sr-only">
+                                Cari pelanggan berdasarkan nama, email, atau nomor WhatsApp
+                            </label>
+                            <Search className="pointer-events-none absolute top-4 left-4 size-4 text-ash" aria-hidden="true" />
+                            <Input
+                                id="customer-search"
+                                className="pl-10 pr-10"
+                                placeholder="Cari nama, email, atau WA…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    aria-label="Hapus pencarian pelanggan"
+                                    onClick={() => {
+                                        setSearch('');
+                                        applyFilters({ search: '' });
+                                    }}
+                                    className="absolute right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                >
+                                    <X className="size-4" aria-hidden="true" />
+                                </button>
+                            )}
+                        </div>
+
+                        <NativeSelect
+                            aria-label="Filter segmen pelanggan"
+                            value={activeFilters.segment}
+                            onChange={(e) => applyFilters({ segment: e.target.value })}
+                        >
+                            <option value="all">Semua Pelanggan</option>
+                            <option value="vip">Pelanggan VIP</option>
+                            <option value="repeat">Pelanggan Berulang (≥2x)</option>
+                            <option value="has_no_show">Pernah Tidak Hadir</option>
+                            <option value="blocked">Booking Online Diblokir</option>
+                        </NativeSelect>
+
+                        <NativeSelect
+                            aria-label="Urutkan pelanggan"
+                            value={activeFilters.sort}
+                            onChange={(e) => applyFilters({ sort: e.target.value })}
+                        >
+                            <option value="latest">Terbaru Terdaftar</option>
+                            <option value="top_spent">Transaksi Tertinggi</option>
+                            <option value="most_bookings">Kunjungan Terbanyak</option>
+                        </NativeSelect>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {hasActiveFilter && (
+                            <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+                                Reset Filter
+                            </Button>
+                        )}
+                        {canExportCsv ? (
+                            <Button asChild variant="outline" size="sm">
+                                <a href={route('dashboard.customers.export')}>
+                                    <Download className="size-4" aria-hidden="true" />
+                                    Export CSV
+                                </a>
+                            </Button>
+                        ) : (
+                            <Button variant="outline" size="sm" disabled>
+                                <Download className="size-4" aria-hidden="true" />
+                                Export CSV (Pro)
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {customers.length === 0 ? (
+                <div className="space-y-3 rounded-[24px] bg-bone p-12 text-center">
+                    <p className="text-base font-semibold text-ink">
+                        {hasActiveFilter
+                            ? 'Tidak ada pelanggan yang cocok dengan filter saat ini.'
+                            : 'Belum ada data pelanggan.'}
+                    </p>
+                    <p className="text-sm text-mute">
+                        {hasActiveFilter
+                            ? 'Coba ubah kata kunci pencarian atau reset filter untuk melihat seluruh pelanggan.'
+                            : 'Data pelanggan otomatis tersimpan setiap kali seseorang melakukan booking.'}
+                    </p>
+                    {hasActiveFilter && (
+                        <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+                            Reset Filter
+                        </Button>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-[24px] border border-hairline-soft bg-canvas">
+                        <table className="w-full min-w-[680px] text-left text-sm">
+                            <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
+                                <tr>
+                                    <th scope="col" className="px-5 py-3.5">Pelanggan</th>
+                                    <th scope="col" className="px-5 py-3.5">WhatsApp</th>
+                                    <th scope="col" className="px-5 py-3.5">Riwayat</th>
+                                    <th scope="col" className="px-5 py-3.5">Total Transaksi</th>
+                                    <th scope="col" className="px-5 py-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-divider">
+                                {customers.map((c) => (
+                                    <tr key={c.id} className="transition-colors hover:bg-bone/50">
+                                        <td className="px-5 py-4">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Link
+                                                    href={route('dashboard.customers.show', c.id)}
+                                                    className="font-semibold text-ink hover:underline"
+                                                >
+                                                    {c.name}
+                                                </Link>
+                                                {c.is_blocked && (
+                                                    <Badge variant="destructive" className="text-[10px]">
+                                                        Diblokir
+                                                    </Badge>
+                                                )}
+                                                {(c.tags ?? []).map((tag) => (
+                                                    <Badge
+                                                        key={tag}
+                                                        variant={tag === 'VIP' ? 'popular' : 'secondary'}
+                                                        className="text-[10px]"
+                                                    >
+                                                        {tag}
+                                                    </Badge>
+                                                ))}
+                                                {c.notes && (
+                                                    <Link
+                                                        href={route('dashboard.customers.show', c.id)}
+                                                        className="inline-flex items-center gap-1 rounded-full bg-bone px-2.5 py-0.5 text-xs font-medium text-mute transition-colors hover:bg-hairline-soft hover:text-ink"
+                                                    >
+                                                        <StickyNote className="size-3" aria-hidden="true" />
+                                                        Catatan
+                                                    </Link>
+                                                )}
+                                            </div>
+                                            {c.email && <p className="text-xs font-normal text-mute">{c.email}</p>}
+                                        </td>
+                                        <td className="px-5 py-4 font-mono text-xs tabular-nums text-ink">+{c.phone}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <Badge variant="secondary" className="tabular-nums">
+                                                    {c.bookings_count}x reservasi
+                                                </Badge>
+                                                {c.no_show_count > 0 && (
+                                                    <Badge variant="destructive" className="tabular-nums">
+                                                        {c.no_show_count}x no-show
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4 font-semibold tabular-nums text-ink">
+                                            {formatRupiah(Number(c.total_spent ?? 0))}
+                                        </td>
+                                        <td className="px-5 py-4 text-right">
+                                            <div className="inline-flex items-center justify-end gap-1">
+                                                <Button asChild variant="ghost" size="icon-sm">
+                                                    <a
+                                                        href={buildWhatsAppUrl(c.phone, `Halo ${c.name},`)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        aria-label={`Chat WhatsApp ${c.name}`}
+                                                    >
+                                                        <MessageCircle className="size-4" aria-hidden="true" />
+                                                    </a>
+                                                </Button>
+                                                <Button asChild variant="ghost" size="sm">
+                                                    <Link href={route('dashboard.customers.show', c.id)}>
+                                                        Profil
+                                                        <ChevronRight className="size-4" aria-hidden="true" />
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <PaginationBar pagination={pagination} />
+                </div>
+            )}
+        </DashboardLayout>
+    );
+}

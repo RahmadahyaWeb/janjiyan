@@ -1,0 +1,331 @@
+import { Head, router, usePage } from '@inertiajs/react';
+import { Check, ExternalLink, RefreshCw, X } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import DashboardLayout from '@/layouts/DashboardLayout';
+import { formatRupiah } from '@/lib/format';
+import { cn } from '@/lib/utils';
+import type { PageProps, SubscriptionPlan } from '@/types';
+
+interface SubscriptionInvoiceRow {
+    id: number;
+    invoice_number: string;
+    plan_name: string;
+    billing_cycle: 'monthly' | 'yearly';
+    amount: number;
+    status: 'pending' | 'paid' | 'expired' | 'failed';
+    provider: string;
+    payment_url: string | null;
+    paid_at: string | null;
+    created_at: string | null;
+}
+
+interface BillingIndexProps {
+    plans: SubscriptionPlan[];
+    usage: {
+        businesses: number;
+        services: number;
+        staff: number;
+        monthly_bookings: number;
+        customers: number;
+    };
+    billingSimulationEnabled?: boolean;
+    mayarEnabled?: boolean;
+    isOwner?: boolean;
+    invoices?: SubscriptionInvoiceRow[];
+}
+
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+    pending: 'Menunggu Pembayaran',
+    paid: 'Lunas',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+};
+
+export default function BillingIndex({
+    plans,
+    usage,
+    billingSimulationEnabled = false,
+    mayarEnabled = false,
+    isOwner = true,
+    invoices = [],
+}: BillingIndexProps) {
+    const { subscription } = usePage<PageProps>().props;
+    const activePlan = subscription?.plan;
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+    const [submittingSlug, setSubmittingSlug] = useState<string | null>(null);
+    const [checkingInvoiceId, setCheckingInvoiceId] = useState<number | null>(null);
+
+    const switchPlan = (slug: string) => {
+        router.post(route('dashboard.billing.switch'), { plan_slug: slug });
+    };
+
+    const checkoutPlan = (slug: string) => {
+        setSubmittingSlug(slug);
+        router.post(
+            route('dashboard.billing.checkout'),
+            { plan_slug: slug, billing_cycle: billingCycle },
+            {
+                onFinish: () => setSubmittingSlug(null),
+            }
+        );
+    };
+
+    const checkInvoiceStatus = (invoiceId: number) => {
+        setCheckingInvoiceId(invoiceId);
+        router.post(
+            route('dashboard.billing.check-invoice', invoiceId),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setCheckingInvoiceId(null),
+            }
+        );
+    };
+
+    const meters = [
+        { label: 'Bisnis', used: usage.businesses, max: activePlan?.max_businesses },
+        { label: 'Layanan (Bisnis Aktif)', used: usage.services, max: activePlan?.max_services_per_business },
+        { label: 'Staff (Bisnis Aktif)', used: usage.staff, max: activePlan?.max_staff_per_business },
+        { label: 'Booking Bulan Ini', used: usage.monthly_bookings, max: activePlan?.max_bookings_per_month },
+        { label: 'Pelanggan (Bisnis Aktif)', used: usage.customers, max: activePlan?.max_customers_per_business },
+    ];
+
+    return (
+        <DashboardLayout title="Paket & Billing">
+            <Head title="Paket & Billing" />
+
+            {/* Current Usage */}
+            <div className="rounded-[24px] bg-bone p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p className="text-xs font-semibold text-mute">Paket Aktif Saat Ini</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2.5">
+                            <h2 className="text-2xl font-semibold text-ink">{activePlan?.name ?? 'Professional'}</h2>
+                            {subscription?.is_expired ? (
+                                <Badge variant="destructive" className="whitespace-normal text-center">
+                                    Masa Aktif Berakhir
+                                </Badge>
+                            ) : subscription?.is_trial ? (
+                                <Badge variant="popular" className="whitespace-normal text-center">
+                                    Free Trial · {subscription.days_remaining} hari tersisa
+                                </Badge>
+                            ) : (
+                                <Badge variant="secondary" className="whitespace-normal text-center">
+                                    Aktif · {subscription?.days_remaining ?? 0} hari tersisa
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Billing Cycle Toggle */}
+                    <div
+                        className="inline-flex h-11 items-center rounded-full bg-canvas p-1"
+                        role="group"
+                        aria-label="Siklus penagihan"
+                    >
+                        <button
+                            type="button"
+                            aria-pressed={billingCycle === 'monthly'}
+                            onClick={() => setBillingCycle('monthly')}
+                            className={cn(
+                                'h-9 cursor-pointer rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                billingCycle === 'monthly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                            )}
+                        >
+                            Bulanan
+                        </button>
+                        <button
+                            type="button"
+                            aria-pressed={billingCycle === 'yearly'}
+                            onClick={() => setBillingCycle('yearly')}
+                            className={cn(
+                                'h-9 cursor-pointer rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                billingCycle === 'yearly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                            )}
+                        >
+                            Tahunan (Hemat 2 Bln)
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    {meters.map((m) => (
+                        <div key={m.label} className="rounded-[16px] bg-canvas p-4">
+                            <p className="text-xs text-mute">{m.label}</p>
+                            <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">
+                                {m.used} / {m.max ?? '∞'}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {!isOwner && (
+                <div className="rounded-[20px] border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
+                    Pembayaran dan perubahan paket langganan hanya dapat dilakukan oleh pemilik bisnis (Owner).
+                </div>
+            )}
+
+            {!mayarEnabled && !billingSimulationEnabled && (
+                <div className="rounded-[20px] border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
+                    Gateway pembayaran Mayar belum dikonfigurasi. Hubungi tim Janjiyan untuk aktivasi paket.
+                </div>
+            )}
+
+            <div className="grid gap-6 lg:grid-cols-3">
+                {plans.map((plan) => {
+                    const isCurrentActive = activePlan?.id === plan.id && !subscription?.is_expired && !subscription?.is_trial;
+                    const isPopular = plan.slug === 'professional';
+                    const displayPrice = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                    const isProcessing = submittingSlug === plan.slug;
+
+                    return (
+                        <div
+                            key={plan.id}
+                            className={cn(
+                                'flex flex-col justify-between rounded-[24px] p-6',
+                                isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas'
+                            )}
+                        >
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-semibold text-ink">{plan.name}</h3>
+                                    {isPopular && <Badge variant="popular">Popular</Badge>}
+                                </div>
+                                <p className="mt-3 text-3xl font-semibold tabular-nums text-ink">
+                                    {formatRupiah(displayPrice)}
+                                    <span className="text-sm font-normal text-mute">
+                                        {billingCycle === 'yearly' ? ' / thn' : ' / bln'}
+                                    </span>
+                                </p>
+
+                                <ul className="mt-5 space-y-2.5 text-sm text-body">
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>{plan.max_businesses ?? 'Unlimited'} Bisnis</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>{plan.max_services_per_business ?? 'Unlimited'} Layanan / bisnis</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>{plan.max_staff_per_business ?? 'Unlimited'} Staff</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>{plan.max_bookings_per_month ?? 'Unlimited'} Booking / bulan</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>{plan.max_customers_per_business ?? 'Unlimited'} Pelanggan / bisnis</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        {plan.can_export_csv ? (
+                                            <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        ) : (
+                                            <X className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                                        )}
+                                        <span className={plan.can_export_csv ? 'text-body' : 'text-mute'}>
+                                            Export CSV: {plan.can_export_csv ? 'Tersedia' : 'Tidak tersedia'}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="mt-6 space-y-2">
+                                {mayarEnabled ? (
+                                    <Button
+                                        type="button"
+                                        variant={isCurrentActive ? 'secondary' : isPopular ? 'default' : 'outline'}
+                                        className="h-auto min-h-12 w-full whitespace-normal py-2.5 text-center leading-snug"
+                                        disabled={!isOwner || isProcessing}
+                                        onClick={() => checkoutPlan(plan.slug)}
+                                    >
+                                        {isProcessing
+                                            ? 'Membuat Invoice Mayar…'
+                                            : isCurrentActive
+                                                ? `Perpanjang ${plan.name} via Mayar`
+                                                : `Bayar ${plan.name} via Mayar`}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        variant={isCurrentActive ? 'secondary' : isPopular ? 'default' : 'outline'}
+                                        className="h-auto min-h-12 w-full whitespace-normal py-2.5 text-center leading-snug"
+                                        disabled={!isOwner || isCurrentActive || !billingSimulationEnabled}
+                                        onClick={() => switchPlan(plan.slug)}
+                                    >
+                                        {isCurrentActive
+                                            ? 'Paket Aktif'
+                                            : billingSimulationEnabled
+                                                ? `Pilih ${plan.name} (Simulasi)`
+                                                : 'Pembayaran Belum Aktif'}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Subscription Invoices */}
+            {invoices.length > 0 && (
+                <section aria-label="Riwayat invoice langganan" className="rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <h2 className="text-lg font-semibold text-ink">Riwayat Tagihan Langganan</h2>
+                    <div className="mt-4 divide-y divide-divider">
+                        {invoices.map((inv) => (
+                            <div
+                                key={inv.id}
+                                className="flex flex-col justify-between gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
+                            >
+                                <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-mono text-xs font-semibold text-ink">{inv.invoice_number}</span>
+                                        <Badge variant={inv.status === 'paid' ? 'secondary' : inv.status === 'pending' ? 'popular' : 'destructive'}>
+                                            {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
+                                        </Badge>
+                                        <span className="text-xs uppercase text-mute">{inv.provider}</span>
+                                    </div>
+                                    <p className="text-sm text-body">
+                                        Paket {inv.plan_name} ({inv.billing_cycle === 'yearly' ? 'Tahunan' : 'Bulanan'})
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                    <span className="mr-2 font-mono text-sm font-semibold tabular-nums text-ink">
+                                        {formatRupiah(inv.amount)}
+                                    </span>
+
+                                    {inv.status === 'pending' && inv.payment_url && (
+                                        <Button asChild size="sm" variant="default">
+                                            <a href={inv.payment_url} target="_blank" rel="noreferrer">
+                                                Lanjutkan Bayar
+                                                <ExternalLink className="size-3.5" aria-hidden="true" />
+                                            </a>
+                                        </Button>
+                                    )}
+
+                                    {inv.status === 'pending' && inv.provider === 'mayar' && isOwner && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={checkingInvoiceId === inv.id}
+                                            onClick={() => checkInvoiceStatus(inv.id)}
+                                        >
+                                            <RefreshCw className={cn('size-3.5', checkingInvoiceId === inv.id && 'animate-spin')} aria-hidden="true" />
+                                            Cek Status
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+        </DashboardLayout>
+    );
+}

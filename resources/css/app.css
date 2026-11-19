@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../js/**/*.ts';
+@source '../js/**/*.tsx';
+
+@theme {
+    --font-sans: 'Inter', 'Hanken Grotesk', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* design.md Palette */
+    --color-canvas: #ffffff;
+    --color-bone: #f3f3f3;
+    --color-card: #ffffff;
+    --color-dark: #141414;
+    --color-deep: #0a0a0a;
+    --color-ink: #141414;
+    --color-body: #262626;
+    --color-charcoal: #525252;
+    --color-mute: #636363;
+    --color-ash: #6b6b6b;
+    --color-stone: #adadad;
+    --color-on-dark: #fcfcfc;
+    --color-on-dark-mute: rgba(252, 252, 252, 0.72);
+    --color-hairline: #e0e0e0;
+    --color-hairline-soft: #f0f0f0;
+    --color-divider: #f0f0f0;
+    --color-field: #f0f0f0;
+    --color-control-border: #8c8c8c;
+    --color-electric: #005ce6;
+    --color-destructive-soft: #fef2f2;
+    --color-destructive-border: #fecaca;
+    --color-success: #065f46;
+    --color-success-soft: #ecfdf5;
+    --color-success-border: #a7f3d0;
+    --color-warning: #92400e;
+    --color-warning-soft: #fffbeb;
+    --color-warning-border: #fde68a;
+
+    /* shadcn/ui Semantic Mappings aligned to design.md */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --radius-xs: 8px;
+    --radius-sm: 16px;
+    --radius-md: 24px;
+    --radius-lg: 24px;
+    --radius-full: 9999px;
+}
+
+:root {
+    --background: #ffffff;
+    --foreground: #141414;
+    --card: #ffffff;
+    --card-foreground: #141414;
+    --popover: #ffffff;
+    --popover-foreground: #141414;
+    --primary: #141414;
+    --primary-foreground: #ffffff;
+    --secondary: #f3f3f3;
+    --secondary-foreground: #141414;
+    --muted: #f3f3f3;
+    --muted-foreground: #636363;
+    --accent: #f3f3f3;
+    --accent-foreground: #141414;
+    --destructive: #c81e1e;
+    --destructive-foreground: #ffffff;
+    --border: #e0e0e0;
+    --input: #f0f0f0;
+    --ring: #141414;
+    --radius: 16px;
+}
+
+@layer base {
+    html {
+        scroll-padding-block-start: 5.5rem;
+    }
+
+    * {
+        @apply border-hairline;
+    }
+
+    body {
+        font-family: var(--font-sans);
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+        font-weight: 450;
+        letter-spacing: 0;
+    }
+
+    h1, h2, h3, h4 {
+        font-weight: 650;
+        letter-spacing: 0;
+    }
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0%);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+}
+
+.marquee-mask {
+    mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-marquee {
+        width: auto;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding-inline: 1.5rem;
+    }
+
+    .marquee-mask {
+        mask-image: none;
+        -webkit-mask-image: none;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .animate-marquee {
+        animation: marquee 32s linear infinite;
+    }
+
+    .animate-marquee:hover,
+    .animate-marquee[data-paused='true'] {
+        animation-play-state: paused;
+    }
+}
