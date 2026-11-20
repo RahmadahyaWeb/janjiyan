@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatRupiah } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn, parseNumericInput } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
 interface AdminMerchantRow {
@@ -116,7 +116,7 @@ export default function AdminIndex({
     const [planTarget, setPlanTarget] = useState<AdminMerchantRow | null>(null);
     const [suspendTarget, setSuspendTarget] = useState<AdminBusinessRow | null>(null);
 
-    const trialForm = useForm({ days: 14 });
+    const trialForm = useForm({ days: 14 as number | '' });
     const planForm = useForm({
         plan_slug: plans[1]?.slug ?? plans[0]?.slug ?? 'professional',
         billing_cycle: 'monthly' as 'monthly' | 'yearly',
@@ -136,6 +136,7 @@ export default function AdminIndex({
     const submitExtendTrial = (e: FormEvent) => {
         e.preventDefault();
         if (!trialTarget) return;
+        trialForm.transform((data) => ({ ...data, days: Math.max(1, Number(data.days || 1)) }));
         trialForm.post(route('admin.users.extend-trial', trialTarget.id), {
             preserveScroll: true,
             onSuccess: () => setTrialTarget(null),
@@ -336,6 +337,7 @@ export default function AdminIndex({
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={() => {
+                                                    trialForm.clearErrors();
                                                     trialForm.setData('days', 14);
                                                     setTrialTarget(m);
                                                 }}
@@ -348,6 +350,7 @@ export default function AdminIndex({
                                                 size="sm"
                                                 variant="default"
                                                 onClick={() => {
+                                                    planForm.clearErrors();
                                                     planForm.setData('plan_slug', m.subscription?.plan_slug ?? 'professional');
                                                     setPlanTarget(m);
                                                 }}
@@ -414,6 +417,7 @@ export default function AdminIndex({
                                                 variant="destructive"
                                                 onClick={() => {
                                                     suspendForm.reset();
+                                                    suspendForm.clearErrors();
                                                     setSuspendTarget(b);
                                                 }}
                                             >
@@ -482,9 +486,13 @@ export default function AdminIndex({
                                 min={1}
                                 max={365}
                                 value={trialForm.data.days}
-                                onChange={(e) => trialForm.setData('days', Number(e.target.value))}
+                                onChange={(e) => trialForm.setData('days', parseNumericInput(e.target.value))}
+                                aria-invalid={Boolean(trialForm.errors.days)}
                                 required
                             />
+                            {trialForm.errors.days && (
+                                <p className="text-xs text-destructive">{trialForm.errors.days}</p>
+                            )}
                         </div>
                         <Button type="submit" className="w-full" disabled={trialForm.processing}>
                             {trialForm.processing ? 'Menyimpan…' : 'Simpan Perpanjangan Trial'}
@@ -538,7 +546,15 @@ export default function AdminIndex({
                                 value={planForm.data.notes}
                                 onChange={(e) => planForm.setData('notes', e.target.value)}
                             />
+                            {planForm.errors.notes && (
+                                <p className="text-xs text-destructive">{planForm.errors.notes}</p>
+                            )}
                         </div>
+                        {Object.keys(planForm.errors).length > 0 && (
+                            <p role="alert" className="text-xs text-destructive">
+                                {Object.values(planForm.errors)[0]}
+                            </p>
+                        )}
                         <Button type="submit" className="w-full" disabled={planForm.processing}>
                             <ShieldCheck className="size-4" aria-hidden="true" />
                             {planForm.processing ? 'Memproses…' : 'Aktifkan Paket Sekarang'}
@@ -564,8 +580,12 @@ export default function AdminIndex({
                                 placeholder="Mis. Pelanggaran syarat layanan / laporan spam"
                                 value={suspendForm.data.reason}
                                 onChange={(e) => suspendForm.setData('reason', e.target.value)}
+                                aria-invalid={Boolean(suspendForm.errors.reason)}
                                 required
                             />
+                            {suspendForm.errors.reason && (
+                                <p className="text-xs text-destructive">{suspendForm.errors.reason}</p>
+                            )}
                         </div>
                         <Button type="submit" variant="destructive" className="w-full" disabled={suspendForm.processing}>
                             {suspendForm.processing ? 'Memproses…' : 'Konfirmasi Tangguhkan Bisnis'}

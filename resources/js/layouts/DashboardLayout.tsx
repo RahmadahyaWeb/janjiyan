@@ -361,11 +361,17 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
             </div>
 
             {/* Create Business Dialog */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <Dialog
+                open={createOpen}
+                onOpenChange={(open) => {
+                    if (open) createForm.clearErrors();
+                    setCreateOpen(open);
+                }}
+            >
                 <DialogTrigger asChild>
                     <span className="hidden" />
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">Tambah Bisnis Baru</DialogTitle>
                     </DialogHeader>

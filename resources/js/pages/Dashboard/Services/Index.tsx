@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { formatRupiah, formatTurnaroundLabel } from '@/lib/format';
+import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 
 interface ServiceRow {
     id: number;
@@ -55,22 +56,23 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
     const [deletingService, setDeletingService] = useState<ServiceRow | null>(null);
 
     const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
+    const formRef = useRef<HTMLFormElement>(null);
 
     const form = useForm({
         name: '',
         description: '',
         image: null as File | null,
         remove_image: false,
-        price: 100000,
-        duration_minutes: 60,
-        buffer_minutes: 0,
-        capacity: 1,
+        price: 100000 as number | '',
+        duration_minutes: 60 as number | '',
+        buffer_minutes: 0 as number | '',
+        capacity: 1 as number | '',
         assignment_mode: 'staff' as 'staff' | 'capacity',
         booking_mode: 'time_slot' as 'time_slot' | 'dropoff',
-        turnaround_days: 2,
+        turnaround_days: 2 as number | '',
         supports_pickup: false,
         dp_type: 'none' as 'none' | 'fixed' | 'percentage',
-        dp_value: 0,
+        dp_value: 0 as number | '',
         is_active: true,
         staff_ids: [] as number[],
     });
@@ -79,12 +81,14 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
         setEditingId(null);
         setEditingImageUrl(null);
         form.reset();
+        form.clearErrors();
         setModalOpen(true);
     };
 
     const openEdit = (service: ServiceRow) => {
         setEditingId(service.id);
         setEditingImageUrl(service.image_url);
+        form.clearErrors();
         form.setData({
             name: service.name,
             description: service.description ?? '',
@@ -133,19 +137,35 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
         s.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
     );
 
+    const focusFirstError = () => {
+        scrollToFirstInvalid(formRef.current);
+    };
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
+        const normalizePayload = (data: typeof form.data) => ({
+            ...data,
+            price: Number(data.price || 0),
+            duration_minutes: Number(data.duration_minutes || 0),
+            buffer_minutes: Number(data.buffer_minutes || 0),
+            capacity: Number(data.capacity || 0),
+            turnaround_days: Number(data.turnaround_days || 0),
+            dp_value: Number(data.dp_value || 0),
+        });
+
         if (editingId) {
-            form.transform((data) => ({ ...data, _method: 'put' }));
+            form.transform((data) => ({ ...normalizePayload(data), _method: 'put' }));
             form.post(route('dashboard.services.update', editingId), {
                 forceFormData: true,
                 onSuccess: () => setModalOpen(false),
+                onError: focusFirstError,
             });
         } else {
-            form.transform((data) => data);
+            form.transform(normalizePayload);
             form.post(route('dashboard.services.store'), {
                 forceFormData: true,
                 onSuccess: () => setModalOpen(false),
+                onError: focusFirstError,
             });
         }
     };
@@ -306,14 +326,14 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
             )}
 
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">
                             {editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}
                         </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="service-name">Nama Layanan</Label>
                             <Input
@@ -417,7 +437,7 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             ...prev,
                                             booking_mode: 'dropoff',
                                             assignment_mode: 'capacity',
-                                            capacity: Math.max(prev.capacity, 10),
+                                            capacity: Math.max(Number(prev.capacity || 0), 10),
                                         }))
                                     }
                                     className={`min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
@@ -446,7 +466,7 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             type="number"
                                             min={0}
                                             value={form.data.price}
-                                            onChange={(e) => form.setData('price', Number(e.target.value))}
+                                            onChange={(e) => form.setData('price', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.price)}
                                             required
                                         />
@@ -462,11 +482,14 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             min={0}
                                             max={90}
                                             value={form.data.turnaround_days}
-                                            onChange={(e) => form.setData('turnaround_days', Number(e.target.value))}
+                                            onChange={(e) => form.setData('turnaround_days', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.turnaround_days)}
                                             required
                                         />
                                         <p className="text-[11px] text-mute">0 = selesai hari ini</p>
+                                        {form.errors.turnaround_days && (
+                                            <p className="text-xs text-destructive">{form.errors.turnaround_days}</p>
+                                        )}
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="service-daily-capacity">Kuota Harian</Label>
@@ -476,11 +499,14 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             min={1}
                                             max={500}
                                             value={form.data.capacity}
-                                            onChange={(e) => form.setData('capacity', Number(e.target.value))}
+                                            onChange={(e) => form.setData('capacity', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.capacity)}
                                             required
                                         />
                                         <p className="text-[11px] text-mute">Maks item/hari</p>
+                                        {form.errors.capacity && (
+                                            <p className="text-xs text-destructive">{form.errors.capacity}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -510,7 +536,7 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             type="number"
                                             min={0}
                                             value={form.data.price}
-                                            onChange={(e) => form.setData('price', Number(e.target.value))}
+                                            onChange={(e) => form.setData('price', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.price)}
                                             required
                                         />
@@ -524,8 +550,9 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             id="service-duration"
                                             type="number"
                                             min={15}
+                                            max={480}
                                             value={form.data.duration_minutes}
-                                            onChange={(e) => form.setData('duration_minutes', Number(e.target.value))}
+                                            onChange={(e) => form.setData('duration_minutes', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.duration_minutes)}
                                             required
                                         />
@@ -539,11 +566,15 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                             id="service-buffer"
                                             type="number"
                                             min={0}
+                                            max={120}
                                             value={form.data.buffer_minutes}
-                                            onChange={(e) => form.setData('buffer_minutes', Number(e.target.value))}
+                                            onChange={(e) => form.setData('buffer_minutes', parseNumericInput(e.target.value))}
                                             aria-invalid={Boolean(form.errors.buffer_minutes)}
                                             required
                                         />
+                                        {form.errors.buffer_minutes && (
+                                            <p className="text-xs text-destructive">{form.errors.buffer_minutes}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -567,9 +598,15 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                                 id="service-capacity"
                                                 type="number"
                                                 min={1}
+                                                max={500}
                                                 value={form.data.capacity}
-                                                onChange={(e) => form.setData('capacity', Number(e.target.value))}
+                                                onChange={(e) => form.setData('capacity', parseNumericInput(e.target.value))}
+                                                aria-invalid={Boolean(form.errors.capacity)}
+                                                required
                                             />
+                                            {form.errors.capacity && (
+                                                <p className="text-xs text-destructive">{form.errors.capacity}</p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -622,9 +659,15 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                         id="service-dp-value"
                                         type="number"
                                         min={1}
+                                        max={form.data.dp_type === 'percentage' ? 100 : undefined}
                                         value={form.data.dp_value}
-                                        onChange={(e) => form.setData('dp_value', Number(e.target.value))}
+                                        onChange={(e) => form.setData('dp_value', parseNumericInput(e.target.value))}
+                                        aria-invalid={Boolean(form.errors.dp_value)}
+                                        required
                                     />
+                                    {form.errors.dp_value && (
+                                        <p className="text-xs text-destructive">{form.errors.dp_value}</p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -642,6 +685,15 @@ export default function ServicesIndex({ services, staffList }: ServicesIndexProp
                                     checked={form.data.is_active}
                                     onCheckedChange={(checked) => form.setData('is_active', checked)}
                                 />
+                            </div>
+                        )}
+
+                        {Object.keys(form.errors).length > 0 && (
+                            <div
+                                role="alert"
+                                className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                            >
+                                Periksa kembali isian yang ditandai merah di atas sebelum menyimpan.
                             </div>
                         )}
 

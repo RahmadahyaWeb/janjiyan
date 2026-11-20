@@ -31,15 +31,42 @@ function DialogClose({
 
 function DialogOverlay({
   className,
+  style,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  const [viewportStyle, setViewportStyle] = React.useState<React.CSSProperties | undefined>(undefined)
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return
+    const vv = window.visualViewport
+    const syncViewport = () => {
+      if (vv.height < window.innerHeight - 20 || vv.offsetTop > 0) {
+        setViewportStyle({
+          top: `${vv.offsetTop}px`,
+          height: `${vv.height}px`,
+          bottom: "auto",
+        })
+      } else {
+        setViewportStyle(undefined)
+      }
+    }
+    syncViewport()
+    vv.addEventListener("resize", syncViewport)
+    vv.addEventListener("scroll", syncViewport)
+    return () => {
+      vv.removeEventListener("resize", syncViewport)
+      vv.removeEventListener("scroll", syncViewport)
+    }
+  }, [])
+
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 flex flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y bg-black/50 p-4 sm:p-6 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0",
         className
       )}
+      style={{ ...viewportStyle, ...style }}
       {...props}
     />
   )
@@ -49,33 +76,49 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid max-h-[90dvh] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none [&>*]:min-w-0 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=closed]:zoom-out-95 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:zoom-in-95 sm:max-w-lg",
-          className
-        )}
-        {...props}
-      >
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            aria-label="Tutup dialog"
-            className="absolute top-4 right-4 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:bg-bone hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon aria-hidden="true" />
-            <span className="sr-only">Tutup</span>
-          </DialogPrimitive.Close>
-        )}
-        {children}
-      </DialogPrimitive.Content>
+      <DialogOverlay>
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          onPointerDownOutside={(event) => {
+            const originalEvent = event.detail.originalEvent as PointerEvent | MouseEvent | undefined
+            const target = originalEvent?.target as HTMLElement | null
+            if (
+              target?.getAttribute("data-slot") === "dialog-overlay" &&
+              originalEvent &&
+              "clientX" in originalEvent &&
+              originalEvent.clientX >= target.clientWidth
+            ) {
+              event.preventDefault()
+              return
+            }
+            onPointerDownOutside?.(event)
+          }}
+          className={cn(
+            "relative z-50 my-auto grid w-full max-w-full shrink-0 gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none [&>*]:min-w-0 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=closed]:zoom-out-95 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:zoom-in-95 sm:max-w-lg",
+            className
+          )}
+          {...props}
+        >
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              aria-label="Tutup dialog"
+              className="absolute top-4 right-4 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:bg-bone hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
+              <XIcon aria-hidden="true" />
+              <span className="sr-only">Tutup</span>
+            </DialogPrimitive.Close>
+          )}
+          {children}
+        </DialogPrimitive.Content>
+      </DialogOverlay>
     </DialogPortal>
   )
 }

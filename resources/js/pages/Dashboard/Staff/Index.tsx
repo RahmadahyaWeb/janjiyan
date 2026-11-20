@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { CalendarClock, Download, Pencil, Plus, Trash2 } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { StaffScheduleDialog } from '@/components/StaffScheduleDialog';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { formatRupiah, STAFF_ROLE_LABELS } from '@/lib/format';
+import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 
 interface StaffMember {
     id: number;
@@ -51,6 +52,8 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
     const [deletingStaff, setDeletingStaff] = useState<StaffMember | null>(null);
     const [scheduleStaff, setScheduleStaff] = useState<StaffMember | null>(null);
+    const createFormRef = useRef<HTMLFormElement>(null);
+    const editFormRef = useRef<HTMLFormElement>(null);
 
     const createForm = useForm({
         name: '',
@@ -58,7 +61,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
         email: '',
         phone: '',
         commission_type: 'none' as 'none' | 'percentage' | 'fixed',
-        commission_value: 0,
+        commission_value: 0 as number | '',
         grant_login: false,
         password: '',
         role: 'staff' as 'admin' | 'staff',
@@ -71,7 +74,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
         phone: '',
         is_active: true,
         commission_type: 'none' as 'none' | 'percentage' | 'fixed',
-        commission_value: 0,
+        commission_value: 0 as number | '',
         role: 'staff' as 'admin' | 'staff',
         permissions: ['manage_bookings', 'verify_payments'] as string[],
     });
@@ -93,6 +96,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
     };
 
     const openEdit = (staff: StaffMember) => {
+        editForm.clearErrors();
         setEditingStaff(staff);
         editForm.setData({
             name: staff.name,
@@ -108,11 +112,16 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
 
     const handleCreateSubmit = (e: FormEvent) => {
         e.preventDefault();
+        createForm.transform((data) => ({
+            ...data,
+            commission_value: Number(data.commission_value || 0),
+        }));
         createForm.post(route('dashboard.staff.store'), {
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
             },
+            onError: () => scrollToFirstInvalid(createFormRef.current),
         });
     };
 
@@ -120,10 +129,15 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
         e.preventDefault();
         if (!editingStaff) return;
 
+        editForm.transform((data) => ({
+            ...data,
+            commission_value: Number(data.commission_value || 0),
+        }));
         editForm.put(route('dashboard.staff.update', editingStaff.id), {
             onSuccess: () => {
                 setEditingStaff(null);
             },
+            onError: () => scrollToFirstInvalid(editFormRef.current),
         });
     };
 
@@ -237,13 +251,19 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
             )}
 
             {/* Create Staff Dialog */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+            <Dialog
+                open={createOpen}
+                onOpenChange={(open) => {
+                    if (open) createForm.clearErrors();
+                    setCreateOpen(open);
+                }}
+            >
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">Tambah Staff</DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleCreateSubmit} className="space-y-4">
+                    <form ref={createFormRef} onSubmit={handleCreateSubmit} className="space-y-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="staff-name">Nama Lengkap *</Label>
                             <Input
@@ -331,9 +351,13 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                         max={createForm.data.commission_type === 'percentage' ? 100 : 100000000}
                                         value={createForm.data.commission_value}
                                         onChange={(e) =>
-                                            createForm.setData('commission_value', Number(e.target.value) || 0)
+                                            createForm.setData('commission_value', parseNumericInput(e.target.value))
                                         }
+                                        aria-invalid={Boolean(createForm.errors.commission_value)}
                                     />
+                                    {createForm.errors.commission_value && (
+                                        <p className="text-xs text-destructive">{createForm.errors.commission_value}</p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -409,6 +433,16 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                             </div>
                         )}
 
+                        {Object.keys(createForm.errors).length > 0 && (
+                            <div
+                                role="alert"
+                                data-form-error="true"
+                                className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                            >
+                                Periksa kembali isian yang ditandai merah di atas sebelum menyimpan.
+                            </div>
+                        )}
+
                         <Button type="submit" className="w-full" disabled={createForm.processing}>
                             {createForm.processing ? 'Menyimpan…' : 'Simpan Staff'}
                         </Button>
@@ -418,12 +452,12 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
 
             {/* Edit Staff Dialog */}
             <Dialog open={editingStaff !== null} onOpenChange={(open) => !open && setEditingStaff(null)}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">Edit Staff</DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                    <form ref={editFormRef} onSubmit={handleEditSubmit} className="space-y-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="edit-staff-name">Nama Lengkap *</Label>
                             <Input
@@ -494,9 +528,13 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                         max={editForm.data.commission_type === 'percentage' ? 100 : 100000000}
                                         value={editForm.data.commission_value}
                                         onChange={(e) =>
-                                            editForm.setData('commission_value', Number(e.target.value) || 0)
+                                            editForm.setData('commission_value', parseNumericInput(e.target.value))
                                         }
+                                        aria-invalid={Boolean(editForm.errors.commission_value)}
                                     />
+                                    {editForm.errors.commission_value && (
+                                        <p className="text-xs text-destructive">{editForm.errors.commission_value}</p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -553,6 +591,16 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {Object.keys(editForm.errors).length > 0 && (
+                            <div
+                                role="alert"
+                                data-form-error="true"
+                                className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                            >
+                                Periksa kembali isian yang ditandai merah di atas sebelum menyimpan.
                             </div>
                         )}
 

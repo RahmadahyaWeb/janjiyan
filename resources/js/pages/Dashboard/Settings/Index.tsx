@@ -18,6 +18,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 import {
     interpolateWhatsappTemplate,
     WHATSAPP_PLACEHOLDERS,
@@ -87,9 +88,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         phone: business?.phone ?? '',
         address: business?.address ?? '',
         timezone: business?.timezone ?? 'Asia/Jakarta',
-        dp_expiry_minutes: business?.dp_expiry_minutes ?? 120,
-        min_booking_lead_minutes: business?.min_booking_lead_minutes ?? 15,
-        max_booking_advance_days: business?.max_booking_advance_days ?? 60,
+        dp_expiry_minutes: (business?.dp_expiry_minutes ?? 120) as number | '',
+        min_booking_lead_minutes: (business?.min_booking_lead_minutes ?? 15) as number | '',
+        max_booking_advance_days: (business?.max_booking_advance_days ?? 60) as number | '',
         reminder_h1_enabled: business?.reminder_h1_enabled ?? true,
         reminder_h2_enabled: business?.reminder_h2_enabled ?? true,
         whatsapp_templates: (business?.whatsapp_templates ?? {
@@ -104,7 +105,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         clear_telegram_token: false,
         telegram_chat_id: business?.telegram_chat_id ?? '',
         no_show_require_full_dp: business?.no_show_require_full_dp ?? false,
-        no_show_dp_threshold: business?.no_show_dp_threshold ?? 2,
+        no_show_dp_threshold: (business?.no_show_dp_threshold ?? 2) as number | '',
         is_active: business?.is_active ?? true,
         bank_accounts: (business?.bank_accounts ?? []) as BankAccount[],
         qris_image: null as File | null,
@@ -152,6 +153,13 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
+        form.transform((data) => ({
+            ...data,
+            dp_expiry_minutes: Number(data.dp_expiry_minutes || 15),
+            min_booking_lead_minutes: Number(data.min_booking_lead_minutes || 0),
+            max_booking_advance_days: Number(data.max_booking_advance_days || 1),
+            no_show_dp_threshold: Math.max(1, Number(data.no_show_dp_threshold || 1)),
+        }));
         form.post(route('dashboard.settings.update'), {
             forceFormData: true,
             onSuccess: () => {
@@ -161,6 +169,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     clear_telegram_token: false,
                 }));
             },
+            onError: () => scrollToFirstInvalid(),
         });
     };
 
@@ -368,8 +377,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     min={15}
                                     max={1440}
                                     value={form.data.dp_expiry_minutes}
-                                    onChange={(e) => form.setData('dp_expiry_minutes', Number(e.target.value))}
+                                    onChange={(e) => form.setData('dp_expiry_minutes', parseNumericInput(e.target.value))}
                                     aria-invalid={Boolean(form.errors.dp_expiry_minutes)}
+                                    required
                                 />
                                 {form.errors.dp_expiry_minutes && (
                                     <p className="text-xs text-destructive">{form.errors.dp_expiry_minutes}</p>
@@ -412,8 +422,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     min={0}
                                     max={10080}
                                     value={form.data.min_booking_lead_minutes}
-                                    onChange={(e) => form.setData('min_booking_lead_minutes', Number(e.target.value))}
+                                    onChange={(e) => form.setData('min_booking_lead_minutes', parseNumericInput(e.target.value))}
                                     aria-invalid={Boolean(form.errors.min_booking_lead_minutes)}
+                                    required
                                 />
                                 <p className="text-xs text-mute">
                                     Contoh: 60 menit artinya pelanggan tidak bisa memesan kurang dari 1 jam sebelum jam mulai.
@@ -430,8 +441,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     min={1}
                                     max={365}
                                     value={form.data.max_booking_advance_days}
-                                    onChange={(e) => form.setData('max_booking_advance_days', Number(e.target.value))}
+                                    onChange={(e) => form.setData('max_booking_advance_days', parseNumericInput(e.target.value))}
                                     aria-invalid={Boolean(form.errors.max_booking_advance_days)}
+                                    required
                                 />
                                 <p className="text-xs text-mute">
                                     Contoh: 60 hari membatasi kalender publik hingga 2 bulan ke depan.
@@ -507,8 +519,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                             max={10}
                                             value={form.data.no_show_dp_threshold}
                                             onChange={(e) =>
-                                                form.setData('no_show_dp_threshold', Number(e.target.value) || 1)
+                                                form.setData('no_show_dp_threshold', parseNumericInput(e.target.value))
                                             }
+                                            required
                                             className="h-9 w-20 rounded-full bg-canvas text-center font-mono text-sm"
                                         />
                                         <span className="text-xs text-mute">kali tidak hadir</span>
@@ -811,6 +824,16 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
                     </div>
 
+                    {Object.keys(form.errors).length > 0 && (
+                        <div
+                            role="alert"
+                            data-form-error="true"
+                            className="rounded-[16px] border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs text-destructive"
+                        >
+                            Terdapat isian pengaturan yang belum valid. Periksa bagian yang ditandai merah di atas.
+                        </div>
+                    )}
+
                     <Button type="submit" size="lg" disabled={form.processing}>
                         {form.processing ? 'Menyimpan…' : 'Simpan Pengaturan'}
                     </Button>
@@ -943,7 +966,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
             </div>
 
             <Dialog open={deleteBusinessOpen} onOpenChange={setDeleteBusinessOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">
                             Hapus bisnis &ldquo;{business.name}&rdquo;?

@@ -358,7 +358,7 @@ export function QrPosterDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-lg sm:p-6">
+            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-lg sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-ink">
                         <QrCode className="size-5 shrink-0 text-ink" aria-hidden="true" />

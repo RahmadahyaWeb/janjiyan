@@ -146,7 +146,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
 
     return (
         <Dialog open={staffId !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-2xl">
+            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold text-ink">
                         Jadwal Shift & Cuti — {staffName}

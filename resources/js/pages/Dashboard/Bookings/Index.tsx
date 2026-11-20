@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Search, SlidersHorizontal, UserX, X } from 'lucide-react';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
 import { BookingRescheduleDialog } from '@/components/BookingRescheduleDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -38,6 +38,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 import {
     buildWhatsAppUrl,
     formatBookingScheduleShort,
@@ -190,11 +191,13 @@ export default function BookingsIndex({
 
     const todayString = new Date().toISOString().slice(0, 10);
 
+    const manualFormRef = useRef<HTMLFormElement>(null);
+
     const manualForm = useForm({
         service_id: services[0]?.id ? String(services[0].id) : '',
         date: todayString,
         time: '',
-        quantity: 1,
+        quantity: 1 as number | '',
         fulfillment_type: 'dropoff' as 'dropoff' | 'pickup',
         pickup_session: 'anytime' as 'morning' | 'afternoon' | 'evening' | 'anytime',
         pickup_address: '',
@@ -243,6 +246,7 @@ export default function BookingsIndex({
     const openManualModal = () => {
         setTimeError('');
         manualForm.reset();
+        manualForm.clearErrors();
         manualForm.setData({
             service_id: services[0]?.id ? String(services[0].id) : '',
             date: todayString,
@@ -263,8 +267,9 @@ export default function BookingsIndex({
 
     const handleManualSubmit = (e: FormEvent) => {
         e.preventDefault();
+        const normalizedQuantity = Math.max(1, Number(manualForm.data.quantity || 1));
         if (isManualDropoff) {
-            if (!manualDropoff?.available || manualDropoff.remaining_capacity < manualForm.data.quantity) {
+            if (!manualDropoff?.available || manualDropoff.remaining_capacity < normalizedQuantity) {
                 setTimeError(manualDropoff?.reason ?? 'Kuota harian tidak mencukupi pada tanggal yang dipilih.');
                 document.getElementById('manual-date')?.focus();
                 return;
@@ -280,11 +285,16 @@ export default function BookingsIndex({
             return;
         }
         setTimeError('');
+        manualForm.transform((data) => ({
+            ...data,
+            quantity: Math.max(1, Number(data.quantity || 1)),
+        }));
         manualForm.post(route('dashboard.bookings.store'), {
             onSuccess: () => {
                 setCreateOpen(false);
                 manualForm.reset();
             },
+            onError: () => scrollToFirstInvalid(manualFormRef.current),
         });
     };
 
@@ -611,7 +621,7 @@ export default function BookingsIndex({
                                 </SheetTrigger>
                                 <SheetContent
                                     side="bottom"
-                                    className="max-h-[85vh] overflow-y-auto rounded-t-[24px] border-hairline-soft bg-canvas p-0 shadow-none"
+                                    className="max-h-[85dvh] touch-pan-y overflow-y-auto overscroll-contain rounded-t-[24px] border-hairline-soft bg-canvas p-0 shadow-none"
                                 >
                                     <SheetHeader className="border-b border-divider px-5 py-4 pr-12">
                                         <SheetTitle className="text-lg font-semibold text-ink">
@@ -1194,12 +1204,12 @@ export default function BookingsIndex({
 
             {/* Manual / Walk-In Booking Modal */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-ink">Tambah Booking Manual</DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleManualSubmit} className="space-y-4">
+                    <form ref={manualFormRef} onSubmit={handleManualSubmit} className="space-y-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="manual-service">Layanan *</Label>
                             <NativeSelect
@@ -1249,9 +1259,13 @@ export default function BookingsIndex({
                                         min={1}
                                         max={50}
                                         value={manualForm.data.quantity}
-                                        onChange={(e) => manualForm.setData('quantity', Math.max(1, Number(e.target.value) || 1))}
+                                        onChange={(e) => manualForm.setData('quantity', parseNumericInput(e.target.value))}
+                                        aria-invalid={Boolean(manualForm.errors.quantity)}
                                         required
                                     />
+                                    {manualForm.errors.quantity && (
+                                        <p className="text-xs text-destructive">{manualForm.errors.quantity}</p>
+                                    )}
                                 </div>
                             ) : (
                                 selectedService?.assignment_mode === 'staff' && (
@@ -1490,6 +1504,16 @@ export default function BookingsIndex({
                                 onChange={(e) => manualForm.setData('customer_notes', e.target.value)}
                             />
                         </div>
+
+                        {Object.keys(manualForm.errors).length > 0 && (
+                            <div
+                                role="alert"
+                                data-form-error="true"
+                                className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                            >
+                                Periksa kembali data pemesan atau jadwal yang ditandai merah di atas.
+                            </div>
+                        )}
 
                         <Button type="submit" className="w-full" disabled={manualForm.processing}>
                             {manualForm.processing ? 'Menyimpan…' : 'Simpan Reservasi Manual'}

@@ -33,7 +33,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 touch-pan-y bg-black/50 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -46,18 +46,44 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const [viewportStyle, setViewportStyle] = React.useState<React.CSSProperties | undefined>(undefined)
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return
+    const vv = window.visualViewport
+    const syncViewport = () => {
+      if (vv.height < window.innerHeight - 20 || vv.offsetTop > 0) {
+        const bottomInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
+        setViewportStyle({
+          maxHeight: `${Math.max(200, Math.floor(vv.height - 16))}px`,
+          ...(side === "bottom" ? { bottom: `${bottomInset}px` } : {}),
+        })
+      } else {
+        setViewportStyle(undefined)
+      }
+    }
+    syncViewport()
+    vv.addEventListener("resize", syncViewport)
+    vv.addEventListener("scroll", syncViewport)
+    return () => {
+      vv.removeEventListener("resize", syncViewport)
+      vv.removeEventListener("scroll", syncViewport)
+    }
+  }, [side])
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed z-50 flex flex-col gap-4 overscroll-contain bg-background shadow-lg transition ease-in-out motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:duration-300 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:duration-500",
+          "fixed z-50 flex flex-col gap-4 touch-pan-y overscroll-contain bg-background shadow-lg transition ease-in-out motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:duration-300 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:duration-500",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l motion-safe:data-[state=closed]:slide-out-to-right motion-safe:data-[state=open]:slide-in-from-right sm:max-w-sm",
           side === "left" &&
@@ -68,6 +94,7 @@ function SheetContent({
             "inset-x-0 bottom-0 h-auto border-t motion-safe:data-[state=closed]:slide-out-to-bottom motion-safe:data-[state=open]:slide-in-from-bottom",
           className
         )}
+        style={{ ...viewportStyle, ...style }}
         {...props}
       >
         {children}

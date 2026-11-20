@@ -56,6 +56,7 @@ export function BookingRescheduleDialog({
     useEffect(() => {
         if (!booking) return;
         setTimeError('');
+        form.clearErrors();
         form.setData({
             date: booking.booking_date,
             time: booking.start_time_local,
@@ -115,7 +116,7 @@ export function BookingRescheduleDialog({
 
     return (
         <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-ink">
                         <CalendarClock className="size-5" aria-hidden="true" />

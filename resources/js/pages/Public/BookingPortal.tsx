@@ -44,7 +44,7 @@ import {
     formatTurnaroundLabel,
     PICKUP_SESSION_LABELS,
 } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn, scrollToFirstInvalid } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
 interface StaffOption {
@@ -305,6 +305,7 @@ export default function BookingPortal({
             },
             {
                 forceFormData: true,
+                onError: () => scrollToFirstInvalid(),
                 onFinish: () => setSubmitting(false),
             }
         );
@@ -1355,6 +1356,16 @@ export default function BookingPortal({
                                         </div>
                                     )}
 
+                                    {Object.keys(errors).length > 0 && (
+                                        <div
+                                            role="alert"
+                                            data-form-error="true"
+                                            className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs font-medium text-destructive"
+                                        >
+                                            {Object.values(errors)[0]}
+                                        </div>
+                                    )}
+
                                     <div className="flex flex-col items-stretch justify-between gap-4 pt-2 sm:flex-row sm:items-center lg:hidden">
                                         <div className="text-sm">
                                             <p className="text-mute">
@@ -1532,7 +1543,7 @@ export default function BookingPortal({
 
             {/* Portfolio Lightbox Dialog */}
             <Dialog open={lightboxIdx !== null} onOpenChange={(open) => !open && setLightboxIdx(null)}>
-                <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
+                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
                     {lightboxIdx !== null && galleries[lightboxIdx] && (
                         <>
                             <DialogHeader>
