@@ -47,6 +47,7 @@ export interface BusinessSummary {
     name: string;
     slug: string;
     category: string;
+    qr_poster_subtitle?: string | null;
     logo_url: string | null;
     role: 'owner' | 'admin' | 'staff';
     permissions: string[];

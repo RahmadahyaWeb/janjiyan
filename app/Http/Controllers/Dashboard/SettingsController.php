@@ -28,6 +28,7 @@ class SettingsController extends Controller
                 'slug' => $business->slug,
                 'category' => $business->category,
                 'description' => $business->description,
+                'qr_poster_subtitle' => $business->qr_poster_subtitle,
                 'phone' => $business->phone,
                 'address' => $business->address,
                 'timezone' => $business->timezone,
@@ -71,6 +72,7 @@ class SettingsController extends Controller
             'slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('businesses', 'slug')->ignore($business->id)],
             'category' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:500'],
+            'qr_poster_subtitle' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
             'timezone' => ['required', 'string', 'timezone', 'max:60'],
@@ -161,6 +163,9 @@ class SettingsController extends Controller
             'slug' => strtolower($validated['slug']),
             'category' => $validated['category'],
             'description' => $validated['description'] ?? null,
+            'qr_poster_subtitle' => array_key_exists('qr_poster_subtitle', $validated)
+                ? (trim((string) ($validated['qr_poster_subtitle'] ?? '')) ?: null)
+                : $business->qr_poster_subtitle,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
             'timezone' => $validated['timezone'],
@@ -207,5 +212,24 @@ class SettingsController extends Controller
         $result = $telegramService->sendTestMessage($business);
 
         return back()->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function updateQrSubtitle(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'manage_settings'), 403);
+
+        $validated = $request->validate([
+            'qr_poster_subtitle' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $subtitle = trim((string) ($validated['qr_poster_subtitle'] ?? ''));
+
+        $business->update([
+            'qr_poster_subtitle' => $subtitle !== '' ? $subtitle : null,
+        ]);
+
+        return back()->with('success', 'Sub-headline poster QR berhasil disimpan.');
     }
 }

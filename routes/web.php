@@ -180,6 +180,7 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             ->name('dashboard.commissions.export');
 
         Route::post('/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
+        Route::patch('/settings/qr-subtitle', [SettingsController::class, 'updateQrSubtitle'])->name('dashboard.settings.qr-subtitle');
         Route::post('/settings/telegram/test', [SettingsController::class, 'testTelegram'])
             ->middleware('throttle:5,1')
             ->name('dashboard.settings.telegram.test');

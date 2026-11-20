@@ -36,6 +36,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $b->name,
                     'slug' => $b->slug,
                     'category' => $b->category,
+                    'qr_poster_subtitle' => $b->qr_poster_subtitle,
                     'logo_url' => $b->logo_path ? Storage::url($b->logo_path) : null,
                     'role' => $b->pivot->role,
                     'permissions' => json_decode((string) $b->pivot->permissions, true) ?? [],

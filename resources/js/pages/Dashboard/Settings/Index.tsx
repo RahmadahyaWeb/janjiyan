@@ -46,6 +46,7 @@ interface SettingsIndexProps {
         slug: string;
         category: string;
         description: string | null;
+        qr_poster_subtitle?: string | null;
         phone: string | null;
         address: string | null;
         timezone: string;
@@ -1009,6 +1010,8 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                 businessCategory={form.data.category || business.category}
                 businessSlug={form.data.slug || business.slug}
                 businessAddress={form.data.address || business.address}
+                qrSubtitle={business.qr_poster_subtitle}
+                canSaveSubtitle
             />
         </DashboardLayout>
     );

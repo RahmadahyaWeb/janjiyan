@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Business extends Model
 {
+    public const DEFAULT_QR_POSTER_SUBTITLE = 'Scan QR untuk Booking Online';
+
     protected $hidden = [
         'telegram_bot_token',
     ];
@@ -19,6 +21,7 @@ class Business extends Model
         'slug',
         'category',
         'description',
+        'qr_poster_subtitle',
         'phone',
         'address',
         'timezone',

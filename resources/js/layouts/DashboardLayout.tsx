@@ -420,6 +420,12 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                     businessName={activeBusiness.name}
                     businessCategory={activeBusiness.category}
                     businessSlug={activeBusiness.slug}
+                    qrSubtitle={activeBusiness.qr_poster_subtitle}
+                    canSaveSubtitle={
+                        activeBusiness.role === 'owner' ||
+                        activeBusiness.permissions.includes('*') ||
+                        activeBusiness.permissions.includes('manage_settings')
+                    }
                 />
             )}
         </div>
