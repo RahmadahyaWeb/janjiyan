@@ -142,6 +142,17 @@ class AdminController extends Controller
         ]);
     }
 
+    public function editTrial(User $user): Response
+    {
+        return Inertia::render('Admin/ExtendTrial', [
+            'merchant' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+        ]);
+    }
+
     public function extendTrial(
         Request $request,
         User $user,
@@ -164,7 +175,22 @@ class AdminController extends Controller
             'current_period_ends_at' => $newTrialEnd,
         ]);
 
-        return back()->with('success', "Trial untuk {$user->email} diperpanjang {$validated['days']} hari.");
+        return to_route('admin.index')->with('success', "Trial untuk {$user->email} diperpanjang {$validated['days']} hari.");
+    }
+
+    public function editPlan(User $user): Response
+    {
+        $user->loadMissing('subscription.plan');
+
+        return Inertia::render('Admin/ActivatePlan', [
+            'merchant' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'current_plan_slug' => $user->subscription?->plan?->slug ?? null,
+            ],
+            'plans' => SubscriptionPlan::orderBy('price_monthly')->get(['id', 'slug', 'name', 'price_monthly', 'price_yearly']),
+        ]);
     }
 
     public function activatePlan(
@@ -198,7 +224,18 @@ class AdminController extends Controller
             'notes' => $validated['notes'] ?: 'Aktivasi manual oleh Superadmin',
         ]);
 
-        return back()->with('success', "Paket {$plan->name} ({$validated['billing_cycle']}) untuk {$user->email} berhasil diaktifkan.");
+        return to_route('admin.index')->with('success', "Paket {$plan->name} ({$validated['billing_cycle']}) untuk {$user->email} berhasil diaktifkan.");
+    }
+
+    public function editSuspend(Business $business): Response
+    {
+        return Inertia::render('Admin/SuspendBusiness', [
+            'business' => [
+                'id' => $business->id,
+                'name' => $business->name,
+                'slug' => $business->slug,
+            ],
+        ]);
     }
 
     public function suspendBusiness(Request $request, Business $business): RedirectResponse
@@ -212,7 +249,7 @@ class AdminController extends Controller
             'suspension_reason' => $validated['reason'],
         ]);
 
-        return back()->with('success', "Bisnis {$business->name} telah ditangguhkan.");
+        return to_route('admin.index')->with('success', "Bisnis {$business->name} telah ditangguhkan.");
     }
 
     public function unsuspendBusiness(Business $business): RedirectResponse

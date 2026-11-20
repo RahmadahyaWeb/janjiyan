@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\Staff;
 use App\Models\User;
 use App\Services\IcsCalendarService;
@@ -41,31 +42,35 @@ class StaffController extends Controller
                 ->withCount(['timeOffs as upcoming_time_offs_count' => fn ($q) => $q->whereDate('end_date', '>=', now()->toDateString())])
                 ->latest()
                 ->get()
-                ->map(function (Staff $s) use ($business) {
-                    $membership = $s->user_id
-                        ? $business->users()->where('users.id', $s->user_id)->first()
-                        : null;
-
-                    return [
-                        'id' => $s->id,
-                        'name' => $s->name,
-                        'title' => $s->title,
-                        'email' => $s->email,
-                        'phone' => $s->phone,
-                        'is_active' => $s->is_active,
-                        'commission_type' => $s->commission_type ?: 'none',
-                        'commission_value' => (int) ($s->commission_value ?? 0),
-                        'has_login' => $s->user_id !== null,
-                        'has_custom_schedule' => (int) ($s->operating_hours_count ?? 0) > 0,
-                        'upcoming_time_offs_count' => (int) ($s->upcoming_time_offs_count ?? 0),
-                        'role' => $membership?->pivot->role ?? null,
-                        'permissions' => $membership ? (json_decode((string) $membership->pivot->permissions, true) ?? []) : [],
-                    ];
-                })
+                ->map(fn (Staff $s) => $this->serializeStaff($s, $business))
             : collect();
 
         return Inertia::render('Dashboard/Staff/Index', [
             'staffMembers' => $staff,
+        ]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+
+        return Inertia::render('Dashboard/Staff/Form', [
+            'staffMember' => null,
+        ]);
+    }
+
+    public function edit(Request $request, Staff $staff): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+
+        $staff->loadMissing('user:id,email');
+
+        return Inertia::render('Dashboard/Staff/Form', [
+            'staffMember' => $this->serializeStaff($staff, $business),
         ]);
     }
 
@@ -160,7 +165,7 @@ class StaffController extends Controller
             ]);
         });
 
-        return back()->with('success', "Staff {$validated['name']} berhasil ditambahkan.");
+        return to_route('dashboard.staff')->with('success', "Staff {$validated['name']} berhasil ditambahkan.");
     }
 
     public function update(Request $request, Staff $staff): RedirectResponse
@@ -214,7 +219,7 @@ class StaffController extends Controller
             }
         });
 
-        return back()->with('success', "Data staff {$validated['name']} berhasil diperbarui.");
+        return to_route('dashboard.staff')->with('success', "Data staff {$validated['name']} berhasil diperbarui.");
     }
 
     public function destroy(Request $request, Staff $staff): RedirectResponse
@@ -277,5 +282,31 @@ class StaffController extends Controller
         }
 
         return 0;
+    }
+
+    /**
+     * Format a staff member model with dashboard membership role & permissions.
+     */
+    private function serializeStaff(Staff $s, Business $business): array
+    {
+        $membership = $s->user_id
+            ? $business->users()->where('users.id', $s->user_id)->first()
+            : null;
+
+        return [
+            'id' => $s->id,
+            'name' => $s->name,
+            'title' => $s->title,
+            'email' => $s->email,
+            'phone' => $s->phone,
+            'is_active' => $s->is_active,
+            'commission_type' => $s->commission_type ?: 'none',
+            'commission_value' => (int) ($s->commission_value ?? 0),
+            'has_login' => $s->user_id !== null,
+            'has_custom_schedule' => (int) ($s->operating_hours_count ?? 0) > 0,
+            'upcoming_time_offs_count' => (int) ($s->upcoming_time_offs_count ?? 0),
+            'role' => $membership?->pivot->role ?? null,
+            'permissions' => $membership ? (json_decode((string) $membership->pivot->permissions, true) ?? []) : [],
+        ];
     }
 }

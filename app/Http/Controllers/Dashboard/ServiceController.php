@@ -18,24 +18,7 @@ class ServiceController extends Controller
         $business = $request->user()->resolveActiveBusiness();
 
         $services = $business
-            ? $business->services()->with('staff:id,name')->latest()->get()->map(fn (Service $s) => [
-                'id' => $s->id,
-                'name' => $s->name,
-                'description' => $s->description,
-                'image_url' => $s->image_path ? Storage::url($s->image_path) : null,
-                'price' => $s->price,
-                'duration_minutes' => $s->duration_minutes,
-                'buffer_minutes' => $s->buffer_minutes,
-                'capacity' => $s->capacity,
-                'assignment_mode' => $s->assignment_mode,
-                'booking_mode' => $s->booking_mode ?? 'time_slot',
-                'turnaround_days' => (int) ($s->turnaround_days ?? 1),
-                'supports_pickup' => (bool) ($s->supports_pickup ?? false),
-                'dp_type' => $s->dp_type,
-                'dp_value' => $s->dp_value,
-                'is_active' => $s->is_active,
-                'staff_ids' => $s->staff->pluck('id')->values(),
-            ])
+            ? $business->services()->with('staff:id,name')->latest()->get()->map(fn (Service $s) => $this->serializeService($s))
             : collect();
 
         $staffList = $business
@@ -45,6 +28,32 @@ class ServiceController extends Controller
         return Inertia::render('Dashboard/Services/Index', [
             'services' => $services,
             'staffList' => $staffList,
+        ]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'manage_services'), 403);
+
+        return Inertia::render('Dashboard/Services/Form', [
+            'service' => null,
+            'staffList' => $business->staff()->where('is_active', true)->get(['id', 'name', 'title']),
+        ]);
+    }
+
+    public function edit(Request $request, Service $service): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $service->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_services'), 403);
+
+        $service->loadMissing('staff:id');
+
+        return Inertia::render('Dashboard/Services/Form', [
+            'service' => $this->serializeService($service),
+            'staffList' => $business->staff()->where('is_active', true)->get(['id', 'name', 'title']),
         ]);
     }
 
@@ -105,7 +114,7 @@ class ServiceController extends Controller
             $service->staff()->sync($validIds);
         }
 
-        return back()->with('success', "Layanan {$service->name} berhasil ditambahkan.");
+        return to_route('dashboard.services')->with('success', "Layanan {$service->name} berhasil ditambahkan.");
     }
 
     public function update(Request $request, Service $service): RedirectResponse
@@ -173,7 +182,32 @@ class ServiceController extends Controller
             $service->staff()->detach();
         }
 
-        return back()->with('success', "Layanan {$service->name} diperbarui.");
+        return to_route('dashboard.services')->with('success', "Layanan {$service->name} diperbarui.");
+    }
+
+    /**
+     * Format a service model for the dashboard list and form views.
+     */
+    private function serializeService(Service $s): array
+    {
+        return [
+            'id' => $s->id,
+            'name' => $s->name,
+            'description' => $s->description,
+            'image_url' => $s->image_path ? Storage::url($s->image_path) : null,
+            'price' => $s->price,
+            'duration_minutes' => $s->duration_minutes,
+            'buffer_minutes' => $s->buffer_minutes,
+            'capacity' => $s->capacity,
+            'assignment_mode' => $s->assignment_mode,
+            'booking_mode' => $s->booking_mode ?? 'time_slot',
+            'turnaround_days' => (int) ($s->turnaround_days ?? 1),
+            'supports_pickup' => (bool) ($s->supports_pickup ?? false),
+            'dp_type' => $s->dp_type,
+            'dp_value' => $s->dp_value,
+            'is_active' => $s->is_active,
+            'staff_ids' => $s->staff->pluck('id')->values(),
+        ];
     }
 
     public function destroy(Request $request, Service $service): RedirectResponse

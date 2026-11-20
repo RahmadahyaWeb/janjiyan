@@ -185,31 +185,7 @@ class BookingController extends Controller
             ? $business->operatingHours()->where('day_of_week', $selectedDate->dayOfWeek)->first()
             : null;
 
-        $services = $business
-            ? $business->services()
-                ->where('is_active', true)
-                ->with(['staff' => fn ($sq) => $sq->where('staff.is_active', true)])
-                ->orderBy('name')
-                ->get()
-                ->map(fn (Service $s) => [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'price' => $s->price,
-                    'duration_minutes' => $s->duration_minutes,
-                    'capacity' => $s->capacity,
-                    'assignment_mode' => $s->assignment_mode,
-                    'booking_mode' => $s->booking_mode ?? 'time_slot',
-                    'turnaround_days' => (int) ($s->turnaround_days ?? 1),
-                    'supports_pickup' => (bool) ($s->supports_pickup ?? false),
-                    'dp_amount' => $s->calculateDpAmount(),
-                    'staff' => $s->staff->map(fn ($st) => [
-                        'id' => $st->id,
-                        'name' => $st->name,
-                        'title' => $st->title,
-                    ])->values(),
-                ])
-                ->values()
-            : collect();
+        $services = $this->getActiveBookingServices($business);
 
         return Inertia::render('Dashboard/Bookings/Index', [
             'bookings' => $paginatedBookings ? $paginatedBookings->items() : [],
@@ -250,6 +226,107 @@ class BookingController extends Controller
             'whatsappTemplates' => $business ? $business->resolvedWhatsappTemplates() : Business::defaultWhatsappTemplates(),
             'canExportCsv' => $business ? $planLimitService->canExportCsv($business->owner) : false,
         ]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
+
+        return Inertia::render('Dashboard/Bookings/Create', [
+            'services' => $this->getActiveBookingServices($business),
+        ]);
+    }
+
+    public function editReschedule(Request $request, Booking $booking): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $booking->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
+
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $booking->loadMissing(['service.staff' => fn ($q) => $q->where('staff.is_active', true), 'customer', 'staff']);
+
+        return Inertia::render('Dashboard/Bookings/Reschedule', [
+            'booking' => [
+                'id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'service_id' => $booking->service_id,
+                'service_name' => $booking->service?->name ?? 'Layanan',
+                'service_assignment_mode' => $booking->service?->assignment_mode ?? 'staff',
+                'booking_mode' => $booking->booking_mode ?? ($booking->service?->booking_mode ?? 'time_slot'),
+                'quantity' => (int) ($booking->quantity ?? 1),
+                'customer_name' => $booking->customer?->name ?? 'Pelanggan',
+                'staff_id' => $booking->staff_id,
+                'booking_date' => $booking->booking_date->toDateString(),
+                'start_time_local' => $booking->start_at?->setTimezone($tz)->format('H:i') ?? '09:00',
+            ],
+            'staffOptions' => $booking->service
+                ? $booking->service->staff->map(fn ($st) => [
+                    'id' => $st->id,
+                    'name' => $st->name,
+                    'title' => $st->title,
+                ])->values()
+                : [],
+        ]);
+    }
+
+    public function editCancel(Request $request, Booking $booking): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $booking->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
+
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $booking->loadMissing(['service', 'customer']);
+
+        return Inertia::render('Dashboard/Bookings/Cancel', [
+            'booking' => [
+                'id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'customer_name' => $booking->customer?->name ?? 'Pelanggan',
+                'service_name' => $booking->service?->name ?? 'Layanan',
+                'booking_date' => $booking->booking_date->toDateString(),
+                'booking_mode' => $booking->booking_mode ?? 'time_slot',
+                'quantity' => (int) ($booking->quantity ?? 1),
+                'start_time_local' => $booking->start_at?->setTimezone($tz)->format('H:i') ?? '',
+            ],
+        ]);
+    }
+
+    /**
+     * Load active services and assigned active staff for manual booking forms.
+     */
+    private function getActiveBookingServices(?Business $business)
+    {
+        if (! $business) {
+            return collect();
+        }
+
+        return $business->services()
+            ->where('is_active', true)
+            ->with(['staff' => fn ($sq) => $sq->where('staff.is_active', true)])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Service $s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'price' => $s->price,
+                'duration_minutes' => $s->duration_minutes,
+                'capacity' => $s->capacity,
+                'assignment_mode' => $s->assignment_mode,
+                'booking_mode' => $s->booking_mode ?? 'time_slot',
+                'turnaround_days' => (int) ($s->turnaround_days ?? 1),
+                'supports_pickup' => (bool) ($s->supports_pickup ?? false),
+                'dp_amount' => $s->calculateDpAmount(),
+                'staff' => $s->staff->map(fn ($st) => [
+                    'id' => $st->id,
+                    'name' => $st->name,
+                    'title' => $st->title,
+                ])->values(),
+            ])
+            ->values();
     }
 
     public function slots(Request $request, SlotAvailabilityService $slotService): JsonResponse
@@ -404,7 +481,7 @@ class BookingController extends Controller
             $booking->reservation_status === 'confirmed' ? 'confirmed' : 'created'
         );
 
-        return back()->with('success', "Reservasi manual {$booking->booking_code} berhasil dibuat.");
+        return to_route('dashboard.bookings')->with('success', "Reservasi manual {$booking->booking_code} berhasil dibuat.");
     }
 
     public function reschedule(
@@ -448,7 +525,7 @@ class BookingController extends Controller
             ? "Tanggal drop-off {$updated->booking_code} berhasil diubah ke {$validated['date']}."
             : "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.";
 
-        return back()->with('success', $message);
+        return to_route('dashboard.bookings')->with('success', $message);
     }
 
     public function updateStatus(
@@ -494,6 +571,10 @@ class BookingController extends Controller
         $newStatus = $booking->reservation_status;
         if ($newStatus !== $previousStatus && in_array($newStatus, ['confirmed', 'cancelled'], true)) {
             $notificationService->notifyCustomerStatusChanged($booking, $newStatus);
+        }
+
+        if ($request->boolean('redirect_to_index')) {
+            return to_route('dashboard.bookings')->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
         }
 
         return back()->with('success', "Status reservasi {$booking->booking_code} diperbarui.");

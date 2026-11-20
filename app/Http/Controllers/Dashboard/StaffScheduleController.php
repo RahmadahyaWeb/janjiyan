@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\Staff;
 use App\Models\StaffTimeOff;
 use Illuminate\Http\JsonResponse;
@@ -10,9 +11,21 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class StaffScheduleController extends Controller
 {
+    public function edit(Request $request, Staff $staff): Response
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+
+        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+
+        return Inertia::render('Dashboard/Staff/Schedule', $this->buildSchedulePayload($business, $staff));
+    }
+
     public function show(Request $request, Staff $staff): JsonResponse
     {
         $user = $request->user();
@@ -20,6 +33,14 @@ class StaffScheduleController extends Controller
 
         abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
 
+        return response()->json($this->buildSchedulePayload($business, $staff));
+    }
+
+    /**
+     * Build the staff working hours and time-offs payload shared between the page and JSON endpoint.
+     */
+    private function buildSchedulePayload(Business $business, Staff $staff): array
+    {
         $customHours = $staff->operatingHours()->orderBy('day_of_week')->get();
         $usesBusinessDefault = $customHours->isEmpty();
 
@@ -64,13 +85,13 @@ class StaffScheduleController extends Controller
             ])
             ->values();
 
-        return response()->json([
+        return [
             'staff_id' => $staff->id,
             'staff_name' => $staff->name,
             'uses_business_default' => $usesBusinessDefault,
             'hours' => $hoursPayload,
             'time_offs' => $timeOffs,
-        ]);
+        ];
     }
 
     public function updateHours(Request $request, Staff $staff): RedirectResponse

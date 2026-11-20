@@ -1,4 +1,4 @@
-import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     BadgePercent,
     CalendarDays,
@@ -19,18 +19,12 @@ import {
     Users,
     UserSquare2,
 } from 'lucide-react';
-import { FormEvent, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
+import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,8 +32,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
@@ -63,7 +55,6 @@ const NAV_ITEMS = [
 export default function DashboardLayout({ title, children }: DashboardLayoutProps) {
     const { auth, activeBusiness, businesses, subscription, pendingBookingsCount = 0, flash } =
         usePage<PageProps>().props;
-    const [createOpen, setCreateOpen] = useState(false);
     const [qrOpen, setQrOpen] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
 
@@ -75,25 +66,8 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
         setTimeout(() => setCopiedLink(false), 2000);
     };
 
-    const createForm = useForm({
-        name: '',
-        category: 'Barbershop & Salon',
-        phone: '',
-        address: '',
-    });
-
     const handleSwitch = (businessId: number) => {
         router.post(route('dashboard.businesses.switch'), { business_id: businessId });
-    };
-
-    const handleCreateBusiness = (e: FormEvent) => {
-        e.preventDefault();
-        createForm.post(route('dashboard.businesses.store'), {
-            onSuccess: () => {
-                setCreateOpen(false);
-                createForm.reset();
-            },
-        });
     };
 
     return (
@@ -148,11 +122,13 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                     ))}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                        onClick={() => setCreateOpen(true)}
+                                        asChild
                                         className="cursor-pointer rounded-[12px] px-3 py-2 text-sm font-semibold text-electric"
                                     >
-                                        <Plus className="mr-1.5 size-4" />
-                                        Tambah Bisnis Baru
+                                        <Link href={route('dashboard.businesses.create')}>
+                                            <Plus className="mr-1.5 size-4" />
+                                            Tambah Bisnis Baru
+                                        </Link>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -267,7 +243,13 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
 
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
                 {/* Sidebar Nav */}
-                <aside aria-label="Navigasi Dashboard" className="relative -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-2 lg:mx-0 lg:flex-col lg:px-0 lg:pb-0">
+                <HorizontalScrollContainer
+                    as="aside"
+                    ariaLabel="Navigasi Dashboard"
+                    wrapperClassName="-mx-4 lg:mx-0"
+                    fadeBreakpointClass="lg:hidden"
+                    className="flex gap-1.5 px-4 pb-2 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+                >
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
                         const isActive = route().current(item.routeName);
@@ -303,7 +285,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                             </Link>
                         );
                     })}
-                </aside>
+                </HorizontalScrollContainer>
 
                 {/* Main Content */}
                 <main id="main-content" tabIndex={-1} className="min-w-0 space-y-4 outline-none sm:space-y-6">
@@ -359,65 +341,6 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                     {children}
                 </main>
             </div>
-
-            {/* Create Business Dialog */}
-            <Dialog
-                open={createOpen}
-                onOpenChange={(open) => {
-                    if (open) createForm.clearErrors();
-                    setCreateOpen(open);
-                }}
-            >
-                <DialogTrigger asChild>
-                    <span className="hidden" />
-                </DialogTrigger>
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-ink">Tambah Bisnis Baru</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateBusiness} className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="create-business-name">Nama Bisnis</Label>
-                            <Input
-                                id="create-business-name"
-                                placeholder="Cabang Kemang"
-                                value={createForm.data.name}
-                                onChange={(e) => createForm.setData('name', e.target.value)}
-                                aria-invalid={Boolean(createForm.errors.name)}
-                                required
-                            />
-                            {createForm.errors.name && (
-                                <p className="text-xs text-destructive">{createForm.errors.name}</p>
-                            )}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="create-business-category">Kategori</Label>
-                            <Input
-                                id="create-business-category"
-                                placeholder="Barbershop & Salon"
-                                value={createForm.data.category}
-                                onChange={(e) => createForm.setData('category', e.target.value)}
-                                aria-invalid={Boolean(createForm.errors.category)}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="create-business-phone">Nomor WhatsApp</Label>
-                            <Input
-                                id="create-business-phone"
-                                type="tel"
-                                inputMode="tel"
-                                placeholder="08123456789"
-                                value={createForm.data.phone}
-                                onChange={(e) => createForm.setData('phone', e.target.value)}
-                            />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={createForm.processing}>
-                            {createForm.processing ? 'Menyimpan…' : 'Buat Bisnis'}
-                        </Button>
-                    </form>
-                </DialogContent>
-            </Dialog>
 
             {activeBusiness && (
                 <QrPosterDialog

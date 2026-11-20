@@ -49,6 +49,13 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
     settled: 'Lunas',
 };
 
+export const INVOICE_STATUS_LABELS: Record<string, string> = {
+    pending: 'Menunggu Pembayaran',
+    paid: 'Lunas',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+};
+
 export const STAFF_ROLE_LABELS: Record<string, string> = {
     owner: 'Pemilik',
     admin: 'Admin',

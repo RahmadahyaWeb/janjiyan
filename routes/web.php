@@ -113,6 +113,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
     // Read-only & account/billing routes (remain accessible during soft-lock)
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/businesses/create', [DashboardController::class, 'createBusinessPage'])->name('dashboard.businesses.create');
     Route::post('/businesses/switch', [DashboardController::class, 'switchBusiness'])->name('dashboard.businesses.switch');
     Route::delete('/businesses/{business}', [DashboardController::class, 'destroyBusiness'])->name('dashboard.businesses.destroy');
 
@@ -121,11 +122,19 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('dashboard.profile.password');
 
     Route::get('/bookings', [BookingController::class, 'index'])->name('dashboard.bookings');
+    Route::get('/bookings/create', [BookingController::class, 'create'])->name('dashboard.bookings.create');
+    Route::get('/bookings/{booking}/reschedule', [BookingController::class, 'editReschedule'])->name('dashboard.bookings.reschedule.edit');
+    Route::get('/bookings/{booking}/cancel', [BookingController::class, 'editCancel'])->name('dashboard.bookings.cancel.edit');
     Route::get('/bookings/slots', [BookingController::class, 'slots'])->name('dashboard.bookings.slots');
     Route::get('/bookings/{booking}/proof', [BookingController::class, 'proof'])->name('dashboard.bookings.proof');
 
     Route::get('/services', [ServiceController::class, 'index'])->name('dashboard.services');
+    Route::get('/services/create', [ServiceController::class, 'create'])->name('dashboard.services.create');
+    Route::get('/services/{service}/edit', [ServiceController::class, 'edit'])->name('dashboard.services.edit');
     Route::get('/staff', [StaffController::class, 'index'])->name('dashboard.staff');
+    Route::get('/staff/create', [StaffController::class, 'create'])->name('dashboard.staff.create');
+    Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->name('dashboard.staff.edit');
+    Route::get('/staff/{staff}/schedule/manage', [StaffScheduleController::class, 'edit'])->name('dashboard.staff.schedule.edit');
     Route::get('/staff/{staff}/schedule', [StaffScheduleController::class, 'show'])->name('dashboard.staff.schedule.show');
     Route::get('/staff/{staff}/calendar.ics', [StaffController::class, 'calendarIcs'])->name('dashboard.staff.calendar.ics');
     Route::get('/commissions', [CommissionController::class, 'index'])->name('dashboard.commissions');
@@ -195,8 +204,11 @@ Route::middleware(['auth', 'verified', 'superadmin', 'throttle:admin-actions'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/users/{user}/trial', [AdminController::class, 'editTrial'])->name('users.trial.edit');
         Route::post('/users/{user}/extend-trial', [AdminController::class, 'extendTrial'])->name('users.extend-trial');
+        Route::get('/users/{user}/plan', [AdminController::class, 'editPlan'])->name('users.plan.edit');
         Route::post('/users/{user}/activate-plan', [AdminController::class, 'activatePlan'])->name('users.activate-plan');
+        Route::get('/businesses/{business}/suspend', [AdminController::class, 'editSuspend'])->name('businesses.suspend.edit');
         Route::post('/businesses/{business}/suspend', [AdminController::class, 'suspendBusiness'])->name('businesses.suspend');
         Route::post('/businesses/{business}/unsuspend', [AdminController::class, 'unsuspendBusiness'])->name('businesses.unsuspend');
     });

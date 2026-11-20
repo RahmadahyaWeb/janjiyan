@@ -164,6 +164,11 @@ class DashboardController extends Controller
         return back()->with('success', "Berhasil beralih ke {$business->name}.");
     }
 
+    public function createBusinessPage(): Response
+    {
+        return Inertia::render('Dashboard/Businesses/Create');
+    }
+
     public function createBusiness(Request $request, PlanLimitService $planLimitService): RedirectResponse
     {
         $user = $request->user();
@@ -205,7 +210,7 @@ class DashboardController extends Controller
 
         $user->update(['active_business_id' => $business->id]);
 
-        return back()->with('success', "Bisnis {$business->name} berhasil dibuat!");
+        return to_route('dashboard')->with('success', "Bisnis {$business->name} berhasil dibuat!");
     }
 
     public function destroyBusiness(Request $request, Business $business): RedirectResponse

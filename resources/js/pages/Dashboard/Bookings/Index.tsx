@@ -1,17 +1,15 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Search, SlidersHorizontal, UserX, X } from 'lucide-react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
-import { BookingRescheduleDialog } from '@/components/BookingRescheduleDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -25,27 +23,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
-import {
-    Sheet,
-    SheetClose,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
-import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 import {
     buildWhatsAppUrl,
     formatBookingScheduleShort,
     formatDateIndo,
     formatDateShortIndo,
     formatRupiah,
-    formatTurnaroundLabel,
     FULFILLMENT_TYPE_LABELS,
     PAYMENT_STATUS_LABELS,
     PICKUP_SESSION_LABELS,
@@ -162,14 +146,9 @@ export default function BookingsIndex({
     const { pendingBookingsCount = 0 } = usePage<PageProps>().props;
     const [search, setSearch] = useState(filters.search);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [cancellingBooking, setCancellingBooking] = useState<BookingRow | null>(null);
-    const [cancelReason, setCancelReason] = useState('');
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
-    const [reschedulingBooking, setReschedulingBooking] = useState<BookingRow | null>(null);
     const [selectedCalendarBooking, setSelectedCalendarBooking] = useState<CalendarBookingItem | null>(null);
-    const [createOpen, setCreateOpen] = useState(false);
-    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-    const [timeError, setTimeError] = useState('');
+    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
     const STATUS_TABS = [
         { value: 'active', label: 'Aktif' },
@@ -188,115 +167,6 @@ export default function BookingsIndex({
         filters.staff_id,
         filters.date_from || filters.date_to ? 'date' : '',
     ].filter(Boolean).length;
-
-    const todayString = new Date().toISOString().slice(0, 10);
-
-    const manualFormRef = useRef<HTMLFormElement>(null);
-
-    const manualForm = useForm({
-        service_id: services[0]?.id ? String(services[0].id) : '',
-        date: todayString,
-        time: '',
-        quantity: 1 as number | '',
-        fulfillment_type: 'dropoff' as 'dropoff' | 'pickup',
-        pickup_session: 'anytime' as 'morning' | 'afternoon' | 'evening' | 'anytime',
-        pickup_address: '',
-        staff_id: '',
-        customer_name: '',
-        customer_phone: '',
-        customer_email: '',
-        customer_notes: '',
-        initial_payment_status: 'dp_verified',
-    });
-
-    const selectedService = services.find((s) => String(s.id) === manualForm.data.service_id) ?? null;
-    const isManualDropoff = selectedService?.booking_mode === 'dropoff';
-
-    const manualSlotUrl = useMemo(() => {
-        if (!createOpen || !manualForm.data.service_id || !manualForm.data.date) {
-            return null;
-        }
-        const params = new URLSearchParams({
-            service_id: manualForm.data.service_id,
-            date: manualForm.data.date,
-        });
-        if (!isManualDropoff && manualForm.data.staff_id) {
-            params.set('staff_id', manualForm.data.staff_id);
-        }
-        return `${route('dashboard.bookings.slots')}?${params.toString()}`;
-    }, [createOpen, manualForm.data.service_id, manualForm.data.date, manualForm.data.staff_id, isManualDropoff]);
-
-    const {
-        slots,
-        dropoff: manualDropoff,
-        hasLoaded: manualSlotsLoaded,
-        showInitialLoading: manualInitialLoading,
-        showRefreshing: manualRefreshing,
-    } = useSlotFetcher({
-        url: manualSlotUrl,
-        enabled: createOpen && manualSlotUrl !== null,
-        onResolved: (nextSlots: SlotItem[]) => {
-            if (isManualDropoff) return;
-            if (!nextSlots.some((s) => s.time === manualForm.data.time)) {
-                manualForm.setData('time', nextSlots[0]?.time ?? '');
-            }
-        },
-    });
-
-    const openManualModal = () => {
-        setTimeError('');
-        manualForm.reset();
-        manualForm.clearErrors();
-        manualForm.setData({
-            service_id: services[0]?.id ? String(services[0].id) : '',
-            date: todayString,
-            time: '',
-            quantity: 1,
-            fulfillment_type: 'dropoff',
-            pickup_session: 'anytime',
-            pickup_address: '',
-            staff_id: '',
-            customer_name: '',
-            customer_phone: '',
-            customer_email: '',
-            customer_notes: '',
-            initial_payment_status: 'dp_verified',
-        });
-        setCreateOpen(true);
-    };
-
-    const handleManualSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        const normalizedQuantity = Math.max(1, Number(manualForm.data.quantity || 1));
-        if (isManualDropoff) {
-            if (!manualDropoff?.available || manualDropoff.remaining_capacity < normalizedQuantity) {
-                setTimeError(manualDropoff?.reason ?? 'Kuota harian tidak mencukupi pada tanggal yang dipilih.');
-                document.getElementById('manual-date')?.focus();
-                return;
-            }
-            if (selectedService?.supports_pickup && manualForm.data.fulfillment_type === 'pickup' && manualForm.data.pickup_address.trim() === '') {
-                setTimeError('Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.');
-                document.getElementById('manual-pickup-address')?.focus();
-                return;
-            }
-        } else if (!manualForm.data.time) {
-            setTimeError('Pilih jam reservasi yang tersedia terlebih dahulu.');
-            document.getElementById('manual-date')?.focus();
-            return;
-        }
-        setTimeError('');
-        manualForm.transform((data) => ({
-            ...data,
-            quantity: Math.max(1, Number(data.quantity || 1)),
-        }));
-        manualForm.post(route('dashboard.bookings.store'), {
-            onSuccess: () => {
-                setCreateOpen(false);
-                manualForm.reset();
-            },
-            onError: () => scrollToFirstInvalid(manualFormRef.current),
-        });
-    };
 
     const hasActiveFilter = Boolean(
         (filters.status && filters.status !== 'active') ||
@@ -462,7 +332,7 @@ export default function BookingsIndex({
 
             {/* Toolbar */}
             <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     <div
                         className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
                         role="group"
@@ -507,38 +377,58 @@ export default function BookingsIndex({
                             </Button>
                         ) : (
                             <Button
+                                asChild
                                 variant="outline"
                                 size="sm"
-                                disabled
-                                aria-label="Export CSV khusus paket Pro"
-                                className="size-9 px-0 sm:h-10 sm:w-auto sm:px-4"
+                                className="size-9 px-0 text-mute sm:h-10 sm:w-auto sm:px-4"
                             >
-                                <Download className="size-4" aria-hidden="true" />
-                                <span className="hidden sm:inline">Export CSV (Pro)</span>
+                                <Link
+                                    href={route('dashboard.billing')}
+                                    aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                    title="Export CSV tersedia pada paket Professional & Enterprise"
+                                >
+                                    <Download className="size-4" aria-hidden="true" />
+                                    <span className="hidden sm:inline">Export CSV (Pro)</span>
+                                </Link>
                             </Button>
                         )}
 
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={openManualModal}
-                            disabled={services.length === 0}
-                            className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
-                        >
-                            <Plus className="size-4" aria-hidden="true" />
-                            <span className="sm:hidden">Baru</span>
-                            <span className="hidden sm:inline">Tambah Reservasi</span>
-                        </Button>
+                        {services.length > 0 ? (
+                            <Button
+                                asChild
+                                size="sm"
+                                className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
+                            >
+                                <Link href={route('dashboard.bookings.create')}>
+                                    <Plus className="size-4" aria-hidden="true" />
+                                    <span className="sm:hidden">Baru</span>
+                                    <span className="hidden sm:inline">Tambah Reservasi</span>
+                                </Link>
+                            </Button>
+                        ) : (
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled
+                                className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
+                            >
+                                <Plus className="size-4" aria-hidden="true" />
+                                <span className="sm:hidden">Baru</span>
+                                <span className="hidden sm:inline">Tambah Reservasi</span>
+                            </Button>
+                        )}
                     </div>
                 </div>
 
                 {filters.view === 'list' && (
                     <>
                         {/* Quick Status Tabs */}
-                        <div
-                            className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0"
+                        <HorizontalScrollContainer
                             role="group"
-                            aria-label="Filter cepat status reservasi"
+                            ariaLabel="Filter cepat status reservasi"
+                            wrapperClassName="-mx-4 sm:mx-0"
+                            fadeBreakpointClass="sm:hidden"
+                            className="flex gap-1.5 px-4 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
                         >
                             {STATUS_TABS.map((tab) => {
                                 const active = currentStatus === tab.value;
@@ -570,7 +460,7 @@ export default function BookingsIndex({
                                     </button>
                                 );
                             })}
-                        </div>
+                        </HorizontalScrollContainer>
 
                         {/* Mobile Search + Filter Sheet Trigger */}
                         <div className="flex items-center gap-2 md:hidden">
@@ -602,131 +492,120 @@ export default function BookingsIndex({
                                 )}
                             </div>
 
-                            <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-                                <SheetTrigger asChild>
+                            <Button
+                                type="button"
+                                variant={advancedFilterCount > 0 || mobileFilterOpen ? 'default' : 'outline'}
+                                size="sm"
+                                aria-expanded={mobileFilterOpen}
+                                onClick={() => setMobileFilterOpen((prev) => !prev)}
+                                className="h-11 shrink-0 rounded-[16px] px-3.5"
+                            >
+                                <SlidersHorizontal className="size-4" aria-hidden="true" />
+                                <span>Filter</span>
+                                {advancedFilterCount > 0 && (
+                                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas text-xs font-semibold tabular-nums text-ink">
+                                        {advancedFilterCount}
+                                    </span>
+                                )}
+                            </Button>
+                        </div>
+
+                        {mobileFilterOpen && (
+                            <div className="space-y-4 rounded-[20px] border border-hairline-soft bg-canvas p-4 md:hidden">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="mobile-filter-payment">Status Pembayaran</Label>
+                                    <NativeSelect
+                                        id="mobile-filter-payment"
+                                        value={filters.payment}
+                                        onChange={(e) => applyFilters({ payment: e.target.value })}
+                                    >
+                                        <option value="">Semua Pembayaran</option>
+                                        <option value="unpaid">Belum Dibayar</option>
+                                        <option value="waiting_verification">Menunggu Verifikasi DP</option>
+                                        <option value="dp_verified">DP Terverifikasi</option>
+                                        <option value="settled">Lunas</option>
+                                    </NativeSelect>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="mobile-filter-service">Layanan</Label>
+                                    <NativeSelect
+                                        id="mobile-filter-service"
+                                        value={filters.service_id ?? ''}
+                                        onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                    >
+                                        <option value="">Semua Layanan</option>
+                                        {services.map((svc) => (
+                                            <option key={svc.id} value={String(svc.id)}>
+                                                {svc.name}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </div>
+
+                                {staffOptions.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="mobile-filter-staff">Staff</Label>
+                                        <NativeSelect
+                                            id="mobile-filter-staff"
+                                            value={filters.staff_id ?? ''}
+                                            onChange={(e) => applyFilters({ staff_id: e.target.value })}
+                                        >
+                                            <option value="">Semua Staff</option>
+                                            {staffOptions.map((st) => (
+                                                <option key={st.id} value={String(st.id)}>
+                                                    {st.name}
+                                                </option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="mobile-filter-date-from">Dari Tanggal</Label>
+                                        <Input
+                                            id="mobile-filter-date-from"
+                                            type="date"
+                                            value={filters.date_from}
+                                            onChange={(e) => applyFilters({ date_from: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="mobile-filter-date-to">Sampai Tanggal</Label>
+                                        <Input
+                                            id="mobile-filter-date-to"
+                                            type="date"
+                                            value={filters.date_to}
+                                            onChange={(e) => applyFilters({ date_to: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 border-t border-divider pt-3">
+                                    {hasActiveFilter && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                resetFilters();
+                                                setMobileFilterOpen(false);
+                                            }}
+                                        >
+                                            Reset Filter
+                                        </Button>
+                                    )}
                                     <Button
                                         type="button"
-                                        variant={advancedFilterCount > 0 ? 'default' : 'outline'}
-                                        size="sm"
-                                        className="h-11 shrink-0 rounded-[16px] px-3.5"
+                                        className="flex-1"
+                                        onClick={() => setMobileFilterOpen(false)}
                                     >
-                                        <SlidersHorizontal className="size-4" aria-hidden="true" />
-                                        <span>Filter</span>
-                                        {advancedFilterCount > 0 && (
-                                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas text-xs font-semibold tabular-nums text-ink">
-                                                {advancedFilterCount}
-                                            </span>
-                                        )}
+                                        Tutup Filter
                                     </Button>
-                                </SheetTrigger>
-                                <SheetContent
-                                    side="bottom"
-                                    className="max-h-[85dvh] touch-pan-y overflow-y-auto overscroll-contain rounded-t-[24px] border-hairline-soft bg-canvas p-0 shadow-none"
-                                >
-                                    <SheetHeader className="border-b border-divider px-5 py-4 pr-12">
-                                        <SheetTitle className="text-lg font-semibold text-ink">
-                                            Filter Reservasi
-                                        </SheetTitle>
-                                        <SheetDescription className="text-xs text-mute">
-                                            Saring daftar berdasarkan pembayaran, layanan, staff, atau tanggal.
-                                        </SheetDescription>
-                                    </SheetHeader>
-
-                                    <div className="space-y-4 p-5">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="mobile-filter-payment">Status Pembayaran</Label>
-                                            <NativeSelect
-                                                id="mobile-filter-payment"
-                                                value={filters.payment}
-                                                onChange={(e) => applyFilters({ payment: e.target.value })}
-                                            >
-                                                <option value="">Semua Pembayaran</option>
-                                                <option value="unpaid">Belum Dibayar</option>
-                                                <option value="waiting_verification">Menunggu Verifikasi DP</option>
-                                                <option value="dp_verified">DP Terverifikasi</option>
-                                                <option value="settled">Lunas</option>
-                                            </NativeSelect>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="mobile-filter-service">Layanan</Label>
-                                            <NativeSelect
-                                                id="mobile-filter-service"
-                                                value={filters.service_id ?? ''}
-                                                onChange={(e) => applyFilters({ service_id: e.target.value })}
-                                            >
-                                                <option value="">Semua Layanan</option>
-                                                {services.map((svc) => (
-                                                    <option key={svc.id} value={String(svc.id)}>
-                                                        {svc.name}
-                                                    </option>
-                                                ))}
-                                            </NativeSelect>
-                                        </div>
-
-                                        {staffOptions.length > 0 && (
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="mobile-filter-staff">Staff</Label>
-                                                <NativeSelect
-                                                    id="mobile-filter-staff"
-                                                    value={filters.staff_id ?? ''}
-                                                    onChange={(e) => applyFilters({ staff_id: e.target.value })}
-                                                >
-                                                    <option value="">Semua Staff</option>
-                                                    {staffOptions.map((st) => (
-                                                        <option key={st.id} value={String(st.id)}>
-                                                            {st.name}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="mobile-filter-date-from">Dari Tanggal</Label>
-                                                <Input
-                                                    id="mobile-filter-date-from"
-                                                    type="date"
-                                                    value={filters.date_from}
-                                                    onChange={(e) => applyFilters({ date_from: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="mobile-filter-date-to">Sampai Tanggal</Label>
-                                                <Input
-                                                    id="mobile-filter-date-to"
-                                                    type="date"
-                                                    value={filters.date_to}
-                                                    onChange={(e) => applyFilters({ date_to: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <SheetFooter className="flex-row gap-2 border-t border-divider p-5">
-                                        {hasActiveFilter && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                className="flex-1"
-                                                onClick={() => {
-                                                    resetFilters();
-                                                    setFilterSheetOpen(false);
-                                                }}
-                                            >
-                                                Reset Filter
-                                            </Button>
-                                        )}
-                                        <SheetClose asChild>
-                                            <Button type="button" className="flex-1">
-                                                Lihat Hasil
-                                            </Button>
-                                        </SheetClose>
-                                    </SheetFooter>
-                                </SheetContent>
-                            </Sheet>
-                        </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Desktop Inline Filter Panel */}
                         <div className="hidden space-y-2.5 rounded-[20px] border border-hairline-soft bg-bone/50 p-3 md:block">
@@ -882,9 +761,11 @@ export default function BookingsIndex({
                                     </Button>
                                 )}
                                 {services.length > 0 && (
-                                    <Button type="button" size="sm" onClick={openManualModal}>
-                                        <Plus className="size-4" aria-hidden="true" />
-                                        Tambah Reservasi Manual
+                                    <Button asChild size="sm">
+                                        <Link href={route('dashboard.bookings.create')}>
+                                            <Plus className="size-4" aria-hidden="true" />
+                                            Tambah Reservasi Manual
+                                        </Link>
                                     </Button>
                                 )}
                             </>
@@ -970,17 +851,17 @@ export default function BookingsIndex({
                                             </Badge>
                                         )}
                                         {b.customer_tags?.includes('VIP') && (
-                                            <Badge variant="popular" className="text-[10px]">
+                                            <Badge variant="popular">
                                                 VIP
                                             </Badge>
                                         )}
                                         {(b.customer_no_show_count ?? 0) > 0 && (
-                                            <Badge variant="warning" className="text-[10px] tabular-nums">
+                                            <Badge variant="warning" className="tabular-nums">
                                                 No-Show {b.customer_no_show_count}x
                                             </Badge>
                                         )}
                                         {b.customer_is_blocked && (
-                                            <Badge variant="danger" className="text-[10px]">
+                                            <Badge variant="danger">
                                                 Diblokir
                                             </Badge>
                                         )}
@@ -1157,11 +1038,13 @@ export default function BookingsIndex({
                                                     )}
                                                     {canReschedule && (
                                                         <DropdownMenuItem
-                                                            onClick={() => setReschedulingBooking(b)}
+                                                            asChild
                                                             className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink"
                                                         >
-                                                            <CalendarClock className="mr-2 size-4" aria-hidden="true" />
-                                                            Ubah Jadwal
+                                                            <Link href={route('dashboard.bookings.reschedule.edit', b.id)}>
+                                                                <CalendarClock className="mr-2 size-4" aria-hidden="true" />
+                                                                Ubah Jadwal
+                                                            </Link>
                                                         </DropdownMenuItem>
                                                     )}
                                                     {canNoShow && (
@@ -1179,14 +1062,13 @@ export default function BookingsIndex({
                                                                 <DropdownMenuSeparator />
                                                             )}
                                                             <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    setCancelReason('');
-                                                                    setCancellingBooking(b);
-                                                                }}
+                                                                asChild
                                                                 className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
                                                             >
-                                                                <X className="mr-2 size-4" aria-hidden="true" />
-                                                                Batalkan Reservasi
+                                                                <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
+                                                                    <X className="mr-2 size-4" aria-hidden="true" />
+                                                                    Batalkan Reservasi
+                                                                </Link>
                                                             </DropdownMenuItem>
                                                         </>
                                                     )}
@@ -1201,326 +1083,6 @@ export default function BookingsIndex({
                     <PaginationBar pagination={pagination} />
                 </div>
             )}
-
-            {/* Manual / Walk-In Booking Modal */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-ink">Tambah Booking Manual</DialogTitle>
-                    </DialogHeader>
-
-                    <form ref={manualFormRef} onSubmit={handleManualSubmit} className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="manual-service">Layanan *</Label>
-                            <NativeSelect
-                                id="manual-service"
-                                value={manualForm.data.service_id}
-                                onChange={(e) => {
-                                    manualForm.setData((prev) => ({
-                                        ...prev,
-                                        service_id: e.target.value,
-                                        staff_id: '',
-                                        time: '',
-                                    }));
-                                }}
-                                required
-                            >
-                                {services.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.name} ({formatRupiah(s.price)} ·{' '}
-                                        {s.booking_mode === 'dropoff'
-                                            ? formatTurnaroundLabel(s.turnaround_days ?? 1)
-                                            : `${s.duration_minutes} mnt`}
-                                        )
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="manual-date">{isManualDropoff ? 'Tanggal Drop-off *' : 'Tanggal *'}</Label>
-                                <Input
-                                    id="manual-date"
-                                    type="date"
-                                    min={todayString}
-                                    value={manualForm.data.date}
-                                    onChange={(e) => manualForm.setData('date', e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            {isManualDropoff ? (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="manual-quantity">Jumlah Item *</Label>
-                                    <Input
-                                        id="manual-quantity"
-                                        type="number"
-                                        min={1}
-                                        max={50}
-                                        value={manualForm.data.quantity}
-                                        onChange={(e) => manualForm.setData('quantity', parseNumericInput(e.target.value))}
-                                        aria-invalid={Boolean(manualForm.errors.quantity)}
-                                        required
-                                    />
-                                    {manualForm.errors.quantity && (
-                                        <p className="text-xs text-destructive">{manualForm.errors.quantity}</p>
-                                    )}
-                                </div>
-                            ) : (
-                                selectedService?.assignment_mode === 'staff' && (
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="manual-staff">Staff</Label>
-                                        <NativeSelect
-                                            id="manual-staff"
-                                            value={manualForm.data.staff_id}
-                                            onChange={(e) => manualForm.setData('staff_id', e.target.value)}
-                                        >
-                                            <option value="">Siapa saja yang tersedia</option>
-                                            {selectedService.staff.map((st) => (
-                                                <option key={st.id} value={st.id}>
-                                                    {st.name}
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
-                                    </div>
-                                )
-                            )}
-                        </div>
-
-                        {isManualDropoff ? (
-                            <div className="space-y-3">
-                                <div className="rounded-[16px] bg-bone px-4 py-3 text-xs" aria-live="polite">
-                                    {manualInitialLoading || !manualSlotsLoaded ? (
-                                        <p className="text-mute">Memeriksa kuota harian…</p>
-                                    ) : manualDropoff?.available ? (
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-semibold text-ink tabular-nums">
-                                                Sisa kuota: {manualDropoff.remaining_capacity} / {manualDropoff.total_capacity} item
-                                            </span>
-                                            {manualDropoff.estimated_ready_date && (
-                                                <span className="text-mute">
-                                                    Est. selesai: {formatDateShortIndo(manualDropoff.estimated_ready_date)}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <p className="text-destructive">
-                                            {manualDropoff?.reason ?? 'Kuota harian tidak tersedia pada tanggal ini.'}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {selectedService?.supports_pickup && (
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="manual-fulfillment">Metode Penyerahan</Label>
-                                            <NativeSelect
-                                                id="manual-fulfillment"
-                                                value={manualForm.data.fulfillment_type}
-                                                onChange={(e) => manualForm.setData('fulfillment_type', e.target.value as 'dropoff' | 'pickup')}
-                                            >
-                                                <option value="dropoff">Antar ke Toko (Drop-off)</option>
-                                                <option value="pickup">Jemput &amp; Antar</option>
-                                            </NativeSelect>
-                                        </div>
-                                        {manualForm.data.fulfillment_type === 'pickup' && (
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="manual-pickup-session">Sesi Jemput</Label>
-                                                <NativeSelect
-                                                    id="manual-pickup-session"
-                                                    value={manualForm.data.pickup_session}
-                                                    onChange={(e) =>
-                                                        manualForm.setData(
-                                                            'pickup_session',
-                                                            e.target.value as 'morning' | 'afternoon' | 'evening' | 'anytime'
-                                                        )
-                                                    }
-                                                >
-                                                    {(['morning', 'afternoon', 'evening', 'anytime'] as const).map((sess) => (
-                                                        <option key={sess} value={sess}>
-                                                            {PICKUP_SESSION_LABELS[sess]}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {selectedService?.supports_pickup && manualForm.data.fulfillment_type === 'pickup' && (
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="manual-pickup-address">Alamat Penjemputan *</Label>
-                                        <Textarea
-                                            id="manual-pickup-address"
-                                            rows={2}
-                                            placeholder="Alamat lengkap penjemputan"
-                                            value={manualForm.data.pickup_address}
-                                            onChange={(e) => manualForm.setData('pickup_address', e.target.value)}
-                                        />
-                                    </div>
-                                )}
-
-                                {(timeError || manualForm.errors.date || manualForm.errors.pickup_address) && (
-                                    <p role="alert" className="text-xs text-destructive">
-                                        {timeError || manualForm.errors.date || manualForm.errors.pickup_address}
-                                    </p>
-                                )}
-                            </div>
-                        ) : (
-                        <div className="min-h-[88px] space-y-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                                <Label>Pilih Jam Tersedia *</Label>
-                                {manualRefreshing && (
-                                    <span className="text-xs font-medium text-mute">Memperbarui…</span>
-                                )}
-                            </div>
-                            {manualInitialLoading ? (
-                                <div className="flex flex-wrap gap-2">
-                                    {Array.from({ length: 6 }).map((_, idx) => (
-                                        <div key={idx} className="h-8 w-16 rounded-full bg-bone" />
-                                    ))}
-                                </div>
-                            ) : !manualSlotsLoaded ? (
-                                <div className="min-h-[56px]" />
-                            ) : slots.length === 0 ? (
-                                <p className="rounded-[16px] bg-bone px-4 py-3 text-sm text-mute">
-                                    Tidak ada slot tersedia pada tanggal yang dipilih.
-                                </p>
-                            ) : (
-                                <div
-                                    className={`flex flex-wrap gap-2 transition-opacity duration-150 ${
-                                        manualRefreshing ? 'opacity-60' : ''
-                                    }`}
-                                    role="group"
-                                    aria-label="Pilih jam reservasi"
-                                >
-                                    {slots.map((slot) => {
-                                        const selected = manualForm.data.time === slot.time;
-                                        return (
-                                            <button
-                                                key={slot.time}
-                                                type="button"
-                                                aria-pressed={selected}
-                                                onClick={() => {
-                                                    manualForm.setData('time', slot.time);
-                                                    setTimeError('');
-                                                }}
-                                                className={`cursor-pointer rounded-full px-3.5 py-2 font-mono text-xs font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
-                                                    selected ? 'bg-ink text-canvas' : 'bg-bone text-ink hover:bg-hairline-soft'
-                                                }`}
-                                            >
-                                                {slot.time}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            {(timeError || manualForm.errors.time) && (
-                                <p id="manual-time-error" role="alert" className="text-xs text-destructive">
-                                    {timeError || manualForm.errors.time}
-                                </p>
-                            )}
-                        </div>
-                        )}
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="manual-customer-name">Nama Pelanggan *</Label>
-                                <Input
-                                    id="manual-customer-name"
-                                    placeholder="Budi Santoso"
-                                    value={manualForm.data.customer_name}
-                                    onChange={(e) => manualForm.setData('customer_name', e.target.value)}
-                                    aria-invalid={Boolean(manualForm.errors.customer_name)}
-                                    aria-describedby={manualForm.errors.customer_name ? 'manual-name-error' : undefined}
-                                    required
-                                />
-                                {manualForm.errors.customer_name && (
-                                    <p id="manual-name-error" className="text-xs text-destructive">
-                                        {manualForm.errors.customer_name}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="manual-customer-phone">Nomor WhatsApp *</Label>
-                                <Input
-                                    id="manual-customer-phone"
-                                    type="tel"
-                                    inputMode="tel"
-                                    placeholder="081234567890"
-                                    value={manualForm.data.customer_phone}
-                                    onChange={(e) => manualForm.setData('customer_phone', e.target.value)}
-                                    aria-invalid={Boolean(manualForm.errors.customer_phone)}
-                                    aria-describedby={manualForm.errors.customer_phone ? 'manual-phone-error' : undefined}
-                                    required
-                                />
-                                {manualForm.errors.customer_phone && (
-                                    <p id="manual-phone-error" className="text-xs text-destructive">
-                                        {manualForm.errors.customer_phone}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="manual-customer-email">Email (Opsional)</Label>
-                                <Input
-                                    id="manual-customer-email"
-                                    type="email"
-                                    placeholder="pelanggan@email.com"
-                                    value={manualForm.data.customer_email}
-                                    onChange={(e) => manualForm.setData('customer_email', e.target.value)}
-                                    aria-invalid={Boolean(manualForm.errors.customer_email)}
-                                    aria-describedby={manualForm.errors.customer_email ? 'manual-email-error' : undefined}
-                                />
-                                {manualForm.errors.customer_email && (
-                                    <p id="manual-email-error" className="text-xs text-destructive">
-                                        {manualForm.errors.customer_email}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="manual-payment-status">Status Pembayaran Awal *</Label>
-                                <NativeSelect
-                                    id="manual-payment-status"
-                                    value={manualForm.data.initial_payment_status}
-                                    onChange={(e) => manualForm.setData('initial_payment_status', e.target.value)}
-                                >
-                                    <option value="dp_verified">DP Terverifikasi (Langsung Konfirmasi)</option>
-                                    <option value="settled">Lunas (Langsung Konfirmasi)</option>
-                                    <option value="unpaid">Belum Dibayar (Menunggu Konfirmasi)</option>
-                                </NativeSelect>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label htmlFor="manual-notes">Catatan (Opsional)</Label>
-                            <Textarea
-                                id="manual-notes"
-                                placeholder="Mis. Walk-in pelanggan tetap"
-                                value={manualForm.data.customer_notes}
-                                onChange={(e) => manualForm.setData('customer_notes', e.target.value)}
-                            />
-                        </div>
-
-                        {Object.keys(manualForm.errors).length > 0 && (
-                            <div
-                                role="alert"
-                                data-form-error="true"
-                                className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
-                            >
-                                Periksa kembali data pemesan atau jadwal yang ditandai merah di atas.
-                            </div>
-                        )}
-
-                        <Button type="submit" className="w-full" disabled={manualForm.processing}>
-                            {manualForm.processing ? 'Menyimpan…' : 'Simpan Reservasi Manual'}
-                        </Button>
-                    </form>
-                </DialogContent>
-            </Dialog>
 
             {/* Proof Preview Modal */}
             <Dialog open={previewUrl !== null} onOpenChange={(open) => !open && setPreviewUrl(null)}>
@@ -1537,14 +1099,6 @@ export default function BookingsIndex({
                     )}
                 </DialogContent>
             </Dialog>
-
-            <BookingRescheduleDialog
-                booking={reschedulingBooking}
-                staffOptions={
-                    services.find((s) => s.id === reschedulingBooking?.service_id)?.staff ?? []
-                }
-                onClose={() => setReschedulingBooking(null)}
-            />
 
             {/* Calendar Booking Quick Detail Dialog */}
             <Dialog
@@ -1600,17 +1154,11 @@ export default function BookingsIndex({
 
                                 {(selectedCalendarBooking.reservation_status === 'pending' ||
                                     selectedCalendarBooking.reservation_status === 'confirmed') && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            setReschedulingBooking(selectedCalendarBooking);
-                                            setSelectedCalendarBooking(null);
-                                        }}
-                                    >
-                                        <CalendarClock className="size-3.5" aria-hidden="true" />
-                                        Ubah Jadwal
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={route('dashboard.bookings.reschedule.edit', selectedCalendarBooking.id)}>
+                                            <CalendarClock className="size-3.5" aria-hidden="true" />
+                                            Ubah Jadwal
+                                        </Link>
                                     </Button>
                                 )}
 
@@ -1675,62 +1223,6 @@ export default function BookingsIndex({
                             </div>
                         </div>
                     )}
-                </DialogContent>
-            </Dialog>
-
-            {/* Cancel Booking Dialog with Optional Reason */}
-            <Dialog
-                open={cancellingBooking !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setCancellingBooking(null);
-                        setCancelReason('');
-                    }
-                }}
-            >
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-semibold text-ink">
-                            Batalkan reservasi {cancellingBooking?.booking_code ?? ''}?
-                        </DialogTitle>
-                        <DialogDescription className="text-sm leading-relaxed text-mute">
-                            Reservasi atas nama {cancellingBooking?.customer_name ?? ''} akan dibatalkan dan slot jadwal akan dibuka kembali.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="cancel-booking-reason">Alasan pembatalan (opsional)</Label>
-                        <Textarea
-                            id="cancel-booking-reason"
-                            placeholder="Mis. Pelanggan berhalangan hadir atau jadwal penuh"
-                            value={cancelReason}
-                            onChange={(e) => setCancelReason(e.target.value)}
-                            maxLength={255}
-                        />
-                    </div>
-                    <DialogFooter className="mt-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                setCancellingBooking(null);
-                                setCancelReason('');
-                            }}
-                        >
-                            Kembali
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => {
-                                if (!cancellingBooking) return;
-                                updateStatus(cancellingBooking.id, 'cancelled', cancelReason.trim() || null);
-                                setCancellingBooking(null);
-                                setCancelReason('');
-                            }}
-                        >
-                            Batalkan Reservasi
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
