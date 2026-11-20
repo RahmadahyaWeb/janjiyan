@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { useLockBodyScroll } from "@/components/ui/scroll-lock"
 
 function Dialog({
   ...props
@@ -33,6 +34,8 @@ function DialogOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  useLockBodyScroll(true)
+
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
