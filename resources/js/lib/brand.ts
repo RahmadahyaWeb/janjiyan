@@ -4,6 +4,8 @@ const INK = '#141414';
 const WHITE = '#ffffff';
 // Warm paper behind the hub; brand tints are mixed into it.
 const PAPER = '#f7f5f0';
+// Header pill and cover band for shops without a color: light neutral like Janjiyan's own nav, not a black slab.
+const NEUTRAL_BAND = '#ecebe7';
 
 /** Shop color choices in Settings. Each one reaches ≥ 4.5:1 with its auto text color (see tests/js/brand.check.mjs). */
 export const BRAND_PRESETS = [
@@ -41,6 +43,8 @@ export const onBrand = (hex: string): string => (contrast(hex, WHITE) >= contras
 /**
  * CSS variables for a shop's color. `--brand-ink` is for icons/marks sitting on paper: a light brand
  * (yellow, mint) would vanish there, so it is darkened toward ink while keeping its hue.
+ * `--band`/`--on-band` paint the header and cover band: the shop color, or a light neutral when unset
+ * (buttons keep `--brand`, which falls back to ink).
  */
 export function brandVars(color: string | null | undefined): CSSProperties {
     const hex = isHex(color) ? color.toLowerCase() : INK;
@@ -51,5 +55,7 @@ export function brandVars(color: string | null | undefined): CSSProperties {
         '--brand-ink': brandInk,
         '--brand-soft': `color-mix(in oklab, ${hex} 14%, white)`,
         '--brand-paper': isHex(color) ? `color-mix(in oklab, ${hex} 6%, ${PAPER})` : PAPER,
+        '--band': isHex(color) ? hex : NEUTRAL_BAND,
+        '--on-band': isHex(color) ? onBrand(hex) : INK,
     } as CSSProperties;
 }

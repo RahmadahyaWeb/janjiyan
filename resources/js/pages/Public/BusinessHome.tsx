@@ -183,7 +183,7 @@ export default function BusinessHome({
             <div className="mx-auto max-w-lg lg:pt-6">
                 {/* Cover band: shop photo in full color, or the plain shop color. The mark rides its bottom edge. */}
                 <div className="relative">
-                    <div className="h-36 overflow-hidden bg-(--brand) sm:h-44 sm:rounded-b-[28px] lg:rounded-[28px]">
+                    <div className="h-36 overflow-hidden bg-(--band) sm:h-44 sm:rounded-b-[28px] lg:rounded-[28px]">
                         {business.cover_url && <img src={business.cover_url} alt="" className="size-full object-cover" />}
                     </div>
                     <BusinessMark

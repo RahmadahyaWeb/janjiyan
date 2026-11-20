@@ -562,7 +562,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 className="overflow-hidden rounded-md bg-(--brand-paper) outline-1 -outline-offset-1 outline-black/10"
                             >
                                 <div className="relative">
-                                    <div className="h-20 overflow-hidden bg-(--brand)">
+                                    <div className="h-20 overflow-hidden bg-(--band)">
                                         {coverPreviewUrl && <img src={coverPreviewUrl} alt="" className="size-full object-cover" />}
                                     </div>
                                     <BusinessMark
