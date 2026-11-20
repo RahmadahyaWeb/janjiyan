@@ -97,6 +97,7 @@ interface BookingPortalProps {
     services: ServiceItem[];
     operatingHours?: OperatingHourItem[];
     holidays: string[];
+    selectedServiceId?: number | null;
     bookingDisabledReason?: string | null;
 }
 
@@ -105,6 +106,7 @@ export default function BookingPortal({
     services,
     operatingHours = [],
     holidays,
+    selectedServiceId = null,
     bookingDisabledReason = null,
 }: BookingPortalProps) {
     const { flash, errors = {} } = usePage<PageProps & { errors?: Record<string, string> }>().props;
@@ -118,7 +120,9 @@ export default function BookingPortal({
         return d.toISOString().slice(0, 10);
     }, [todayLocal, maxAdvanceDays]);
 
-    const [selectedService, setSelectedService] = useState<ServiceItem | null>(services[0] ?? null);
+    const [selectedService, setSelectedService] = useState<ServiceItem | null>(
+        services.find((s) => s.id === selectedServiceId) ?? services[0] ?? null
+    );
     const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
     const [selectedTime, setSelectedTime] = useState<string>('');
@@ -127,6 +131,11 @@ export default function BookingPortal({
     const [pickupSession, setPickupSession] = useState<'morning' | 'afternoon' | 'evening' | 'anytime'>('anytime');
     const [pickupAddress, setPickupAddress] = useState('');
     const [pickupAddressError, setPickupAddressError] = useState('');
+
+    // Arrived from a service on the shop home: show that card, it may be far down the list.
+    useEffect(() => {
+        if (selectedServiceId) document.getElementById(`service-${selectedServiceId}`)?.scrollIntoView({ block: 'center' });
+    }, [selectedServiceId]);
 
     // Keep focused fields and scroll targets clear of the sticky header and the mobile bottom bar (WCAG 2.4.11).
     useEffect(() => {
@@ -341,6 +350,7 @@ export default function BookingPortal({
                                         return (
                                             <button
                                                 key={service.id}
+                                                id={`service-${service.id}`}
                                                 type="button"
                                                 aria-pressed={active}
                                                 onClick={() => {

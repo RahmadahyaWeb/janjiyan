@@ -7,16 +7,23 @@ import {
     FileSearch,
     MapPin,
     MessageCircle,
-    Tag,
+    Sparkles,
     type LucideIcon,
 } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { Fragment, type ReactNode, useMemo, useState } from 'react';
 import { BusinessMark } from '@/components/BusinessMark';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { brandVars, isHex } from '@/lib/brand';
-import { buildWhatsAppUrl, formatDateIndo, formatRupiah, formatShortTime, getLocalDayOfWeek } from '@/lib/format';
+import {
+    buildWhatsAppUrl,
+    formatDateIndo,
+    formatRupiah,
+    formatShortTime,
+    formatTurnaroundLabel,
+    getLocalDayOfWeek,
+} from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface OperatingHourItem {
@@ -32,6 +39,21 @@ interface GalleryItem {
     caption: string | null;
 }
 
+interface ServiceItem {
+    id: number;
+    name: string;
+    image_url: string | null;
+    price: number;
+    duration_minutes: number;
+    booking_mode: 'time_slot' | 'dropoff';
+    turnaround_days: number;
+    supports_pickup: boolean;
+    dp_amount: number;
+}
+
+// Longer lists link to the full list on the booking page.
+const MAX_SERVICES = 5;
+
 interface BusinessHomeProps {
     business: {
         name: string;
@@ -45,8 +67,7 @@ interface BusinessHomeProps {
         brand_color: string | null;
         cover_url: string | null;
     };
-    serviceCount: number;
-    minPrice: number | null;
+    services: ServiceItem[];
     galleries: GalleryItem[];
     operatingHours: OperatingHourItem[];
     holidays: string[];
@@ -119,8 +140,7 @@ function ActionRow({
 
 export default function BusinessHome({
     business,
-    serviceCount,
-    minPrice,
+    services,
     galleries,
     operatingHours,
     holidays,
@@ -138,6 +158,7 @@ export default function BusinessHome({
     const isOpenToday = Boolean(todaySchedule?.is_open && !isTodayHoliday);
 
     const bookingUrl = route('public.booking.form', business.slug);
+    const anyServiceImage = services.some((s) => s.image_url);
     const whatsappUrl = business.phone
         ? buildWhatsAppUrl(business.phone, `Halo ${business.name}, saya ingin bertanya tentang layanan dan jadwal reservasi.`)
         : null;
@@ -254,28 +275,115 @@ export default function BusinessHome({
                         </div>
                     )}
 
+                    {galleries.length > 0 && (
+                        <div
+                            role="region"
+                            aria-label="Foto toko"
+                            tabIndex={0}
+                            className="-mx-4 mt-5 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                        >
+                            {galleries.map((item, idx) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => setLightboxIdx(idx)}
+                                    aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto ${idx + 1}`}
+                                    className="w-28 shrink-0 cursor-pointer snap-start overflow-hidden rounded-[14px] focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                >
+                                    <img
+                                        src={item.image_url}
+                                        alt={item.caption || `${business.name} foto ${idx + 1}`}
+                                        className="aspect-[4/5] w-full object-cover"
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {bookingDisabledReason && (
                         <div role="alert" className="mt-6 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                             {bookingDisabledReason}
                         </div>
                     )}
 
-                    <nav aria-label="Menu toko" className="mt-6 grid gap-2.5">
+                    <div className="mt-5">
                         <ActionRow
                             primary
                             href={bookingUrl}
                             icon={CalendarCheck}
                             title="Pesan layanan"
-                            detail={serviceCount > 0 ? `${serviceCount} layanan tersedia` : 'Belum ada layanan'}
+                            detail={services.length > 0 ? 'Pilih layanan dan jadwal' : 'Belum ada layanan'}
                         />
-                        {minPrice !== null && (
-                            <ActionRow
-                                href={`${bookingUrl}#layanan`}
-                                icon={Tag}
-                                title="Daftar harga"
-                                detail={`Mulai ${formatRupiah(minPrice)}`}
-                            />
-                        )}
+                    </div>
+
+                    {services.length > 0 && (
+                        <section aria-labelledby="services-heading" className="mt-6">
+                            <h2 id="services-heading" className="mx-1 mb-2.5 flex items-center gap-1.5 text-[15px] font-semibold">
+                                Layanan
+                                <span className="rounded-full bg-canvas px-2 text-xs text-mute tabular-nums">{services.length}</span>
+                            </h2>
+                            <ul className="divide-y divide-divider overflow-hidden rounded-[18px] bg-canvas">
+                                {services.slice(0, MAX_SERVICES).map((service) => {
+                                    const meta = [
+                                        service.booking_mode === 'dropoff'
+                                            ? formatTurnaroundLabel(service.turnaround_days)
+                                            : `${service.duration_minutes} mnt`,
+                                        service.booking_mode === 'dropoff' && service.supports_pickup ? 'bisa jemput-antar' : null,
+                                        service.dp_amount > 0 ? `DP ${formatRupiah(service.dp_amount)}` : null,
+                                    ].filter(Boolean);
+                                    return (
+                                        <li key={service.id}>
+                                            <Link
+                                                href={`${bookingUrl}?layanan=${service.id}`}
+                                                className="flex items-center gap-3 py-3 pr-3 pl-3.5 transition-colors hover:bg-bone/60 focus-visible:bg-bone focus-visible:outline-none"
+                                            >
+                                                {anyServiceImage &&
+                                                    (service.image_url ? (
+                                                        <img
+                                                            src={service.image_url}
+                                                            alt=""
+                                                            className="size-12 shrink-0 rounded-xl object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-(--brand-soft) text-(--brand-ink)">
+                                                            <Sparkles className="size-5" aria-hidden="true" />
+                                                        </span>
+                                                    ))}
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-[14.5px] leading-snug font-semibold [overflow-wrap:anywhere]">
+                                                        {service.name}
+                                                    </span>
+                                                    <span className="mt-0.5 block text-[12.5px] text-mute">
+                                                        <strong className="font-semibold text-ink tabular-nums">{formatRupiah(service.price)}</strong>
+                                                        {meta.map((m) => (
+                                                            <Fragment key={m}>
+                                                                {' · '}
+                                                                <span className="whitespace-nowrap">{m}</span>
+                                                            </Fragment>
+                                                        ))}
+                                                    </span>
+                                                </span>
+                                                <ChevronRight className="size-4 shrink-0 text-stone" aria-hidden="true" />
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                                {services.length > MAX_SERVICES && (
+                                    <li>
+                                        <Link
+                                            href={`${bookingUrl}#layanan`}
+                                            className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) hover:bg-bone/60 focus-visible:bg-bone focus-visible:outline-none"
+                                        >
+                                            Lihat semua layanan ({services.length})
+                                            <ChevronRight className="size-4" aria-hidden="true" />
+                                        </Link>
+                                    </li>
+                                )}
+                            </ul>
+                        </section>
+                    )}
+
+                    <nav aria-label="Menu toko" className="mt-6 grid gap-2.5">
                         {whatsappUrl && (
                             <ActionRow
                                 external
@@ -301,31 +409,6 @@ export default function BusinessHome({
                             detail="Lihat status dan invoice"
                         />
                     </nav>
-
-                    {galleries.length > 0 && (
-                        <section aria-labelledby="portfolio-heading" className="mt-8">
-                            <h2 id="portfolio-heading" className="mb-3 text-base font-semibold">
-                                Portofolio & suasana
-                            </h2>
-                            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                                {galleries.map((item, idx) => (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onClick={() => setLightboxIdx(idx)}
-                                        aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto portofolio ${idx + 1}`}
-                                        className="cursor-pointer overflow-hidden rounded-[14px] focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <img
-                                            src={item.image_url}
-                                            alt={item.caption || `${business.name} portofolio ${idx + 1}`}
-                                            className="aspect-square w-full object-cover motion-safe:transition-transform motion-safe:duration-300 hover:scale-[1.03]"
-                                        />
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
                 </main>
 
                 <footer className="pb-10 text-center text-xs text-mute">

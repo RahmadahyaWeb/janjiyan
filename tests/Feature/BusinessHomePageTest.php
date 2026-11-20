@@ -81,8 +81,8 @@ class BusinessHomePageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BusinessHome')
-                ->where('serviceCount', 2)
-                ->where('minPrice', 30000)
+                ->has('services', 2)
+                ->where('services.0.price', 30000)
                 // No cover and no gallery: falls back to the first service photo.
                 ->where('business.cover_url', Storage::url('services/deep.jpg')));
 
@@ -90,7 +90,38 @@ class BusinessHomePageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BookingPortal')
-                ->has('services', 2));
+                ->has('services', 2)
+                ->where('selectedServiceId', null));
+    }
+
+    public function test_booking_form_preselects_service_from_hub_link(): void
+    {
+        $deep = $this->business->services()->where('name', 'Deep Clean')->first();
+        $other = Service::create([
+            'business_id' => Business::create([
+                'owner_id' => $this->owner->id, 'name' => 'Lain', 'slug' => 'lain', 'category' => 'X',
+                'timezone' => 'Asia/Jakarta', 'dp_expiry_minutes' => 120, 'is_active' => true,
+            ])->id,
+            'name' => 'Bukan milik toko ini', 'price' => 1000, 'duration_minutes' => 30, 'buffer_minutes' => 0,
+            'capacity' => 1, 'assignment_mode' => 'capacity', 'dp_type' => 'none', 'dp_value' => 0, 'is_active' => true,
+        ]);
+
+        $this->get("/b/cuci-hub/pesan?layanan={$deep->id}")
+            ->assertInertia(fn (Assert $page) => $page->where('selectedServiceId', $deep->id));
+
+        $this->get("/b/cuci-hub/pesan?layanan={$other->id}")
+            ->assertInertia(fn (Assert $page) => $page->where('selectedServiceId', null));
+    }
+
+    public function test_gallery_photo_used_as_cover_is_not_repeated_in_strip(): void
+    {
+        $this->business->galleries()->create(['image_path' => 'gallery/a.jpg']);
+        $this->business->galleries()->create(['image_path' => 'gallery/b.jpg']);
+
+        $this->get('/b/cuci-hub')->assertInertia(fn (Assert $page) => $page
+            ->where('business.cover_url', Storage::url('gallery/a.jpg'))
+            ->has('galleries', 1)
+            ->where('galleries.0.image_url', Storage::url('gallery/b.jpg')));
     }
 
     public function test_dedicated_cover_wins_over_fallbacks(): void

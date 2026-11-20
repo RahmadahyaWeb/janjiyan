@@ -73,5 +73,14 @@ class ResponsiveQaSeeder extends Seeder
             'email' => 'raden.ayu.kusumawardhani.prameswari@contoh-domain-panjang.test',
             'notes' => $long,
         ]);
+
+        // Created last so earlier IDs used by the sweep stay the same. Pushes rapi-studio past the hub's 5-service cap.
+        foreach (['Cuci Topi & Tas Kanvas', 'Repaint Sepatu Kulit Full Warna Custom Sesuai Permintaan'] as $name) {
+            Service::updateOrCreate(['business_id' => $biz->id, 'name' => $name], [
+                'price' => 75000, 'duration_minutes' => 60, 'buffer_minutes' => 0, 'capacity' => 3,
+                'assignment_mode' => 'capacity', 'booking_mode' => 'dropoff', 'turnaround_days' => 5,
+                'supports_pickup' => false, 'dp_type' => 'none', 'dp_value' => 0, 'is_active' => true,
+            ]);
+        }
     }
 }

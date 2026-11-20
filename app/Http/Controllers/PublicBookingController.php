@@ -83,13 +83,25 @@ class PublicBookingController extends Controller
                 'brand_color' => $business->brand_color,
                 'cover_url' => $coverPath ? Storage::url($coverPath) : null,
             ],
-            'serviceCount' => $business->services->count(),
-            'minPrice' => $business->services->min('price'),
-            'galleries' => $business->galleries->map(fn ($g) => [
-                'id' => $g->id,
-                'image_url' => Storage::url($g->image_path),
-                'caption' => $g->caption,
+            'services' => $business->services->map(fn (Service $service) => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'image_url' => $service->image_path ? Storage::url($service->image_path) : null,
+                'price' => $service->price,
+                'duration_minutes' => $service->duration_minutes,
+                'booking_mode' => $service->booking_mode ?? 'time_slot',
+                'turnaround_days' => (int) ($service->turnaround_days ?? 1),
+                'supports_pickup' => (bool) ($service->supports_pickup ?? false),
+                'dp_amount' => $service->calculateDpAmount(),
             ])->values(),
+            // The photo already used as the cover band is not repeated in the strip.
+            'galleries' => $business->galleries
+                ->reject(fn ($g) => $g->image_path === $coverPath)
+                ->map(fn ($g) => [
+                    'id' => $g->id,
+                    'image_url' => Storage::url($g->image_path),
+                    'caption' => $g->caption,
+                ])->values(),
             'operatingHours' => $business->operatingHours,
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
             'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
@@ -151,6 +163,8 @@ class PublicBookingController extends Controller
             ])->values(),
             'operatingHours' => $business->operatingHours,
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
+            // Tapped from the hub's service list; ignored unless it is one of this shop's active services.
+            'selectedServiceId' => $business->services->firstWhere('id', $request->integer('layanan'))?->id,
             'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
         ])->withViewData('seo', [
             'title' => "Pesan — {$business->name} | Janjiyan",
