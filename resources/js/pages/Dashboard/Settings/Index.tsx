@@ -508,11 +508,14 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                             value={form.data.brand_color}
                                             onChange={(e) => form.setData('brand_color', e.target.value.trim())}
                                             aria-invalid={Boolean(form.errors.brand_color)}
+                                            aria-describedby={form.errors.brand_color ? 'settings-brand-color-error' : undefined}
                                             className="max-w-36 font-mono"
                                         />
                                     </div>
                                     {form.errors.brand_color && (
-                                        <p className="text-xs text-destructive">Format warna harus #RRGGBB, misalnya #16423c.</p>
+                                        <p id="settings-brand-color-error" className="text-xs text-destructive">
+                                            Format warna harus #RRGGBB, misalnya #16423c.
+                                        </p>
                                     )}
                                 </fieldset>
 
@@ -542,6 +545,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         </span>
                                         <input
                                             id="settings-cover-upload"
+                                            aria-describedby={form.errors.cover_image ? 'settings-cover-error' : undefined}
                                             type="file"
                                             accept="image/png,image/jpeg,image/webp"
                                             className="sr-only"
@@ -551,7 +555,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                             }}
                                         />
                                     </label>
-                                    {form.errors.cover_image && <p className="text-xs text-destructive">{form.errors.cover_image}</p>}
+                                    {form.errors.cover_image && (
+                                        <p id="settings-cover-error" className="text-xs text-destructive">
+                                            {form.errors.cover_image}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 

@@ -11,4 +11,6 @@ assert.equal(onBrand('#f5c542'), '#000000');
 assert.equal(onBrand('#16423c'), '#ffffff');
 const none = brandVars(null);
 assert.ok(contrast(none['--band'], none['--on-band']) >= 4.5, 'no-color band text');
+// Mid-tone custom colors fail 4.5:1 as text on bone, so --brand-ink must fall back to the darkened mix.
+for (const hex of ['#2f9e44', '#e8590c', '#1c7ed6']) assert.match(brandVars(hex)['--brand-ink'], /^color-mix/, hex);
 console.log('ok');

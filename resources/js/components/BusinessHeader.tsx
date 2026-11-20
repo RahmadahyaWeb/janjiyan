@@ -26,7 +26,7 @@ export function BusinessHeader({
     children?: ReactNode;
 }) {
     return (
-        <header style={brandVars(business.brand_color)} className="rounded-b-[24px] bg-(--band) text-(--on-band) print:hidden">
+        <header style={brandVars(business.brand_color)} className="rounded-b-md bg-(--band) text-(--on-band) print:hidden">
             <div className={cn('mx-auto px-3 pt-3 pb-5 sm:px-6', widthClassName)}>
                 <div className="flex items-center gap-2">
                     <Link
@@ -46,8 +46,8 @@ export function BusinessHeader({
                         className="size-13 border-2 border-(--on-band)/80 text-base"
                     />
                     <div className="min-w-0">
-                        <p className="text-[13px]">{label}</p>
-                        <p className="text-xl leading-tight font-bold [overflow-wrap:anywhere] sm:text-2xl">{business.name}</p>
+                        <p className="text-sm">{label}</p>
+                        <p className="text-xl leading-snug font-bold [overflow-wrap:anywhere] sm:text-2xl">{business.name}</p>
                     </div>
                 </div>
             </div>

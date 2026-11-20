@@ -39,14 +39,14 @@ const BLACK = '#000000';
 export const onBrand = (hex: string): string => (contrast(hex, WHITE) >= contrast(hex, BLACK) ? WHITE : BLACK);
 
 /**
- * CSS variables for a shop's color. `--brand-ink` is for icons/marks sitting on light cards: a light brand
+ * CSS variables for a shop's color. `--brand-ink` is for icons and text (e.g. "Lihat semua") sitting on light cards, so it must reach 4.5:1: a light brand
  * (yellow, mint) would vanish there, so it is darkened toward ink while keeping its hue.
  * `--band`/`--on-band` paint the header and cover band: the shop color, or a light neutral when unset
  * (buttons keep `--brand`, which falls back to ink).
  */
 export function brandVars(color: string | null | undefined): CSSProperties {
     const hex = isHex(color) ? color.toLowerCase() : INK;
-    const brandInk = contrast(hex, SURFACE) >= 3 ? hex : `color-mix(in oklab, ${hex} 40%, ${INK})`;
+    const brandInk = contrast(hex, SURFACE) >= 4.5 ? hex : `color-mix(in oklab, ${hex} 40%, ${INK})`;
     return {
         '--brand': hex,
         '--on-brand': onBrand(hex),

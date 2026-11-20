@@ -60,7 +60,7 @@ export default function InvoiceLookup({
 
     return (
         <div className="min-h-screen bg-canvas text-ink">
-            <Head title={`Cek Invoice & Riwayat — ${business.name}`} />
+            <Head title={`Cek pesanan — ${business.name}`} />
 
             <BusinessHeader business={business} label="Cek pesanan" widthClassName="box-content max-w-xl" />
 
@@ -71,7 +71,7 @@ export default function InvoiceLookup({
                             <FileText className="size-5" aria-hidden="true" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-semibold text-ink sm:text-2xl">Cek Invoice & Riwayat</h1>
+                            <h1 className="text-xl font-semibold text-ink sm:text-2xl">Cek pesanan</h1>
                             <p className="text-sm text-mute">{business.name}</p>
                         </div>
                     </div>

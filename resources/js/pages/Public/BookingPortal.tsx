@@ -302,8 +302,8 @@ export default function BookingPortal({
             <BusinessHeader business={business} label="Pesan layanan">
                 <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
                     <FileText className="size-4" aria-hidden="true" />
-                    <span className="hidden sm:inline">Cek invoice</span>
-                    <span className="sr-only sm:hidden">Invoice</span>
+                    <span className="hidden sm:inline">Cek pesanan</span>
+                    <span className="sr-only sm:hidden">Cek pesanan</span>
                 </Link>
                 {whatsappChatUrl && (
                     <a href={whatsappChatUrl} target="_blank" rel="noreferrer" className={headerActionClass}>

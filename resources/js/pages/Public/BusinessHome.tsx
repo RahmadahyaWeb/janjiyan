@@ -100,25 +100,25 @@ function ActionRow({
     primary?: boolean;
 }) {
     const className = cn(
-        'flex min-h-18 items-center gap-3.5 rounded-[18px] p-3.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none',
+        'flex min-h-18 items-center gap-3.5 rounded-sm p-3.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none',
         primary
             ? 'bg-(--brand) text-(--on-brand) hover:opacity-95 focus-visible:ring-(--brand-ink)'
-            : 'bg-bone text-ink hover:bg-hairline-soft focus-visible:ring-ink'
+            : 'bg-bone text-ink focus-visible:ring-ink'
     );
     const body = (
         <>
             <span
                 className={cn(
-                    'flex size-11 shrink-0 items-center justify-center rounded-[14px]',
+                    'flex size-11 shrink-0 items-center justify-center rounded-xl',
                     primary ? 'bg-(--on-brand)/14' : 'bg-(--brand-soft) text-(--brand-ink)'
                 )}
             >
                 <Icon className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">{title}</span>
+                <span className="block text-base font-semibold">{title}</span>
                 {detail && (
-                    <span className={cn('mt-0.5 block text-[13px] leading-snug', !primary && 'text-mute')}>
+                    <span className={cn('mt-0.5 block text-sm leading-snug', !primary && 'text-mute')}>
                         {detail}
                     </span>
                 )}
@@ -183,7 +183,7 @@ export default function BusinessHome({
             <div className="mx-auto max-w-lg lg:pt-6">
                 {/* Cover band: shop photo in full color, or the plain shop color. The mark rides its bottom edge. */}
                 <div className="relative">
-                    <div className="h-36 overflow-hidden bg-(--band) sm:h-44 sm:rounded-b-[28px] lg:rounded-[28px]">
+                    <div className="h-36 overflow-hidden bg-(--band) sm:h-44 sm:rounded-b-md lg:rounded-md">
                         {business.cover_url && <img src={business.cover_url} alt="" className="size-full object-cover" />}
                     </div>
                     <BusinessMark
@@ -198,7 +198,7 @@ export default function BusinessHome({
                     <section aria-labelledby="business-name" className="pt-14 text-center">
                         <h1
                             id="business-name"
-                            className="text-2xl leading-tight font-bold text-balance [overflow-wrap:anywhere] sm:text-3xl"
+                            className="text-2xl leading-snug font-bold text-balance [overflow-wrap:anywhere] sm:text-3xl"
                         >
                             {business.name}
                         </h1>
@@ -212,7 +212,7 @@ export default function BusinessHome({
                                 aria-expanded={hoursExpanded}
                                 aria-controls="business-operating-hours"
                                 onClick={() => setHoursExpanded((v) => !v)}
-                                className="mt-3 inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full bg-bone px-3.5 py-1.5 text-[13px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                className="mt-3 inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full bg-bone px-3.5 py-1.5 text-sm font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                             >
                                 <span
                                     aria-hidden="true"
@@ -232,7 +232,7 @@ export default function BusinessHome({
                     </section>
 
                     {hoursExpanded && operatingHours.length > 0 && (
-                        <div id="business-operating-hours" className="mt-4 space-y-4 rounded-[18px] bg-bone p-4">
+                        <div id="business-operating-hours" className="mt-4 space-y-4 rounded-sm bg-bone p-4">
                             <div>
                                 <h2 className="mb-2 text-sm font-semibold">Jadwal mingguan ({tz})</h2>
                                 <ul className="divide-y divide-hairline text-sm">
@@ -280,7 +280,7 @@ export default function BusinessHome({
                             role="region"
                             aria-label="Foto toko"
                             tabIndex={0}
-                            className="-mx-4 mt-5 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            className="-mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 py-1 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                         >
                             {galleries.map((item, idx) => (
                                 <button
@@ -288,12 +288,12 @@ export default function BusinessHome({
                                     type="button"
                                     onClick={() => setLightboxIdx(idx)}
                                     aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto ${idx + 1}`}
-                                    className="w-28 shrink-0 cursor-pointer snap-start overflow-hidden rounded-[14px] focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    className="w-[30%] shrink-0 cursor-pointer snap-start overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                                 >
                                     <img
                                         src={item.image_url}
                                         alt={item.caption || `${business.name} foto ${idx + 1}`}
-                                        className="aspect-[4/5] w-full object-cover"
+                                        className="aspect-[4/5] w-full object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                 </button>
                             ))}
@@ -318,11 +318,11 @@ export default function BusinessHome({
 
                     {services.length > 0 && (
                         <section aria-labelledby="services-heading" className="mt-6">
-                            <h2 id="services-heading" className="mx-1 mb-2.5 flex items-center gap-1.5 text-[15px] font-semibold">
+                            <h2 id="services-heading" className="mx-1 mb-2.5 flex items-center gap-1.5 text-base font-semibold">
                                 Layanan
                                 <span className="rounded-full bg-bone px-2 text-xs text-mute tabular-nums">{services.length}</span>
                             </h2>
-                            <ul className="divide-y divide-hairline overflow-hidden rounded-[18px] bg-bone">
+                            <ul className="divide-y divide-hairline overflow-hidden rounded-sm bg-bone">
                                 {services.slice(0, MAX_SERVICES).map((service) => {
                                     const meta = [
                                         service.booking_mode === 'dropoff'
@@ -335,14 +335,14 @@ export default function BusinessHome({
                                         <li key={service.id}>
                                             <Link
                                                 href={`${bookingUrl}?layanan=${service.id}`}
-                                                className="flex items-center gap-3 py-3 pr-3 pl-3.5 transition-colors hover:bg-hairline-soft focus-visible:bg-hairline-soft focus-visible:outline-none"
+                                                className="flex items-center gap-3 py-3 pr-3 pl-3.5 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset focus-visible:outline-none"
                                             >
                                                 {anyServiceImage &&
                                                     (service.image_url ? (
                                                         <img
                                                             src={service.image_url}
                                                             alt=""
-                                                            className="size-12 shrink-0 rounded-xl object-cover"
+                                                            className="size-12 shrink-0 rounded-xl object-cover outline-1 -outline-offset-1 outline-black/10"
                                                         />
                                                     ) : (
                                                         <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-(--brand-soft) text-(--brand-ink)">
@@ -350,10 +350,10 @@ export default function BusinessHome({
                                                         </span>
                                                     ))}
                                                 <span className="min-w-0 flex-1">
-                                                    <span className="block text-[14.5px] leading-snug font-semibold [overflow-wrap:anywhere]">
+                                                    <span className="block text-base leading-snug font-semibold [overflow-wrap:anywhere]">
                                                         {service.name}
                                                     </span>
-                                                    <span className="mt-0.5 block text-[12.5px] text-mute">
+                                                    <span className="mt-0.5 block text-xs text-mute">
                                                         <strong className="font-semibold text-ink tabular-nums">{formatRupiah(service.price)}</strong>
                                                         {meta.map((m) => (
                                                             <Fragment key={m}>
@@ -372,7 +372,7 @@ export default function BusinessHome({
                                     <li>
                                         <Link
                                             href={`${bookingUrl}#layanan`}
-                                            className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) hover:bg-hairline-soft focus-visible:bg-hairline-soft focus-visible:outline-none"
+                                            className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset focus-visible:outline-none"
                                         >
                                             Lihat semua layanan ({services.length})
                                             <ChevronRight className="size-4" aria-hidden="true" />

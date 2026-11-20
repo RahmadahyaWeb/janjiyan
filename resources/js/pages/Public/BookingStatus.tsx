@@ -211,8 +211,8 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
             <BusinessHeader business={business} label="Invoice" widthClassName="box-content max-w-xl">
                 <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
                     <FileText className="size-4" aria-hidden="true" />
-                    <span className="hidden sm:inline">Riwayat invoice</span>
-                    <span className="sr-only sm:hidden">Riwayat invoice</span>
+                    <span className="hidden sm:inline">Cek pesanan</span>
+                    <span className="sr-only sm:hidden">Cek pesanan</span>
                 </Link>
             </BusinessHeader>
 

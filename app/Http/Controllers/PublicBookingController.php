@@ -435,7 +435,7 @@ class PublicBookingController extends Controller
             'history' => null,
             'matchedInvoiceToken' => null,
         ])->withViewData('seo', [
-            'title' => "Cek Riwayat & Invoice — {$business->name}",
+            'title' => "Cek pesanan — {$business->name}",
             'noindex' => true,
         ]);
     }
