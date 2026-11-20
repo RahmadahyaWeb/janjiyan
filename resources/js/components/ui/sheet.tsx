@@ -46,37 +46,11 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
-  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
-  const [viewportStyle, setViewportStyle] = React.useState<React.CSSProperties | undefined>(undefined)
-
-  React.useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return
-    const vv = window.visualViewport
-    const syncViewport = () => {
-      if (vv.height < window.innerHeight - 20 || vv.offsetTop > 0) {
-        const bottomInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
-        setViewportStyle({
-          maxHeight: `${Math.max(200, Math.floor(vv.height - 16))}px`,
-          ...(side === "bottom" ? { bottom: `${bottomInset}px` } : {}),
-        })
-      } else {
-        setViewportStyle(undefined)
-      }
-    }
-    syncViewport()
-    vv.addEventListener("resize", syncViewport)
-    vv.addEventListener("scroll", syncViewport)
-    return () => {
-      vv.removeEventListener("resize", syncViewport)
-      vv.removeEventListener("scroll", syncViewport)
-    }
-  }, [side])
-
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -94,7 +68,6 @@ function SheetContent({
             "inset-x-0 bottom-0 h-auto border-t motion-safe:data-[state=closed]:slide-out-to-bottom motion-safe:data-[state=open]:slide-in-from-bottom",
           className
         )}
-        style={{ ...viewportStyle, ...style }}
         {...props}
       >
         {children}
