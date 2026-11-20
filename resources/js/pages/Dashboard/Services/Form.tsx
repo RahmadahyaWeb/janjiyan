@@ -275,7 +275,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-daily-capacity">Kuota Harian</Label>
+                                <Label htmlFor="service-daily-capacity">Maks. Item per Hari</Label>
                                 <Input
                                     id="service-daily-capacity"
                                     type="number"
@@ -286,7 +286,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     aria-invalid={Boolean(form.errors.capacity)}
                                     required
                                 />
-                                <p className="text-xs text-mute">Maks item/hari</p>
+                                <p className="text-xs text-mute">Pesanan baru ditolak kalau hari itu sudah penuh</p>
                                 {form.errors.capacity && (
                                     <p className="text-xs text-destructive">{form.errors.capacity}</p>
                                 )}
@@ -328,7 +328,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-duration">Durasi (mnt)</Label>
+                                <Label htmlFor="service-duration">Lama (menit)</Label>
                                 <Input
                                     id="service-duration"
                                     type="number"
@@ -346,7 +346,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-buffer">Buffer (mnt)</Label>
+                                <Label htmlFor="service-buffer">Jeda (menit)</Label>
                                 <Input
                                     id="service-buffer"
                                     type="number"
@@ -359,6 +359,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     aria-invalid={Boolean(form.errors.buffer_minutes)}
                                     required
                                 />
+                                <p className="text-xs text-mute">Waktu beres-beres sebelum pelanggan berikutnya</p>
                                 {form.errors.buffer_minutes && (
                                     <p className="text-xs text-destructive">{form.errors.buffer_minutes}</p>
                                 )}
@@ -367,7 +368,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-assignment-mode">Mode Penugasan</Label>
+                                <Label htmlFor="service-assignment-mode">Cara Membatasi Jadwal</Label>
                                 <NativeSelect
                                     id="service-assignment-mode"
                                     value={form.data.assignment_mode}
@@ -375,14 +376,19 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                         form.setData('assignment_mode', e.target.value as 'staff' | 'capacity')
                                     }
                                 >
-                                    <option value="staff">Staff Tertentu</option>
-                                    <option value="capacity">Kapasitas Ruangan / Kelas</option>
+                                    <option value="staff">Per staff (1 staff, 1 pelanggan)</option>
+                                    <option value="capacity">Per tempat (kelas, lapangan, ruangan)</option>
                                 </NativeSelect>
+                                <p className="text-xs text-mute">
+                                    {form.data.assignment_mode === 'staff'
+                                        ? 'Jam penuh kalau semua staff yang melayani sudah dipesan.'
+                                        : 'Jam penuh kalau jumlah pelanggan sudah mencapai batas.'}
+                                </p>
                             </div>
 
                             {form.data.assignment_mode === 'capacity' && (
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="service-capacity">Kapasitas per Slot</Label>
+                                    <Label htmlFor="service-capacity">Maks. Pelanggan per Sesi</Label>
                                     <Input
                                         id="service-capacity"
                                         type="number"
@@ -395,6 +401,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                         aria-invalid={Boolean(form.errors.capacity)}
                                         required
                                     />
+                                    <p className="text-xs text-mute">Berapa orang boleh booking di jam yang sama</p>
                                     {form.errors.capacity && (
                                         <p className="text-xs text-destructive">{form.errors.capacity}</p>
                                     )}
@@ -430,7 +437,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                        <Label htmlFor="service-dp-type">Kebijakan DP</Label>
+                        <Label htmlFor="service-dp-type">Uang Muka (DP)</Label>
                         <NativeSelect
                             id="service-dp-type"
                             value={form.data.dp_type}

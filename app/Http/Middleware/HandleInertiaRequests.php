@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\PlanLimitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +49,11 @@ class HandleInertiaRequests extends Middleware
 
             if ($active) {
                 $activeBusiness = collect($businesses)->firstWhere('id', $active->id);
+                // Resolved server-side so the UI hides exactly what the controllers would refuse.
+                $activeBusiness['can'] = collect(User::BUSINESS_PERMISSIONS)
+                    ->mapWithKeys(fn (string $p) => [$p => $user->hasBusinessPermission($active, $p)])
+                    ->put('owner', (int) $active->owner_id === (int) $user->id)
+                    ->all();
                 $pendingBookingsCount = $active->bookings()
                     ->where(function ($q) {
                         $q->where('reservation_status', 'pending')

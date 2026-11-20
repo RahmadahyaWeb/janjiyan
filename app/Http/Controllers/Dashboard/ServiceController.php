@@ -15,7 +15,9 @@ class ServiceController extends Controller
 {
     public function index(Request $request): Response
     {
-        $business = $request->user()->resolveActiveBusiness();
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless(! $business || $user->hasBusinessPermission($business, 'manage_services'), 403);
 
         $services = $business
             ? $business->services()->with('staff:id,name')->latest()->get()->map(fn (Service $s) => $this->serializeService($s))

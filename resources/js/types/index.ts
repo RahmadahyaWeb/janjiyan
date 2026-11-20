@@ -42,6 +42,8 @@ export interface ActiveSubscription {
     days_remaining: number;
 }
 
+export type BusinessPermission = 'manage_bookings' | 'verify_payments' | 'manage_services' | 'manage_staff' | 'manage_settings';
+
 export interface BusinessSummary {
     id: number;
     name: string;
@@ -51,6 +53,8 @@ export interface BusinessSummary {
     logo_url: string | null;
     role: 'owner' | 'admin' | 'staff';
     permissions: string[];
+    /** Only on activeBusiness: what the current user may do, resolved server-side. */
+    can?: Record<BusinessPermission | 'owner', boolean>;
     is_suspended?: boolean;
     suspension_reason?: string | null;
 }

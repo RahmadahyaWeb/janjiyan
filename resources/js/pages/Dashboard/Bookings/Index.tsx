@@ -178,7 +178,10 @@ export default function BookingsIndex({
     whatsappTemplates,
     canExportCsv,
 }: BookingsIndexProps) {
-    const { pendingBookingsCount = 0 } = usePage<PageProps>().props;
+    const { pendingBookingsCount = 0, activeBusiness } = usePage<PageProps>().props;
+    // Verifying DP and marking paid need verify_payments on the server.
+    const canVerifyPayments = activeBusiness?.can?.verify_payments ?? true;
+    const canOpenBilling = activeBusiness?.can?.manage_settings ?? true;
     const [search, setSearch] = useState(filters.search);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
@@ -485,21 +488,36 @@ export default function BookingsIndex({
                                 </a>
                             </Button>
                         ) : (
-                            <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="size-9 px-0 text-mute sm:h-10 sm:w-auto sm:px-4"
-                            >
-                                <Link
-                                    href={route('dashboard.billing')}
-                                    aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                            canOpenBilling ? (
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="size-9 px-0 text-mute sm:h-10 sm:w-auto sm:px-4"
+                                >
+                                    <Link
+                                        href={route('dashboard.billing')}
+                                        aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                        title="Export CSV tersedia pada paket Professional & Enterprise"
+                                    >
+                                        <Download className="size-4" aria-hidden="true" />
+                                        <span className="hidden sm:inline">Export CSV (Pro)</span>
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="size-9 px-0 text-mute sm:h-10 sm:w-auto sm:px-4"
+                                    disabled
+                                    aria-label="Export CSV tersedia pada paket Professional"
                                     title="Export CSV tersedia pada paket Professional & Enterprise"
                                 >
                                     <Download className="size-4" aria-hidden="true" />
                                     <span className="hidden sm:inline">Export CSV (Pro)</span>
-                                </Link>
-                            </Button>
+                                </Button>
+                            )
                         )}
 
                     </div>
@@ -874,6 +892,7 @@ export default function BookingsIndex({
                             b.reservation_status !== 'completed' &&
                             b.reservation_status !== 'no_show';
                         const canSettle =
+                            canVerifyPayments &&
                             b.payment_status !== 'settled' &&
                             b.payment_status !== 'waiting_verification' &&
                             b.reservation_status !== 'cancelled' &&
@@ -996,7 +1015,7 @@ export default function BookingsIndex({
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                                        {b.payment_status === 'waiting_verification' ? (
+                                        {b.payment_status === 'waiting_verification' && canVerifyPayments ? (
                                             <Button type="button" size="sm" className="flex-1 md:flex-initial" onClick={() => verifyDp(b.id)}>
                                                 <Check className="size-3.5" aria-hidden="true" />
                                                 Verifikasi DP
@@ -1255,7 +1274,7 @@ export default function BookingsIndex({
                                     </Button>
                                 )}
 
-                                {selectedCalendarBooking.payment_status === 'waiting_verification' && (
+                                {canVerifyPayments && selectedCalendarBooking.payment_status === 'waiting_verification' && (
                                     <Button
                                         type="button"
                                         size="sm"
@@ -1269,7 +1288,8 @@ export default function BookingsIndex({
                                     </Button>
                                 )}
 
-                                {selectedCalendarBooking.payment_status !== 'settled' &&
+                                {canVerifyPayments &&
+                                    selectedCalendarBooking.payment_status !== 'settled' &&
                                     selectedCalendarBooking.payment_status !== 'waiting_verification' &&
                                     selectedCalendarBooking.reservation_status !== 'cancelled' &&
                                     selectedCalendarBooking.reservation_status !== 'no_show' && (

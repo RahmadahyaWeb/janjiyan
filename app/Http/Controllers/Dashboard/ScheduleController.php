@@ -14,7 +14,9 @@ class ScheduleController extends Controller
 {
     public function index(Request $request): Response
     {
-        $business = $request->user()->resolveActiveBusiness();
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless(! $business || $user->hasBusinessPermission($business, 'manage_settings'), 403);
 
         return Inertia::render('Dashboard/Schedule/Index', [
             'operatingHours' => $business ? $business->operatingHours()->get() : [],

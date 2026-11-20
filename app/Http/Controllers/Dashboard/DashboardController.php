@@ -46,6 +46,8 @@ class DashboardController extends Controller
 
         $tz = $business->timezone ?: 'Asia/Jakarta';
         $nowLocal = now($tz);
+        // Revenue and setup steps are owner/manager matters; plain staff don't receive them at all.
+        $canManage = $user->hasBusinessPermission($business, 'manage_settings');
         $todayLocal = $nowLocal->toDateString();
 
         $todayBookingsCount = $business->bookings()
@@ -129,9 +131,9 @@ class DashboardController extends Controller
                 'label' => $shortDays[$day->dayOfWeek],
                 'full_label' => $day->format('d/m'),
                 'bookings_count' => $dayBookings->count(),
-                'revenue' => (int) $dayBookings
-                    ->whereIn('payment_status', ['dp_verified', 'settled'])
-                    ->sum('total_price'),
+                'revenue' => $canManage
+                    ? (int) $dayBookings->whereIn('payment_status', ['dp_verified', 'settled'])->sum('total_price')
+                    : null,
             ];
         }
 
@@ -139,11 +141,11 @@ class DashboardController extends Controller
             'stats' => [
                 'today_bookings' => $todayBookingsCount,
                 'pending_dp' => $pendingDpCount,
-                'monthly_revenue' => $monthlyRevenue,
+                'monthly_revenue' => $canManage ? $monthlyRevenue : null,
                 'total_customers' => $totalCustomers,
             ],
             'todayDate' => $todayLocal,
-            'onboarding' => $onboarding,
+            'onboarding' => $canManage ? $onboarding : null,
             'weeklyTrend' => $weeklyTrend,
             'recentBookings' => $recentBookings,
             'topServices' => $topServices,

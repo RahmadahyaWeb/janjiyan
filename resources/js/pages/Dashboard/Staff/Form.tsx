@@ -26,12 +26,13 @@ interface StaffFormProps {
     staffMember: StaffData | null;
 }
 
+// Hints name the menus each permission opens (see NAV_ITEMS in DashboardLayout).
 const ALL_PERMISSIONS = [
-    { key: 'manage_bookings', label: 'Kelola Reservasi' },
-    { key: 'verify_payments', label: 'Verifikasi DP' },
-    { key: 'manage_services', label: 'Kelola Layanan' },
-    { key: 'manage_staff', label: 'Kelola Staff' },
-    { key: 'manage_settings', label: 'Pengaturan Bisnis' },
+    { key: 'manage_bookings', label: 'Kelola Reservasi', hint: 'Reservasi & Pelanggan' },
+    { key: 'verify_payments', label: 'Verifikasi DP', hint: 'Cek bukti DP, tandai lunas' },
+    { key: 'manage_services', label: 'Kelola Layanan', hint: 'Menu Layanan' },
+    { key: 'manage_staff', label: 'Kelola Staff', hint: 'Tim, jadwal staff, komisi & omzet per staff' },
+    { key: 'manage_settings', label: 'Pengaturan Bisnis', hint: 'Pengaturan, jam buka, omzet, billing' },
 ];
 
 export default function StaffForm({ staffMember }: StaffFormProps) {
@@ -157,7 +158,10 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
 
                 <div className="space-y-3 rounded-sm border border-hairline-soft p-3.5">
                     <div className="space-y-1.5">
-                        <Label htmlFor="staff-commission-type">Skema Komisi Default</Label>
+                        <Label htmlFor="staff-commission-type">Komisi Staff</Label>
+                        <p className="text-xs text-mute">
+                            Dihitung otomatis tiap reservasi staff ini. Rekapnya ada di menu Komisi Staff.
+                        </p>
                         <NativeSelect
                             id="staff-commission-type"
                             value={form.data.commission_type}
@@ -216,9 +220,12 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                     <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
                         <div>
                             <Label htmlFor="staff-grant-login" className="text-sm font-semibold text-ink">
-                                Berikan Akses Login Dashboard
+                                Buatkan Akun Login Dashboard (opsional)
                             </Label>
-                            <p className="mt-0.5 text-xs text-mute">Wajib isi email staff di atas.</p>
+                            <p className="mt-0.5 text-xs text-mute">
+                                Tanpa akun pun staff tetap bisa dipilih pelanggan. Aktifkan hanya kalau staff perlu
+                                membuka dashboard. Wajib isi email di atas.
+                            </p>
                         </div>
                         <Switch
                             id="staff-grant-login"
@@ -231,15 +238,20 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                 {showPermissionFields && (
                     <div className="space-y-3 rounded-sm border border-hairline-soft p-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="staff-role">Role</Label>
+                            <Label htmlFor="staff-role">Tingkat Akses</Label>
                             <NativeSelect
                                 id="staff-role"
                                 value={form.data.role}
                                 onChange={(e) => form.setData('role', e.target.value as 'admin' | 'staff')}
                             >
-                                <option value="staff">Staff (Permission Terbatas)</option>
-                                <option value="admin">Admin (Akses Penuh Operasional)</option>
+                                <option value="staff">Staff (pilih menu)</option>
+                                <option value="admin">Admin (semua menu)</option>
                             </NativeSelect>
+                            <p className="text-xs text-mute">
+                                {form.data.role === 'admin'
+                                    ? 'Admin bisa membuka semua menu, sama seperti pemilik.'
+                                    : 'Staff hanya bisa membuka menu yang dipilih di bawah.'}
+                            </p>
                         </div>
 
                         {!isEditing && (
@@ -265,7 +277,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
 
                         {form.data.role === 'staff' && (
                             <div className="space-y-2">
-                                <Label>Izin Akses</Label>
+                                <Label>Menu yang Boleh Dibuka</Label>
                                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilih izin akses staff">
                                     {ALL_PERMISSIONS.map((perm) => {
                                         const active = form.data.permissions.includes(perm.key);
@@ -280,6 +292,9 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                                                 }`}
                                             >
                                                 {perm.label}
+                                                <span className={`ml-1 font-normal ${active ? 'text-canvas/70' : 'text-mute'}`}>
+                                                    · {perm.hint}
+                                                </span>
                                             </button>
                                         );
                                     })}

@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ChevronRight, Download, MessageCircle, Search, StickyNote, X } from 'lucide-react';
 import { useState } from 'react';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { buildWhatsAppUrl, formatRupiah } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface CustomerRow {
     id: number;
@@ -41,6 +42,8 @@ export default function CustomersIndex({
     filters,
     canExportCsv,
 }: CustomersIndexProps) {
+    // Billing is only open to owner/managers; staff get a plain hint instead of a link that 403s.
+    const canOpenBilling = usePage<PageProps>().props.activeBusiness?.can?.manage_settings ?? true;
     const activeFilters = {
         search: filters?.search ?? initialSearch,
         segment: filters?.segment ?? 'all',
@@ -141,16 +144,30 @@ export default function CustomersIndex({
                                 </a>
                             </Button>
                         ) : (
-                            <Button asChild variant="outline" size="sm" className="text-mute">
-                                <Link
-                                    href={route('dashboard.billing')}
-                                    aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                            canOpenBilling ? (
+                                <Button asChild variant="outline" size="sm" className="text-mute">
+                                    <Link
+                                        href={route('dashboard.billing')}
+                                        aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                        title="Export CSV tersedia pada paket Professional & Enterprise"
+                                    >
+                                        <Download className="size-4" aria-hidden="true" />
+                                        Export CSV (Pro)
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-mute"
+                                    disabled
                                     title="Export CSV tersedia pada paket Professional & Enterprise"
                                 >
                                     <Download className="size-4" aria-hidden="true" />
                                     Export CSV (Pro)
-                                </Link>
-                            </Button>
+                                </Button>
+                            )
                         )}
                     </div>
                 </div>

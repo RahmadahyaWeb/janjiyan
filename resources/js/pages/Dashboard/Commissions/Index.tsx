@@ -136,7 +136,7 @@ export default function CommissionsIndex({
                             <Button asChild variant="secondary" size="sm" className="rounded-full">
                                 <Link href={route('dashboard.staff')}>
                                     <Settings2 className="mr-1.5 size-4" aria-hidden="true" />
-                                    Atur Tarif Komisi
+                                    Atur Tarif di Tim &amp; Staff
                                 </Link>
                             </Button>
                         )}
@@ -253,7 +253,7 @@ export default function CommissionsIndex({
                                 htmlFor="include-confirmed"
                                 className="block min-w-0 cursor-pointer text-xs leading-relaxed text-mute"
                             >
-                                Sertakan reservasi berstatus <strong className="text-ink">Confirmed</strong> (proyeksi komisi berjalan; default hanya menghitung reservasi <strong className="text-ink">Completed</strong>).
+                                Hitung juga reservasi yang masih <strong className="text-ink">Dikonfirmasi</strong> (perkiraan komisi berjalan). Tanpa ini, hanya reservasi <strong className="text-ink">Selesai</strong> yang dihitung.
                             </Label>
                         </div>
                     </CardContent>

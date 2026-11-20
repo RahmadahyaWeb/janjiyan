@@ -36,7 +36,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { PageProps } from '@/types';
+import type { BusinessPermission, PageProps } from '@/types';
 
 interface DashboardLayoutProps {
     title: string;
@@ -47,16 +47,17 @@ interface DashboardLayoutProps {
     actions?: ReactNode;
 }
 
-const NAV_ITEMS = [
+// `need` mirrors each page's server-side permission check; items the user can't open are hidden.
+const NAV_ITEMS: { label: string; routeName: string; icon: typeof Settings; need?: BusinessPermission[] }[] = [
     { label: 'Ringkasan', routeName: 'dashboard', icon: LayoutDashboard },
     { label: 'Reservasi', routeName: 'dashboard.bookings', icon: CalendarDays },
-    { label: 'Layanan', routeName: 'dashboard.services', icon: Scissors },
-    { label: 'Jadwal & Libur', routeName: 'dashboard.schedule', icon: Clock },
-    { label: 'Tim & Staff', routeName: 'dashboard.staff', icon: UserSquare2 },
-    { label: 'Komisi Staff', routeName: 'dashboard.commissions', icon: BadgePercent },
-    { label: 'Pelanggan', routeName: 'dashboard.customers', icon: Users },
-    { label: 'Pengaturan', routeName: 'dashboard.settings', icon: Settings },
-    { label: 'Paket & Billing', routeName: 'dashboard.billing', icon: CreditCard },
+    { label: 'Layanan', routeName: 'dashboard.services', icon: Scissors, need: ['manage_services'] },
+    { label: 'Jadwal & Libur', routeName: 'dashboard.schedule', icon: Clock, need: ['manage_settings'] },
+    { label: 'Tim & Staff', routeName: 'dashboard.staff', icon: UserSquare2, need: ['manage_staff'] },
+    { label: 'Komisi Staff', routeName: 'dashboard.commissions', icon: BadgePercent, need: ['manage_staff'] },
+    { label: 'Pelanggan', routeName: 'dashboard.customers', icon: Users, need: ['manage_bookings'] },
+    { label: 'Pengaturan', routeName: 'dashboard.settings', icon: Settings, need: ['manage_settings'] },
+    { label: 'Paket & Billing', routeName: 'dashboard.billing', icon: CreditCard, need: ['manage_settings'] },
 ];
 
 // Mobile/tablet bottom bar shows these; the rest live in the "Lainnya" sheet.
@@ -71,7 +72,16 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
         usePage<PageProps>().props;
     const [qrOpen, setQrOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
-    const secondaryNav = NAV_ITEMS.filter((item) => !PRIMARY_NAV.includes(item.routeName));
+    const can = activeBusiness?.can;
+    // No active business yet (new account): nothing to restrict.
+    const navItems = NAV_ITEMS.filter((item) => !can || !item.need || item.need.some((p) => can[p]));
+    // Bottom bar holds 5 slots: show everything when it fits, else 4 items plus "Lainnya".
+    const orderedNav = [
+        ...navItems.filter((item) => PRIMARY_NAV.includes(item.routeName)),
+        ...navItems.filter((item) => !PRIMARY_NAV.includes(item.routeName)),
+    ];
+    const bottomNav = orderedNav.length <= 5 ? orderedNav : orderedNav.slice(0, 4);
+    const secondaryNav = orderedNav.length <= 5 ? [] : orderedNav.slice(4);
     const moreActive = secondaryNav.some((item) => isNavActive(item.routeName));
     const [copiedLink, setCopiedLink] = useState(false);
 
@@ -153,7 +163,8 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-                        {subscription && (
+                        {/* Plan status is billing info: only owners/managers can open or need it. */}
+                        {subscription && (!can || can.manage_settings) && (
                             <Link href={route('dashboard.billing')} className="hidden lg:inline-flex">
                                 <Badge variant={subscription.is_expired ? 'destructive' : subscription.is_trial ? 'popular' : 'secondary'}>
                                     {subscription.is_expired
@@ -298,7 +309,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 pt-4 pb-28 sm:gap-6 sm:px-6 sm:pt-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
                 {/* Sidebar Nav */}
                 <aside aria-label="Navigasi Dashboard" className="hidden flex-col gap-1.5 lg:flex">
-                    {NAV_ITEMS.map((item) => {
+                    {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = isNavActive(item.routeName);
                         const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
@@ -381,9 +392,13 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     Data tetap dapat dilihat, namun pembuatan booking baru, layanan, staff, dan export dinonaktifkan hingga paket diperpanjang.
                                 </p>
                             </div>
-                            <Button asChild size="sm" className="shrink-0">
-                                <Link href={route('dashboard.billing')}>Perpanjang Sekarang</Link>
-                            </Button>
+                            {!can || can.manage_settings ? (
+                                <Button asChild size="sm" className="shrink-0">
+                                    <Link href={route('dashboard.billing')}>Perpanjang Sekarang</Link>
+                                </Button>
+                            ) : (
+                                <p className="shrink-0 text-xs font-semibold">Hubungi pemilik bisnis untuk memperpanjang.</p>
+                            )}
                         </div>
                     )}
 
@@ -407,8 +422,11 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                 aria-label="Navigasi Dashboard"
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-canvas pb-[env(safe-area-inset-bottom)] lg:hidden"
             >
-                <div className="mx-auto grid max-w-xl grid-cols-5">
-                    {NAV_ITEMS.filter((item) => PRIMARY_NAV.includes(item.routeName)).map((item) => {
+                <div
+                    className="mx-auto grid max-w-xl"
+                    style={{ gridTemplateColumns: `repeat(${bottomNav.length + (secondaryNav.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}
+                >
+                    {bottomNav.map((item) => {
                         const Icon = item.icon;
                         const isActive = isNavActive(item.routeName);
                         const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
@@ -444,14 +462,15 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         );
                     })}
 
-                    <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-                        <SheetTrigger asChild>
-                            <button
-                                type="button"
-                                aria-current={moreActive ? 'page' : undefined}
-                                className={cn(
-                                    'flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
-                                    moreActive ? 'text-ink' : 'text-mute hover:text-ink'
+                    {secondaryNav.length > 0 && (
+                        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                            <SheetTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-current={moreActive ? 'page' : undefined}
+                                    className={cn(
+                                        'flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                        moreActive ? 'text-ink' : 'text-mute hover:text-ink'
                                 )}
                             >
                                 <span
@@ -493,6 +512,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                             </div>
                         </SheetContent>
                     </Sheet>
+                    )}
                 </div>
             </nav>
 
@@ -505,9 +525,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                     businessSlug={activeBusiness.slug}
                     qrSubtitle={activeBusiness.qr_poster_subtitle}
                     canSaveSubtitle={
-                        activeBusiness.role === 'owner' ||
-                        activeBusiness.permissions.includes('*') ||
-                        activeBusiness.permissions.includes('manage_settings')
+                        !!activeBusiness.can?.manage_settings
                     }
                 />
             )}

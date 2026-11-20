@@ -44,6 +44,11 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
         >
             <Head title="Tim & Staff" />
 
+            <p className="max-w-2xl text-sm text-mute">
+                Staff di sini bisa dipilih pelanggan saat booking. Akun login dashboard itu opsional, cukup untuk staff
+                yang perlu membuka reservasi.
+            </p>
+
             {staffMembers.length === 0 ? (
                 <div className="space-y-3 rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada staff terdaftar.</p>
@@ -72,14 +77,14 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {!st.is_active && <Badge variant="danger">Nonaktif</Badge>}
-                                        {st.has_custom_schedule && <Badge variant="outline">Shift Khusus</Badge>}
+                                        {st.has_custom_schedule && <Badge variant="outline">Jam kerja khusus</Badge>}
                                         {(st.upcoming_time_offs_count ?? 0) > 0 && (
-                                            <Badge variant="warning">{st.upcoming_time_offs_count} Cuti</Badge>
+                                            <Badge variant="warning">{st.upcoming_time_offs_count} cuti terjadwal</Badge>
                                         )}
                                         {st.has_login ? (
-                                            <Badge variant="popular">{STAFF_ROLE_LABELS[st.role ?? ''] ?? st.role}</Badge>
+                                            <Badge variant="popular">Login: {STAFF_ROLE_LABELS[st.role ?? ''] ?? st.role}</Badge>
                                         ) : (
-                                            <Badge variant="secondary">Tanpa Login</Badge>
+                                            <Badge variant="secondary">Tanpa akun login</Badge>
                                         )}
                                     </div>
                                 </div>
@@ -100,11 +105,14 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                     asChild
                                     variant="ghost"
                                     size="sm"
-                                    aria-label={`Unduh kalender .ics ${st.name}`}
+                                    aria-label={`Simpan jadwal ${st.name} ke kalender HP (file .ics)`}
                                 >
-                                    <a href={route('dashboard.staff.calendar.ics', st.id)}>
+                                    <a
+                                        href={route('dashboard.staff.calendar.ics', st.id)}
+                                        title="Unduh jadwal reservasi staff ini untuk Google Calendar atau Kalender iPhone"
+                                    >
                                         <Download className="size-3.5" aria-hidden="true" />
-                                        .ics
+                                        Ke Kalender HP
                                     </a>
                                 </Button>
                                 <Button

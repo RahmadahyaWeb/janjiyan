@@ -21,14 +21,6 @@ use Inertia\Response;
 
 class StaffController extends Controller
 {
-    private const ALLOWED_PERMISSIONS = [
-        'manage_bookings',
-        'verify_payments',
-        'manage_services',
-        'manage_staff',
-        'manage_settings',
-    ];
-
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -95,7 +87,7 @@ class StaffController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
             'role' => ['nullable', Rule::in(['admin', 'staff'])],
             'permissions' => ['array'],
-            'permissions.*' => ['string', Rule::in(self::ALLOWED_PERMISSIONS)],
+            'permissions.*' => ['string', Rule::in(User::BUSINESS_PERMISSIONS)],
             'commission_type' => ['sometimes', Rule::in(['none', 'percentage', 'fixed'])],
             'commission_value' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000000'],
         ]);
@@ -181,7 +173,7 @@ class StaffController extends Controller
             'is_active' => ['required', 'boolean'],
             'role' => ['nullable', Rule::in(['admin', 'staff'])],
             'permissions' => ['array'],
-            'permissions.*' => ['string', Rule::in(self::ALLOWED_PERMISSIONS)],
+            'permissions.*' => ['string', Rule::in(User::BUSINESS_PERMISSIONS)],
             'commission_type' => ['sometimes', Rule::in(['none', 'percentage', 'fixed'])],
             'commission_value' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000000'],
         ]);

@@ -85,14 +85,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return $first;
     }
 
+    /** Panel permissions a team member can be granted (owner and admin have all of them). */
+    public const BUSINESS_PERMISSIONS = [
+        'manage_bookings',
+        'verify_payments',
+        'manage_services',
+        'manage_staff',
+        'manage_settings',
+    ];
+
+    /** @var array<int, Business|null> Per-request membership cache, keyed by business id. */
+    private array $membershipCache = [];
+
     public function hasBusinessPermission(Business $business, string $permission): bool
     {
         if ((int) $business->owner_id === (int) $this->id) {
             return true;
         }
 
-        $membership = $this->businesses()->where('businesses.id', $business->id)->first();
-        if (!$membership) {
+        $membership = $this->membershipCache[$business->id]
+            ??= $this->businesses()->where('businesses.id', $business->id)->first();
+        if (! $membership) {
             return false;
         }
 

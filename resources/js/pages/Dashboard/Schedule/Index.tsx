@@ -1,5 +1,5 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Info, Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { formatDateIndo } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface OperatingHourRow {
     day_of_week: number;
@@ -31,6 +33,7 @@ interface ScheduleIndexProps {
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function ScheduleIndex({ operatingHours, holidays }: ScheduleIndexProps) {
+    const canManageStaff = usePage<PageProps>().props.activeBusiness?.can?.manage_staff ?? false;
     const [deletingHoliday, setDeletingHoliday] = useState<HolidayRow | null>(null);
     const hoursForm = useForm({
         hours: operatingHours.map((h) => ({
@@ -69,6 +72,23 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
     return (
         <DashboardLayout title="Jadwal Operasional & Libur">
             <Head title="Jadwal" />
+
+            {/* Store hours and per-staff shifts live on two pages; say how they combine. */}
+            <div className="flex items-start gap-3 rounded-md border border-hairline-soft bg-bone/60 p-4 text-sm text-body">
+                <Info className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
+                <p>
+                    Jam di sini berlaku untuk <strong className="text-ink">seluruh toko</strong>. Pelanggan hanya bisa
+                    memesan di dalam jam buka. Kalau ada staff yang jam kerjanya berbeda atau sedang cuti, atur di{' '}
+                    {canManageStaff ? (
+                        <Link href={route('dashboard.staff')} className="font-semibold text-electric hover:underline">
+                            Tim &amp; Staff → Jadwal &amp; Cuti
+                        </Link>
+                    ) : (
+                        <strong className="text-ink">Tim &amp; Staff → Jadwal &amp; Cuti</strong>
+                    )}
+                    .
+                </p>
+            </div>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Operating Hours */}
@@ -214,14 +234,14 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                         {holidays.map((h) => (
                             <div key={h.id} className="flex items-center justify-between rounded-xl bg-bone px-4 py-2.5 text-sm">
                                 <div>
-                                    <p className="font-mono font-semibold tabular-nums text-ink">{h.date}</p>
+                                    <p className="font-semibold text-ink">{formatDateIndo(h.date)}</p>
                                     {h.reason && <p className="text-xs text-mute">{h.reason}</p>}
                                 </div>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon-sm"
-                                    aria-label={`Hapus tanggal libur ${h.date}`}
+                                    aria-label={`Hapus tanggal libur ${formatDateIndo(h.date)}`}
                                     className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                                     onClick={() => setDeletingHoliday(h)}
                                 >

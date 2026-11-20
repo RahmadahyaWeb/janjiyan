@@ -139,7 +139,8 @@ export default function StaffSchedule({
                                     Ikuti Jam Operasional Bisnis
                                 </Label>
                                 <p className="mt-0.5 text-xs text-mute">
-                                    Nonaktifkan jika staff ini memiliki jam shift atau hari libur mingguan khusus.
+                                    Nonaktifkan jika staff ini punya jam kerja atau hari libur sendiri. Jam staff tetap
+                                    dibatasi jam buka toko di menu Jadwal &amp; Libur.
                                 </p>
                             </div>
                             <Switch

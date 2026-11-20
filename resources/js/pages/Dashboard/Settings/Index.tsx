@@ -23,15 +23,31 @@ import {
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
 
-const SECTION_LINKS = [
-    { id: 'profil', label: 'Profil' },
+const SETTINGS_TABS = [
+    { id: 'profil', label: 'Profil Toko' },
     { id: 'tampilan', label: 'Tampilan' },
     { id: 'aturan', label: 'Aturan Booking' },
-    { id: 'whatsapp', label: 'Template WA' },
-    { id: 'telegram', label: 'Telegram' },
-    { id: 'rekening', label: 'Rekening' },
-    { id: 'galeri', label: 'Galeri' },
-];
+    { id: 'notifikasi', label: 'Notifikasi' },
+    { id: 'pembayaran', label: 'Pembayaran' },
+    { id: 'galeri', label: 'Portofolio' },
+] as const;
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]['id'];
+
+/** Which tab holds a form field, so a validation error can open it. */
+function tabForField(field: string): SettingsTab {
+    if (/^(brand_color|cover_image|remove_cover)/.test(field)) return 'tampilan';
+    if (/^(min_booking|max_booking|reminder_|no_show_)/.test(field)) return 'aturan';
+    if (/^(whatsapp_templates|telegram_|clear_telegram)/.test(field)) return 'notifikasi';
+    if (/^(bank_accounts|qris_image|remove_qris)/.test(field)) return 'pembayaran';
+    return 'profil';
+}
+
+function initialTab(): SettingsTab {
+    if (typeof window === 'undefined') return 'profil';
+    const fromUrl = new URLSearchParams(window.location.search).get('tab');
+    return SETTINGS_TABS.some((t) => t.id === fromUrl) ? (fromUrl as SettingsTab) : 'profil';
+}
 
 interface BankAccount {
     [key: string]: string;
@@ -87,6 +103,15 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
     const [qrPosterOpen, setQrPosterOpen] = useState(false);
     const [activeWaTab, setActiveWaTab] = useState<WhatsappTemplateKey>('reminder');
     const [testingTelegram, setTestingTelegram] = useState(false);
+    const [tab, setTab] = useState<SettingsTab>(initialTab);
+
+    // Keep the tab in the URL (without an Inertia visit) so refresh and save land on the same tab.
+    const changeTab = (next: SettingsTab) => {
+        setTab(next);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', next);
+        window.history.replaceState(window.history.state, '', url);
+    };
 
     const form = useForm({
         name: business?.name ?? '',
@@ -193,7 +218,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     remove_cover: false,
                 }));
             },
-            onError: () => scrollToFirstInvalid(),
+            onError: (errors) => {
+                const firstField = Object.keys(errors)[0];
+                if (firstField) changeTab(tabForField(firstField));
+                scrollToFirstInvalid();
+            },
         });
     };
 
@@ -249,29 +278,44 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
     };
 
     return (
-        <DashboardLayout title="Pengaturan Bisnis & Rekening">
+        <DashboardLayout title="Pengaturan Bisnis">
             <Head title="Pengaturan" />
 
             <div className="max-w-3xl space-y-8">
                 <HorizontalScrollContainer
                     as="div"
-                    ariaLabel="Lompat ke bagian pengaturan"
+                    ariaLabel="Bagian pengaturan"
                     wrapperClassName="sticky top-16 z-30 -mx-4 bg-canvas py-2 sm:mx-0"
                     className="flex gap-1.5 px-4 sm:px-0"
                 >
-                    {SECTION_LINKS.map((s) => (
-                        <a
-                            key={s.id}
-                            href={`#${s.id}`}
-                            className="inline-flex h-9 shrink-0 items-center rounded-full border border-hairline-soft bg-canvas px-3.5 text-xs font-semibold text-mute transition-colors hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                        >
-                            {s.label}
-                        </a>
-                    ))}
+                    {SETTINGS_TABS.map((t) => {
+                        const active = tab === t.id;
+                        const hasError = Object.keys(form.errors).some((field) => tabForField(field) === t.id);
+                        return (
+                            <button
+                                key={t.id}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => changeTab(t.id)}
+                                className={cn(
+                                    'inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                    active
+                                        ? 'border-ink bg-ink text-canvas'
+                                        : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                )}
+                            >
+                                {t.label}
+                                {hasError && (
+                                    <span className="size-1.5 rounded-full bg-destructive" aria-label="ada isian yang perlu diperbaiki" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </HorizontalScrollContainer>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
-                    <div id="profil" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                {/* noValidate: fields on hidden tabs can't show browser bubbles; server errors open the right tab. */}
+                <form onSubmit={handleSubmit} noValidate className="space-y-8">
+                    <div id="profil" hidden={tab !== 'profil'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <h2 className="text-lg font-semibold text-ink">Profil & Link Publik</h2>
                             <Button
@@ -446,7 +490,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Public shop page look: color + cover */}
-                    <div id="tampilan" className="scroll-mt-12 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                    <div id="tampilan" hidden={tab !== 'tampilan'} className="scroll-mt-12 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">Tampilan halaman toko</h2>
                             <p className="mt-1 text-sm text-mute">
@@ -597,7 +641,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Booking Window & Automated Reminders */}
-                    <div id="aturan" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                    <div id="aturan" hidden={tab !== 'aturan'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">Aturan Booking & Pengingat Otomatis</h2>
                             <p className="text-xs text-mute">
@@ -724,7 +768,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Template Pesan WhatsApp 1-Klik */}
-                    <div id="whatsapp" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                    <div id="whatsapp" hidden={tab !== 'notifikasi'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -821,7 +865,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Notifikasi Instan Telegram Bot */}
-                    <div id="telegram" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                    <div id="telegram" hidden={tab !== 'notifikasi'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -840,85 +884,88 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             />
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="settings-telegram-token">Bot Token (dari @BotFather)</Label>
-                                    {business.has_telegram_bot_token && !form.data.clear_telegram_token && (
-                                        <Badge variant="success" className="font-mono">
-                                            Tersimpan ({business.telegram_bot_token_hint})
-                                        </Badge>
+                        {/* Token fields only matter once Telegram is switched on. */}
+                        <div hidden={!form.data.telegram_notifications_enabled} className="space-y-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="settings-telegram-token">Bot Token (dari @BotFather)</Label>
+                                        {business.has_telegram_bot_token && !form.data.clear_telegram_token && (
+                                            <Badge variant="success" className="font-mono">
+                                                Tersimpan ({business.telegram_bot_token_hint})
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <Input
+                                        id="settings-telegram-token"
+                                        type="password"
+                                        autoComplete="off"
+                                        placeholder={
+                                            business.has_telegram_bot_token
+                                                ? 'Kosongkan jika tidak ingin mengganti token'
+                                                : '123456789:ABCdefGHI...'
+                                        }
+                                        value={form.data.telegram_bot_token}
+                                        onChange={(e) => {
+                                            form.setData('telegram_bot_token', e.target.value);
+                                            if (e.target.value) form.setData('clear_telegram_token', false);
+                                        }}
+                                    />
+                                    {form.errors.telegram_bot_token && (
+                                        <p className="text-xs text-destructive">{form.errors.telegram_bot_token}</p>
+                                    )}
+                                    {business.has_telegram_bot_token && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                form.setData('clear_telegram_token', !form.data.clear_telegram_token)
+                                            }
+                                            className="cursor-pointer text-xs text-destructive hover:underline"
+                                        >
+                                            {form.data.clear_telegram_token
+                                                ? 'Batal hapus token'
+                                                : 'Hapus token tersimpan saat simpan'}
+                                        </button>
                                     )}
                                 </div>
-                                <Input
-                                    id="settings-telegram-token"
-                                    type="password"
-                                    autoComplete="off"
-                                    placeholder={
-                                        business.has_telegram_bot_token
-                                            ? 'Kosongkan jika tidak ingin mengganti token'
-                                            : '123456789:ABCdefGHI...'
-                                    }
-                                    value={form.data.telegram_bot_token}
-                                    onChange={(e) => {
-                                        form.setData('telegram_bot_token', e.target.value);
-                                        if (e.target.value) form.setData('clear_telegram_token', false);
-                                    }}
-                                />
-                                {form.errors.telegram_bot_token && (
-                                    <p className="text-xs text-destructive">{form.errors.telegram_bot_token}</p>
-                                )}
-                                {business.has_telegram_bot_token && (
-                                    <button
+
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="settings-telegram-chat-id">Chat ID / Group ID</Label>
+                                    <Input
+                                        id="settings-telegram-chat-id"
+                                        placeholder="Contoh: 123456789 atau -1001234567890"
+                                        value={form.data.telegram_chat_id}
+                                        onChange={(e) => form.setData('telegram_chat_id', e.target.value)}
+                                    />
+                                    {form.errors.telegram_chat_id && (
+                                        <p className="text-xs text-destructive">{form.errors.telegram_chat_id}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-3.5 text-xs text-mute">
+                                <span>
+                                    Cara cepat: buat bot di <strong className="text-ink">@BotFather</strong> → mulai chat dengan bot Anda → cek Chat ID via <strong className="text-ink">@userinfobot</strong>, lalu simpan pengaturan sebelum tes.
+                                </span>
+                                {business.has_telegram_bot_token && business.telegram_chat_id && (
+                                    <Button
                                         type="button"
-                                        onClick={() =>
-                                            form.setData('clear_telegram_token', !form.data.clear_telegram_token)
-                                        }
-                                        className="cursor-pointer text-xs text-destructive hover:underline"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={testingTelegram}
+                                        onClick={handleTestTelegram}
+                                        className="shrink-0 rounded-full bg-canvas"
                                     >
-                                        {form.data.clear_telegram_token
-                                            ? 'Batal hapus token'
-                                            : 'Hapus token tersimpan saat simpan'}
-                                    </button>
+                                        <Send className="mr-1.5 size-3.5" aria-hidden="true" />
+                                        {testingTelegram ? 'Mengirim…' : 'Kirim Pesan Tes'}
+                                    </Button>
                                 )}
                             </div>
-
-                            <div className="space-y-1.5">
-                                <Label htmlFor="settings-telegram-chat-id">Chat ID / Group ID</Label>
-                                <Input
-                                    id="settings-telegram-chat-id"
-                                    placeholder="Contoh: 123456789 atau -1001234567890"
-                                    value={form.data.telegram_chat_id}
-                                    onChange={(e) => form.setData('telegram_chat_id', e.target.value)}
-                                />
-                                {form.errors.telegram_chat_id && (
-                                    <p className="text-xs text-destructive">{form.errors.telegram_chat_id}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-3.5 text-xs text-mute">
-                            <span>
-                                Cara cepat: buat bot di <strong className="text-ink">@BotFather</strong> → mulai chat dengan bot Anda → cek Chat ID via <strong className="text-ink">@userinfobot</strong>, lalu simpan pengaturan sebelum tes.
-                            </span>
-                            {business.has_telegram_bot_token && business.telegram_chat_id && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={testingTelegram}
-                                    onClick={handleTestTelegram}
-                                    className="shrink-0 rounded-full bg-canvas"
-                                >
-                                    <Send className="mr-1.5 size-3.5" aria-hidden="true" />
-                                    {testingTelegram ? 'Mengirim…' : 'Kirim Pesan Tes'}
-                                </Button>
-                            )}
                         </div>
                     </div>
 
                     {/* Bank & QRIS */}
-                    <div id="rekening" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                    <div id="rekening" hidden={tab !== 'pembayaran'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">
                                 <h2 className="text-lg font-semibold text-ink">Rekening Bank & QRIS</h2>
@@ -1026,16 +1073,21 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
                     )}
 
-                    {/* Sticky so the single save button is reachable from any of the 5 sections above */}
-                    <div className="sticky bottom-20 z-30 flex justify-end lg:bottom-4">
+                    {/* One form behind the tabs: this saves changes made on every tab. */}
+                    <div hidden={tab === 'galeri'} className="sticky bottom-20 z-30 flex items-center justify-end gap-3 lg:bottom-4">
+                        {form.isDirty && (
+                            <span className="rounded-full bg-canvas/90 px-3 py-1 text-xs text-mute shadow-sm">
+                                Ada perubahan belum disimpan
+                            </span>
+                        )}
                         <Button type="submit" size="lg" disabled={form.processing} className="shadow-lg">
-                            {form.processing ? 'Menyimpan…' : 'Simpan Pengaturan'}
+                            {form.processing ? 'Menyimpan…' : 'Simpan Semua Tab'}
                         </Button>
                     </div>
                 </form>
 
                 {/* Portfolio / Business Gallery */}
-                <section id="galeri" aria-labelledby="gallery-section-heading" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                <section id="galeri" hidden={tab !== 'galeri'} aria-labelledby="gallery-section-heading" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div>
                         <h2 id="gallery-section-heading" className="text-lg font-semibold text-ink">
                             Portofolio & Galeri Usaha
@@ -1132,7 +1184,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     )}
                 </section>
 
-                {business.is_owner && (
+                {business.is_owner && tab === 'profil' && (
                     <section
                         aria-labelledby="danger-zone-heading"
                         className="space-y-4 rounded-md border border-destructive/30 bg-destructive-soft p-4 sm:p-6"

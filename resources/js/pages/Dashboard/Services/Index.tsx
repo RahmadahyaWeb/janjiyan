@@ -150,7 +150,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                         {s.booking_mode === 'dropoff' ? (
                                             <>
                                                 <Badge variant="outline" className="tabular-nums">
-                                                    Drop-off · Kuota {s.capacity}/hr
+                                                    Drop-off · Maks {s.capacity} item/hari
                                                 </Badge>
                                                 {s.supports_pickup && (
                                                     <Badge variant="secondary">Jemput-Antar</Badge>
@@ -158,7 +158,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                             </>
                                         ) : (
                                             <Badge variant={s.assignment_mode === 'staff' ? 'secondary' : 'outline'}>
-                                                {s.assignment_mode === 'staff' ? 'Staff' : `Kapasitas ${s.capacity}`}
+                                                {s.assignment_mode === 'staff' ? 'Per staff' : `Maks ${s.capacity} orang/sesi`}
                                             </Badge>
                                         )}
                                     </div>
@@ -171,7 +171,9 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                     <span className="rounded-full bg-bone px-3 py-1 tabular-nums">
                                         {s.booking_mode === 'dropoff'
                                             ? formatTurnaroundLabel(s.turnaround_days)
-                                            : `${s.duration_minutes} mnt (+${s.buffer_minutes} mnt buffer)`}
+                                            : s.buffer_minutes > 0
+                                              ? `${s.duration_minutes} mnt + ${s.buffer_minutes} mnt jeda`
+                                              : `${s.duration_minutes} mnt`}
                                     </span>
                                     {s.dp_type !== 'none' && (
                                         <span className="rounded-full bg-bone px-3 py-1 font-semibold tabular-nums text-electric">

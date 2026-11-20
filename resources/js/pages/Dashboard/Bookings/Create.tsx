@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import {
     PICKUP_SESSION_LABELS,
 } from '@/lib/format';
 import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
+import type { PageProps } from '@/types';
 
 interface ServiceOption {
     id: number;
@@ -34,6 +35,7 @@ interface BookingCreateProps {
 }
 
 export default function BookingCreate({ services }: BookingCreateProps) {
+    const canManageServices = usePage<PageProps>().props.activeBusiness?.can?.manage_services ?? true;
     const [timeError, setTimeError] = useState('');
     const formRef = useRef<HTMLFormElement>(null);
     const todayString = new Date().toISOString().slice(0, 10);
@@ -128,9 +130,13 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                 <div className="max-w-xl space-y-3 rounded-md bg-bone p-8 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada layanan aktif.</p>
                     <p className="text-sm text-mute">Tambahkan minimal satu layanan aktif sebelum membuat booking manual.</p>
-                    <Button asChild size="sm">
-                        <Link href={route('dashboard.services.create')}>Tambah Layanan</Link>
-                    </Button>
+                    {canManageServices ? (
+                        <Button asChild size="sm">
+                            <Link href={route('dashboard.services.create')}>Tambah Layanan</Link>
+                        </Button>
+                    ) : (
+                        <p className="text-sm font-semibold text-ink">Minta pemilik bisnis menambahkan layanan.</p>
+                    )}
                 </div>
             ) : (
                 <form

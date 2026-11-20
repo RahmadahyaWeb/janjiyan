@@ -13,14 +13,16 @@ interface TrendPoint {
     label: string;
     full_label: string;
     bookings_count: number;
-    revenue: number;
+    /** Null when the viewer may not see revenue. */
+    revenue: number | null;
 }
 
 interface DashboardIndexProps {
     stats: {
         today_bookings: number;
         pending_dp: number;
-        monthly_revenue: number;
+        /** Null when the viewer may not see revenue. */
+        monthly_revenue: number | null;
         total_customers: number;
     };
     todayDate?: string;
@@ -114,11 +116,12 @@ export default function DashboardIndex({
 
     const maxTrendValue = Math.max(
         1,
-        ...weeklyTrend.map((d) => (trendMetric === 'bookings' ? d.bookings_count : d.revenue))
+        ...weeklyTrend.map((d) => (trendMetric === 'bookings' ? d.bookings_count : (d.revenue ?? 0)))
     );
     const midTrendValue = Math.round(maxTrendValue / 2);
     const totalWeeklyBookings = weeklyTrend.reduce((acc, d) => acc + d.bookings_count, 0);
-    const totalWeeklyRevenue = weeklyTrend.reduce((acc, d) => acc + d.revenue, 0);
+    const totalWeeklyRevenue = weeklyTrend.reduce((acc, d) => acc + (d.revenue ?? 0), 0);
+    const canSeeRevenue = stats.monthly_revenue !== null;
 
     const formatCompactCurrency = (amount: number): string => {
         if (amount === 0) return '0';
@@ -224,7 +227,12 @@ export default function DashboardIndex({
             )}
 
             {/* Clickable KPI Cards */}
-            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <div
+                className={cn(
+                    'grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4',
+                    canSeeRevenue ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                )}
+            >
                 <Link
                     href={route(
                         'dashboard.bookings',
@@ -263,19 +271,24 @@ export default function DashboardIndex({
                     </div>
                 </Link>
 
-                <Link href={route('dashboard.bookings', { status: 'all' })} className={kpiCardClass}>
-                    <div className="flex items-center justify-between text-mute">
-                        <span className="text-xs font-semibold">Omzet Terverifikasi (Bln)</span>
-                        <CheckCircle2 className="size-4" aria-hidden="true" />
-                    </div>
-                    <div className="mt-3 flex items-baseline justify-between gap-2">
-                        <p className="text-lg font-semibold tabular-nums text-ink sm:text-3xl">
-                            {formatRupiah(stats.monthly_revenue)}
-                        </p>
-                    </div>
-                </Link>
+                {stats.monthly_revenue !== null && (
+                    <Link href={route('dashboard.bookings', { status: 'all' })} className={kpiCardClass}>
+                        <div className="flex items-center justify-between text-mute">
+                            <span className="text-xs font-semibold">Omzet Terverifikasi (Bln)</span>
+                            <CheckCircle2 className="size-4" aria-hidden="true" />
+                        </div>
+                        <div className="mt-3 flex items-baseline justify-between gap-2">
+                            <p className="text-lg font-semibold tabular-nums text-ink sm:text-3xl">
+                                {formatRupiah(stats.monthly_revenue)}
+                            </p>
+                        </div>
+                    </Link>
+                )}
 
-                <Link href={route('dashboard.customers')} className={kpiCardClass}>
+                <Link
+                    href={route('dashboard.customers')}
+                    className={cn(kpiCardClass, !canSeeRevenue && 'min-[360px]:col-span-2 lg:col-span-1')}
+                >
                     <div className="flex items-center justify-between text-mute">
                         <span className="text-xs font-semibold">Total Pelanggan</span>
                         <Users className="size-4" aria-hidden="true" />
@@ -305,18 +318,19 @@ export default function DashboardIndex({
                             </p>
                         </div>
 
-                        <div
-                            className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
-                            role="group"
-                            aria-label="Metrik grafik 7 hari"
-                        >
-                            <button
-                                type="button"
-                                aria-pressed={trendMetric === 'bookings'}
-                                onClick={() => setTrendMetric('bookings')}
-                                className={cn(
-                                    'cursor-pointer rounded-full px-3.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
-                                    trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                        {canSeeRevenue && (
+                            <div
+                                className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
+                                role="group"
+                                aria-label="Metrik grafik 7 hari"
+                            >
+                                <button
+                                    type="button"
+                                    aria-pressed={trendMetric === 'bookings'}
+                                    onClick={() => setTrendMetric('bookings')}
+                                    className={cn(
+                                        'cursor-pointer rounded-full px-3.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                        trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
                                 Reservasi
@@ -333,6 +347,7 @@ export default function DashboardIndex({
                                 Omzet
                             </button>
                         </div>
+                        )}
                     </div>
 
                     <div className="mt-6 flex items-start gap-3">
@@ -368,13 +383,13 @@ export default function DashboardIndex({
                             <div className="relative grid grid-cols-7 gap-1 sm:gap-3">
                                 {weeklyTrend.map((day, idx) => {
                                     const val =
-                                        trendMetric === 'bookings' ? day.bookings_count : day.revenue;
+                                        trendMetric === 'bookings' ? day.bookings_count : (day.revenue ?? 0);
                                     const pct =
                                         val > 0 ? Math.max(8, Math.round((val / maxTrendValue) * 100)) : 0;
                                     const formattedVal =
                                         trendMetric === 'bookings'
                                             ? `${day.bookings_count}`
-                                            : formatCompactCurrency(day.revenue);
+                                            : formatCompactCurrency(day.revenue ?? 0);
                                     const isToday = idx === weeklyTrend.length - 1;
 
                                     return (
@@ -388,7 +403,7 @@ export default function DashboardIndex({
                                             aria-label={`${day.label} ${day.full_label}: ${
                                                 trendMetric === 'bookings'
                                                     ? `${day.bookings_count} reservasi`
-                                                    : formatRupiah(day.revenue)
+                                                    : formatRupiah(day.revenue ?? 0)
                                             }`}
                                             className="group flex min-w-0 flex-col items-center rounded-xl px-1 pt-1 pb-2 transition-colors hover:bg-bone/50 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-2"
                                         >
