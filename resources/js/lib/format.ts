@@ -104,3 +104,15 @@ export function formatBookingScheduleShort(booking: {
         ? `${booking.start_time_local}–${booking.end_time_local}`
         : booking.start_time_local;
 }
+
+/** "09:00:00" → "09:00". */
+export function formatShortTime(time: string | null): string {
+    return time ? time.slice(0, 5) : '';
+}
+
+/** Day of week (0 = Sunday) for a Y-m-d string, independent of the browser timezone. */
+export function getLocalDayOfWeek(dateString: string): number {
+    const [y, m, d] = dateString.split('-').map(Number);
+    if (!y || !m || !d) return new Date().getDay();
+    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}

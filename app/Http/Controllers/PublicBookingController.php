@@ -22,23 +22,15 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PublicBookingController extends Controller
 {
-    public function show(Request $request, string $slug, PlanLimitService $planLimitService): Response|SymfonyResponse
+    /**
+     * Loads an active business for the public pages, or returns the 403 "unavailable" page if it is suspended.
+     */
+    private function loadPublicBusiness(Request $request, string $slug, array $with): Business|SymfonyResponse
     {
         $business = Business::where('slug', $slug)
             ->where('is_active', true)
-            ->with([
-                'owner',
-                'services' => fn ($q) => $q->where('is_active', true)->with(['staff' => fn ($sq) => $sq->where('is_active', true)]),
-                'galleries',
-                'operatingHours',
-            ])
+            ->with(['owner', ...$with])
             ->firstOrFail();
-
-        $businessToday = now($business->timezone ?: 'Asia/Jakarta')->toDateString();
-        $business->setRelation(
-            'holidays',
-            $business->holidays()->whereDate('date', '>=', $businessToday)->get()
-        );
 
         if ($business->isSuspended()) {
             return Inertia::render('Public/BusinessUnavailable', [
@@ -47,13 +39,39 @@ class PublicBookingController extends Controller
             ])->toResponse($request)->setStatusCode(403);
         }
 
-        $bookingDisabledReason = ! $planLimitService->hasActiveSubscription($business->owner)
+        $businessToday = now($business->timezone ?: 'Asia/Jakarta')->toDateString();
+        $business->setRelation(
+            'holidays',
+            $business->holidays()->whereDate('date', '>=', $businessToday)->get()
+        );
+
+        return $business;
+    }
+
+    private function bookingDisabledReason(Business $business, PlanLimitService $planLimitService): ?string
+    {
+        return ! $planLimitService->hasActiveSubscription($business->owner)
             ? 'Reservasi online untuk bisnis ini sementara ditutup karena masa langganan merchant telah berakhir.'
             : null;
+    }
 
-        return Inertia::render('Public/BookingPortal', [
+    public function show(Request $request, string $slug, PlanLimitService $planLimitService): Response|SymfonyResponse
+    {
+        $business = $this->loadPublicBusiness($request, $slug, [
+            'services' => fn ($q) => $q->where('is_active', true),
+            'galleries',
+            'operatingHours',
+        ]);
+        if ($business instanceof SymfonyResponse) {
+            return $business;
+        }
+
+        $firstGallery = $business->galleries->first()?->image_path;
+        $firstServiceImage = $business->services->firstWhere('image_path', '!=', null)?->image_path;
+        $coverPath = $business->cover_path ?: ($firstGallery ?: $firstServiceImage);
+
+        return Inertia::render('Public/BusinessHome', [
             'business' => [
-                'id' => $business->id,
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'category' => $business->category,
@@ -62,6 +80,47 @@ class PublicBookingController extends Controller
                 'address' => $business->address,
                 'timezone' => $business->timezone,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
+                'cover_url' => $coverPath ? Storage::url($coverPath) : null,
+            ],
+            'serviceCount' => $business->services->count(),
+            'minPrice' => $business->services->min('price'),
+            'galleries' => $business->galleries->map(fn ($g) => [
+                'id' => $g->id,
+                'image_url' => Storage::url($g->image_path),
+                'caption' => $g->caption,
+            ])->values(),
+            'operatingHours' => $business->operatingHours,
+            'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
+            'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
+        ])->withViewData('seo', [
+            'title' => "{$business->name} — Reservasi Online | Janjiyan",
+            'description' => $business->description ?: "Pesan layanan {$business->name} ({$business->category}) secara online dengan jadwal real-time di Janjiyan.",
+            'image' => $business->logo_path ? url(Storage::url($business->logo_path)) : url('/og-default.png'),
+            'url' => route('public.booking', $business->slug),
+        ]);
+    }
+
+    public function booking(Request $request, string $slug, PlanLimitService $planLimitService): Response|SymfonyResponse
+    {
+        $business = $this->loadPublicBusiness($request, $slug, [
+            'services' => fn ($q) => $q->where('is_active', true)->with(['staff' => fn ($sq) => $sq->where('is_active', true)]),
+            'operatingHours',
+        ]);
+        if ($business instanceof SymfonyResponse) {
+            return $business;
+        }
+
+        return Inertia::render('Public/BookingPortal', [
+            'business' => [
+                'id' => $business->id,
+                'name' => $business->name,
+                'slug' => $business->slug,
+                'category' => $business->category,
+                'phone' => $business->phone,
+                'timezone' => $business->timezone,
+                'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
                 'qris_url' => $business->qris_path ? Storage::url($business->qris_path) : null,
                 'bank_accounts' => $business->bank_accounts ?? [],
                 'dp_expiry_minutes' => $business->dp_expiry_minutes,
@@ -90,19 +149,13 @@ class PublicBookingController extends Controller
                     'title' => $s->title,
                 ])->values(),
             ])->values(),
-            'galleries' => $business->galleries->map(fn ($g) => [
-                'id' => $g->id,
-                'image_url' => Storage::url($g->image_path),
-                'caption' => $g->caption,
-            ])->values(),
             'operatingHours' => $business->operatingHours,
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
-            'bookingDisabledReason' => $bookingDisabledReason,
+            'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
         ])->withViewData('seo', [
-            'title' => "{$business->name} — Reservasi Online | Janjiyan",
-            'description' => $business->description ?: "Pesan layanan {$business->name} ({$business->category}) secara online dengan jadwal real-time di Janjiyan.",
-            'image' => $business->logo_path ? url(Storage::url($business->logo_path)) : url('/og-default.png'),
-            'url' => route('public.booking', $business->slug),
+            'title' => "Pesan — {$business->name} | Janjiyan",
+            'description' => "Pilih layanan dan jadwal di {$business->name}.",
+            'url' => route('public.booking.form', $business->slug),
         ]);
     }
 
@@ -363,6 +416,7 @@ class PublicBookingController extends Controller
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
             ],
             'history' => null,
             'matchedInvoiceToken' => null,
@@ -434,6 +488,7 @@ class PublicBookingController extends Controller
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
             ],
             'customerName' => $matched->customer?->name,
             'matchedInvoiceToken' => $matched->invoice_token,
@@ -455,6 +510,8 @@ class PublicBookingController extends Controller
                 'phone' => $business->phone,
                 'address' => $business->address,
                 'timezone' => $business->timezone,
+                'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
                 'qris_url' => $business->qris_path ? Storage::url($business->qris_path) : null,
                 'bank_accounts' => $business->bank_accounts ?? [],
             ],

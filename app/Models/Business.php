@@ -26,6 +26,8 @@ class Business extends Model
         'address',
         'timezone',
         'logo_path',
+        'brand_color',
+        'cover_path',
         'qris_path',
         'bank_accounts',
         'dp_expiry_minutes',

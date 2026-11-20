@@ -50,6 +50,8 @@ class SettingsController extends Controller
                 'bank_accounts' => $business->bank_accounts ?? [],
                 'qris_url' => $business->qris_path ? Storage::url($business->qris_path) : null,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
+                'brand_color' => $business->brand_color,
+                'cover_url' => $business->cover_path ? Storage::url($business->cover_path) : null,
             ] : null,
             'galleries' => $business
                 ? $business->galleries()->get()->map(fn ($g) => [
@@ -101,6 +103,9 @@ class SettingsController extends Controller
             'remove_qris' => ['nullable', 'boolean'],
             'logo_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
+            'brand_color' => ['sometimes', 'nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'cover_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_cover' => ['nullable', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -126,6 +131,18 @@ class SettingsController extends Controller
                 Storage::disk('public')->delete($logoPath);
             }
             $logoPath = $request->file('logo_image')->store('logos', 'public');
+        }
+
+        $coverPath = $business->cover_path;
+        if ($request->boolean('remove_cover') && $coverPath) {
+            Storage::disk('public')->delete($coverPath);
+            $coverPath = null;
+        }
+        if ($request->hasFile('cover_image')) {
+            if ($coverPath) {
+                Storage::disk('public')->delete($coverPath);
+            }
+            $coverPath = $request->file('cover_image')->store('covers', 'public');
         }
 
         $telegramBotToken = $business->telegram_bot_token;
@@ -197,6 +214,10 @@ class SettingsController extends Controller
             'bank_accounts' => $validated['bank_accounts'] ?? [],
             'qris_path' => $qrisPath,
             'logo_path' => $logoPath,
+            'cover_path' => $coverPath,
+            'brand_color' => array_key_exists('brand_color', $validated)
+                ? ($validated['brand_color'] ? strtolower($validated['brand_color']) : null)
+                : $business->brand_color,
             'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : $business->is_active,
         ]);
 

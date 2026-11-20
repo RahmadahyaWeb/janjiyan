@@ -230,6 +230,7 @@ class DashboardController extends Controller
 
         $publicFiles = array_values(array_filter([
             $business->logo_path,
+            $business->cover_path,
             $business->qris_path,
             ...$business->galleries()->pluck('image_path')->all(),
             ...$business->services()->pluck('image_path')->all(),

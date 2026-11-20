@@ -29,7 +29,11 @@ class ResponsiveQaSeeder extends Seeder
             'name' => 'Soklenn Cuci Sepatu Banjarmasin & Perawatan Tas Premium Kalimantan',
             'category' => 'Laundry Sepatu, Tas, Topi & Perawatan Barang Kulit',
             'address' => 'Jl. Pangeran Antasari Komplek Ruko Mitra Plaza Blok C No. 123A, Kelurahan Pekapuran Raya, Banjarmasin Timur',
+            'brand_color' => '#16423c', // dark: white text
         ]);
+        // Light shop color: text and icons must switch to dark automatically.
+        Business::where('slug', 'arena-padel')->update(['brand_color' => '#f5c542']);
+        // toko-polos stays without color, cover, logo or photos.
 
         $long = 'Layanan cuci menyeluruh untuk perawatan sepatu harian. Mencakup pembersihan bagian upper, midsole, outsole, dan tali sepatu menggunakan cairan pembersih khusus yang aman untuk material, dilengkapi anti-bakteri & parfum sepatu agar kembali bersih, segar, dan siap dipakai.';
 

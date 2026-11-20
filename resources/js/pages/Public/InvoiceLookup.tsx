@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, FileText, Search } from 'lucide-react';
 import { FormEvent } from 'react';
+import { BusinessHeader } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ interface InvoiceLookupProps {
         name: string;
         slug: string;
         logo_url: string | null;
+        brand_color: string | null;
     };
     customerName?: string | null;
     matchedInvoiceToken: string | null;
@@ -57,19 +59,12 @@ export default function InvoiceLookup({
     };
 
     return (
-        <div className="min-h-screen bg-canvas px-4 py-10 text-ink sm:px-6">
+        <div className="min-h-screen bg-canvas text-ink">
             <Head title={`Cek Invoice & Riwayat — ${business.name}`} />
 
-            <main className="mx-auto max-w-xl space-y-6">
-                <div className="flex items-center justify-between gap-3">
-                    <Link
-                        href={route('public.booking', business.slug)}
-                        className="inline-flex min-h-8 items-center text-sm font-semibold text-mute hover:text-ink"
-                    >
-                        ← Kembali ke {business.name}
-                    </Link>
-                </div>
+            <BusinessHeader business={business} />
 
+            <main className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 sm:px-6">
                 <div className="rounded-md border border-hairline-soft bg-canvas p-6 sm:p-8">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bone text-ink">

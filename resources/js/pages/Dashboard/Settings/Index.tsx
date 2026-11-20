@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { BellRing, ImagePlus, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Trash2, Upload } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { BellRing, Check, ImagePlus, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Tag, Trash2, Upload } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
+import { BusinessMark } from '@/components/BusinessMark';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
@@ -12,7 +13,8 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
+import { BRAND_PRESETS, brandVars, isHex, onBrand } from '@/lib/brand';
+import { cn, parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 import {
     interpolateWhatsappTemplate,
     WHATSAPP_PLACEHOLDERS,
@@ -23,6 +25,7 @@ import {
 
 const SECTION_LINKS = [
     { id: 'profil', label: 'Profil' },
+    { id: 'tampilan', label: 'Tampilan' },
     { id: 'aturan', label: 'Aturan Booking' },
     { id: 'whatsapp', label: 'Template WA' },
     { id: 'telegram', label: 'Telegram' },
@@ -72,6 +75,8 @@ interface SettingsIndexProps {
         bank_accounts: BankAccount[];
         qris_url: string | null;
         logo_url: string | null;
+        brand_color: string | null;
+        cover_url: string | null;
     } | null;
     galleries: GalleryItem[];
 }
@@ -115,7 +120,21 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         remove_qris: false,
         logo_image: null as File | null,
         remove_logo: false,
+        brand_color: business?.brand_color ?? '',
+        cover_image: null as File | null,
+        remove_cover: false,
     });
+
+    // Selected-but-unsaved cover shows in the preview; the object URL is freed when it changes.
+    const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+    useEffect(() => {
+        if (form.data.cover_image) {
+            const url = URL.createObjectURL(form.data.cover_image);
+            setCoverPreviewUrl(url);
+            return () => URL.revokeObjectURL(url);
+        }
+        setCoverPreviewUrl(form.data.remove_cover ? null : (business?.cover_url ?? null));
+    }, [form.data.cover_image, form.data.remove_cover, business?.cover_url]);
 
     const deleteForm = useForm({
         confirm_name: '',
@@ -170,6 +189,8 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     ...prev,
                     telegram_bot_token: '',
                     clear_telegram_token: false,
+                    cover_image: null,
+                    remove_cover: false,
                 }));
             },
             onError: () => scrollToFirstInvalid(),
@@ -421,6 +442,149 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 checked={form.data.is_active}
                                 onCheckedChange={(val) => form.setData('is_active', val)}
                             />
+                        </div>
+                    </div>
+
+                    {/* Public shop page look: color + cover */}
+                    <div id="tampilan" className="scroll-mt-12 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                        <div>
+                            <h2 className="text-lg font-semibold text-ink">Tampilan halaman toko</h2>
+                            <p className="mt-1 text-sm text-mute">
+                                Warna dan foto ini muncul di /b/{form.data.slug}. Warna teks di atasnya diatur otomatis supaya tetap terbaca.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,15rem)]">
+                            <div className="min-w-0 space-y-5">
+                                <fieldset className="space-y-2.5">
+                                    <legend className="text-sm font-medium text-ink">Warna toko</legend>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            aria-pressed={!form.data.brand_color}
+                                            onClick={() => form.setData('brand_color', '')}
+                                            className={cn(
+                                                'inline-flex h-10 cursor-pointer items-center rounded-full border border-hairline px-3.5 text-xs font-semibold text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                                !form.data.brand_color && 'ring-2 ring-ink ring-offset-2'
+                                            )}
+                                        >
+                                            Tanpa warna
+                                        </button>
+                                        {BRAND_PRESETS.map((hex) => {
+                                            const active = form.data.brand_color.toLowerCase() === hex;
+                                            return (
+                                                <button
+                                                    key={hex}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    aria-label={`Warna ${hex}`}
+                                                    onClick={() => form.setData('brand_color', hex)}
+                                                    style={{ backgroundColor: hex, color: onBrand(hex) }}
+                                                    className={cn(
+                                                        'flex size-10 cursor-pointer items-center justify-center rounded-full outline-1 -outline-offset-1 outline-black/10 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                                        active && 'ring-2 ring-ink ring-offset-2'
+                                                    )}
+                                                >
+                                                    {active && <Check className="size-4" aria-hidden="true" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            aria-label="Pilih warna sendiri"
+                                            value={isHex(form.data.brand_color) ? form.data.brand_color : '#141414'}
+                                            onChange={(e) => form.setData('brand_color', e.target.value)}
+                                            className="size-10 shrink-0 cursor-pointer rounded-sm border border-control-border bg-field p-1"
+                                        />
+                                        <Label htmlFor="settings-brand-color" className="sr-only">
+                                            Kode warna hex
+                                        </Label>
+                                        <Input
+                                            id="settings-brand-color"
+                                            placeholder="#16423c"
+                                            maxLength={7}
+                                            value={form.data.brand_color}
+                                            onChange={(e) => form.setData('brand_color', e.target.value.trim())}
+                                            aria-invalid={Boolean(form.errors.brand_color)}
+                                            className="max-w-36 font-mono"
+                                        />
+                                    </div>
+                                    {form.errors.brand_color && (
+                                        <p className="text-xs text-destructive">Format warna harus #RRGGBB, misalnya #16423c.</p>
+                                    )}
+                                </fieldset>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="settings-cover-upload">Foto cover (Opsional)</Label>
+                                    <p className="text-xs text-mute">
+                                        Tanpa foto cover, halaman memakai foto galeri pertama, lalu foto layanan, lalu warna polos.
+                                    </p>
+                                    {business.cover_url && !form.data.remove_cover && !form.data.cover_image && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                            onClick={() => form.setData('remove_cover', true)}
+                                        >
+                                            Hapus foto cover
+                                        </Button>
+                                    )}
+                                    <label
+                                        htmlFor="settings-cover-upload"
+                                        className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                                    >
+                                        <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                                        <span className="min-w-0 break-words">
+                                            {form.data.cover_image ? form.data.cover_image.name : 'Unggah foto cover (JPG/PNG/WebP, maks 5MB, mendatar)'}
+                                        </span>
+                                        <input
+                                            id="settings-cover-upload"
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] ?? null;
+                                                form.setData((prev) => ({ ...prev, cover_image: file, remove_cover: false }));
+                                            }}
+                                        />
+                                    </label>
+                                    {form.errors.cover_image && <p className="text-xs text-destructive">{form.errors.cover_image}</p>}
+                                </div>
+                            </div>
+
+                            {/* Mini preview of the hub top */}
+                            <div
+                                aria-hidden="true"
+                                style={brandVars(isHex(form.data.brand_color) ? form.data.brand_color : null)}
+                                className="overflow-hidden rounded-md bg-(--brand-paper) outline-1 -outline-offset-1 outline-black/10"
+                            >
+                                <div className="relative">
+                                    <div className="h-20 overflow-hidden bg-(--brand)">
+                                        {coverPreviewUrl && <img src={coverPreviewUrl} alt="" className="size-full object-cover" />}
+                                    </div>
+                                    <BusinessMark
+                                        name={form.data.name || 'Toko'}
+                                        logoUrl={form.data.remove_logo ? null : business.logo_url}
+                                        branded
+                                        className="absolute bottom-0 left-1/2 size-14 -translate-x-1/2 translate-y-1/2 border-[3px] border-(--brand-paper) text-lg font-bold"
+                                    />
+                                </div>
+                                <div className="px-3 pt-9 pb-3 text-center">
+                                    <p className="truncate text-sm font-bold text-ink">{form.data.name || 'Nama toko'}</p>
+                                    <div className="mt-2.5 rounded-xl bg-(--brand) px-3 py-2.5 text-left text-xs font-semibold text-(--on-brand)">
+                                        Pesan layanan
+                                    </div>
+                                    <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2 text-left text-xs font-semibold text-ink">
+                                        <span className="flex size-6 items-center justify-center rounded-md bg-(--brand-soft) text-(--brand-ink)">
+                                            <Tag className="size-3.5" />
+                                        </span>
+                                        Daftar harga
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

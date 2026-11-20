@@ -2,37 +2,24 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Calendar,
     Check,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     CreditCard,
-    ExternalLink,
     FileText,
-    Images,
-    MapPin,
     MessageCircle,
     Minus,
     PackageCheck,
-    Phone,
     Plus,
     ShieldCheck,
     Truck,
     Upload,
     UserCheck,
 } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
+import { BusinessHeader, headerActionClass } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +29,7 @@ import {
     formatDateIndo,
     formatDateShortIndo,
     formatRupiah,
+    getLocalDayOfWeek,
     formatTurnaroundLabel,
     PICKUP_SESSION_LABELS,
 } from '@/lib/format';
@@ -93,11 +81,10 @@ interface BusinessData {
     name: string;
     slug: string;
     category: string;
-    description: string | null;
     phone: string | null;
-    address: string | null;
     timezone: string;
     logo_url: string | null;
+    brand_color: string | null;
     qris_url: string | null;
     bank_accounts: BankAccount[];
     dp_expiry_minutes: number;
@@ -105,83 +92,17 @@ interface BusinessData {
     max_booking_advance_days?: number;
 }
 
-interface GalleryItem {
-    id: number;
-    image_url: string;
-    caption: string | null;
-}
-
 interface BookingPortalProps {
     business: BusinessData;
     services: ServiceItem[];
-    galleries?: GalleryItem[];
     operatingHours?: OperatingHourItem[];
     holidays: string[];
     bookingDisabledReason?: string | null;
 }
 
-const DAY_NAMES_ORDERED = [
-    { day: 1, label: 'Senin' },
-    { day: 2, label: 'Selasa' },
-    { day: 3, label: 'Rabu' },
-    { day: 4, label: 'Kamis' },
-    { day: 5, label: 'Jumat' },
-    { day: 6, label: 'Sabtu' },
-    { day: 0, label: 'Minggu' },
-];
-
-function formatShortTime(time: string | null): string {
-    if (!time) return '';
-    return time.slice(0, 5);
-}
-
-function getLocalDayOfWeek(dateString: string): number {
-    const [y, m, d] = dateString.split('-').map(Number);
-    if (!y || !m || !d) return new Date().getDay();
-    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-// Full class strings so Tailwind keeps them; tokens live in app.css.
-const MONOGRAM_CLASSES = [
-    'bg-monogram-1-surface text-monogram-1-text',
-    'bg-monogram-2-surface text-monogram-2-text',
-    'bg-monogram-3-surface text-monogram-3-text',
-];
-
-function BusinessMark({ name, logoUrl, className }: { name: string; logoUrl: string | null; className?: string }) {
-    if (logoUrl) {
-        return (
-            <img
-                src={logoUrl}
-                alt={`Logo ${name}`}
-                className={cn('shrink-0 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10', className)}
-            />
-        );
-    }
-
-    let hash = 0;
-    for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-    const words = name.trim().split(/\s+/);
-    const initials = (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
-
-    return (
-        <div
-            aria-hidden="true"
-            className={cn(
-                'flex shrink-0 items-center justify-center rounded-[30%] font-semibold',
-                MONOGRAM_CLASSES[hash % MONOGRAM_CLASSES.length],
-                className
-            )}
-        >
-            {initials}
-        </div>
-    );
-}
-
 export default function BookingPortal({
     business,
     services,
-    galleries = [],
     operatingHours = [],
     holidays,
     bookingDisabledReason = null,
@@ -196,7 +117,6 @@ export default function BookingPortal({
         d.setUTCDate(d.getUTCDate() + maxAdvanceDays);
         return d.toISOString().slice(0, 10);
     }, [todayLocal, maxAdvanceDays]);
-    const todayDayOfWeek = getLocalDayOfWeek(todayLocal);
 
     const [selectedService, setSelectedService] = useState<ServiceItem | null>(services[0] ?? null);
     const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
@@ -207,21 +127,6 @@ export default function BookingPortal({
     const [pickupSession, setPickupSession] = useState<'morning' | 'afternoon' | 'evening' | 'anytime'>('anytime');
     const [pickupAddress, setPickupAddress] = useState('');
     const [pickupAddressError, setPickupAddressError] = useState('');
-    const [hoursExpanded, setHoursExpanded] = useState(false);
-    const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
-    const [heroInView, setHeroInView] = useState(true);
-    const heroNameRef = useRef<HTMLHeadingElement>(null);
-
-    useEffect(() => {
-        const el = heroNameRef.current;
-        if (!el || typeof IntersectionObserver === 'undefined') return;
-        // -64px = sticky header height, so the brand appears as soon as the name slides under it.
-        const observer = new IntersectionObserver(([entry]) => setHeroInView(entry.isIntersecting), {
-            rootMargin: '-64px 0px 0px 0px',
-        });
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
 
     // Keep focused fields and scroll targets clear of the sticky header and the mobile bottom bar (WCAG 2.4.11).
     useEffect(() => {
@@ -246,10 +151,6 @@ export default function BookingPortal({
         }
         return map;
     }, [operatingHours]);
-
-    const todaySchedule = hoursByDay.get(todayDayOfWeek);
-    const isTodayHoliday = holidays.includes(todayLocal);
-    const isOpenToday = Boolean(todaySchedule?.is_open && !isTodayHoliday);
 
     const selectedDateDayOfWeek = getLocalDayOfWeek(selectedDate);
     const selectedDateSchedule = hoursByDay.get(selectedDateDayOfWeek);
@@ -374,26 +275,13 @@ export default function BookingPortal({
         );
     };
 
-    const googleMapsUrl = business.address
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${business.name} ${business.address}`)}`
-        : null;
-
     const whatsappChatUrl = business.phone
         ? buildWhatsAppUrl(business.phone, `Halo ${business.name}, saya ingin bertanya tentang layanan dan jadwal reservasi.`)
         : null;
 
     return (
         <div className={cn('min-h-screen bg-canvas text-ink', services.length > 0 && 'pb-24 lg:pb-0')}>
-            <Head title={`${business.name} — Reservasi Online`}>
-                <meta
-                    head-key="description"
-                    name="description"
-                    content={
-                        business.description ||
-                        `Pesan layanan ${business.name} (${business.category}) secara online dengan jadwal real-time di Janjiyan.`
-                    }
-                />
-            </Head>
+            <Head title={`Pesan — ${business.name}`} />
 
             <a
                 href="#main-content"
@@ -402,40 +290,20 @@ export default function BookingPortal({
                 Lewati ke daftar layanan
             </a>
 
-            {/* Top Storefront Bar: brand fades in once the hero name scrolls away */}
-            <header className="sticky top-0 z-40 border-b border-divider bg-canvas">
-                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-                    <div
-                        aria-hidden={heroInView}
-                        className={cn(
-                            'flex min-w-0 items-center gap-3 motion-safe:transition-opacity motion-safe:duration-200',
-                            heroInView && 'pointer-events-none opacity-0'
-                        )}
-                    >
-                        <BusinessMark name={business.name} logoUrl={business.logo_url} className="size-9 text-xs" />
-                        <span className="truncate text-sm font-semibold text-ink sm:text-base">{business.name}</span>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                        <Button asChild variant="outline" size="sm" className="px-3 sm:px-4">
-                            <Link href={route('public.booking.invoices', business.slug)}>
-                                <FileText className="size-4" aria-hidden="true" />
-                                <span className="hidden sm:inline">Cek invoice</span>
-                                <span className="sr-only sm:hidden">Invoice</span>
-                            </Link>
-                        </Button>
-                        {whatsappChatUrl && (
-                            <Button asChild variant="outline" size="sm" className="px-3 sm:px-4">
-                                <a href={whatsappChatUrl} target="_blank" rel="noreferrer">
-                                    <MessageCircle className="size-4" aria-hidden="true" />
-                                    <span className="hidden sm:inline">Chat WhatsApp</span>
-                                    <span className="sr-only sm:hidden">WhatsApp</span>
-                                </a>
-                            </Button>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <BusinessHeader business={business}>
+                <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
+                    <FileText className="size-4" aria-hidden="true" />
+                    <span className="hidden sm:inline">Cek invoice</span>
+                    <span className="sr-only sm:hidden">Invoice</span>
+                </Link>
+                {whatsappChatUrl && (
+                    <a href={whatsappChatUrl} target="_blank" rel="noreferrer" className={headerActionClass}>
+                        <MessageCircle className="size-4" aria-hidden="true" />
+                        <span className="hidden sm:inline">Chat WhatsApp</span>
+                        <span className="sr-only sm:hidden">WhatsApp</span>
+                    </a>
+                )}
+            </BusinessHeader>
 
             <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 outline-none sm:px-6 sm:py-12">
                 {bookingDisabledReason && (
@@ -449,204 +317,6 @@ export default function BookingPortal({
                     </div>
                 )}
 
-                {/* Storefront Hero */}
-                <section aria-labelledby="business-name" className="mb-10 border-b border-divider pb-8 sm:mb-12 sm:pb-10">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                        <BusinessMark
-                            name={business.name}
-                            logoUrl={business.logo_url}
-                            className="size-16 text-xl sm:size-24 sm:text-3xl"
-                        />
-                        <div className="min-w-0">
-                            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-mute">
-                                <span className="font-semibold text-ink">{business.category}</span>
-                                {operatingHours.length > 0 && (
-                                    <span className="inline-flex items-center gap-1.5 tabular-nums">
-                                        <span
-                                            aria-hidden="true"
-                                            className={cn('size-2 rounded-full', isOpenToday ? 'bg-success' : 'bg-stone')}
-                                        />
-                                        {isOpenToday && todaySchedule
-                                            ? `Buka hari ini, ${formatShortTime(todaySchedule.open_time)}–${formatShortTime(todaySchedule.close_time)}`
-                                            : isTodayHoliday
-                                              ? 'Libur hari ini'
-                                              : 'Tutup hari ini'}
-                                    </span>
-                                )}
-                            </p>
-                            <h1
-                                ref={heroNameRef}
-                                id="business-name"
-                                className="mt-1 text-3xl leading-[1.1] font-semibold text-balance text-ink sm:text-5xl"
-                            >
-                                {business.name}
-                            </h1>
-                        </div>
-                    </div>
-
-                    <p className="mt-5 max-w-prose text-base leading-relaxed text-mute">
-                        {business.description || 'Pilih layanan, tentukan tanggal, lalu pesan langsung dari halaman ini.'}
-                    </p>
-
-                    {/* Contact & hours */}
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {googleMapsUrl && business.address && (
-                            <a
-                                href={googleMapsUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                            >
-                                <MapPin className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                <span className="text-left">{business.address}</span>
-                                <ExternalLink className="size-3 shrink-0 text-mute" aria-hidden="true" />
-                            </a>
-                        )}
-
-                        {whatsappChatUrl && business.phone && (
-                            <a
-                                href={whatsappChatUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                            >
-                                <Phone className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                <span className="tabular-nums">+{business.phone}</span>
-                            </a>
-                        )}
-
-                        {operatingHours.length > 0 && (
-                            <button
-                                type="button"
-                                aria-expanded={hoursExpanded}
-                                aria-controls="business-operating-hours"
-                                onClick={() => setHoursExpanded((v) => !v)}
-                                className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors duration-150 hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                            >
-                                <Clock className="size-3.5 shrink-0 text-mute" aria-hidden="true" />
-                                <span>Jam operasional</span>
-                                <ChevronDown
-                                    aria-hidden="true"
-                                    className={cn(
-                                        'size-3.5 text-mute motion-safe:transition-transform',
-                                        hoursExpanded && 'rotate-180'
-                                    )}
-                                />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Expandable Operating Hours & Upcoming Holidays */}
-                    {hoursExpanded && operatingHours.length > 0 && (
-                        <div
-                            id="business-operating-hours"
-                            className="mt-5 grid gap-4 rounded-md bg-bone p-4 sm:p-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
-                        >
-                            <div>
-                                <h2 className="mb-3 text-sm font-semibold text-ink">
-                                    Jadwal mingguan ({tz})
-                                </h2>
-                                <div className="grid gap-2 sm:grid-cols-2">
-                                    {DAY_NAMES_ORDERED.map(({ day, label }) => {
-                                        const item = hoursByDay.get(day);
-                                        const isToday = day === todayDayOfWeek;
-                                        return (
-                                            <div
-                                                key={day}
-                                                className={cn(
-                                                    'flex items-center justify-between gap-2 rounded-xl bg-canvas px-3.5 py-2 text-xs',
-                                                    isToday && 'ring-1 ring-ink'
-                                                )}
-                                            >
-                                                <span className="font-semibold text-ink">
-                                                    {label}
-                                                    {isToday && (
-                                                        <span className="ml-1.5 text-electric">(Hari ini)</span>
-                                                    )}
-                                                </span>
-                                                {item?.is_open ? (
-                                                    <span className="font-mono tabular-nums text-mute">
-                                                        {formatShortTime(item.open_time)}–{formatShortTime(item.close_time)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="font-semibold text-mute">Tutup</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div>
-                                <h2 className="mb-3 text-sm font-semibold text-ink">Hari libur khusus</h2>
-                                {holidays.length === 0 ? (
-                                    <p className="rounded-xl bg-canvas px-3.5 py-2.5 text-xs text-mute">
-                                        Tidak ada jadwal libur khusus dalam waktu dekat.
-                                    </p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {holidays.slice(0, 6).map((hDate) => (
-                                            <span
-                                                key={hDate}
-                                                className="rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold tabular-nums text-ink"
-                                            >
-                                                {formatDateIndo(hDate)}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {/* Business Portfolio & Atmosphere Gallery */}
-                {galleries.length > 0 && (
-                    <section aria-labelledby="portfolio-heading" className="mb-10">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-2">
-                                <Images className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <h2 id="portfolio-heading" className="text-lg font-semibold text-ink">
-                                    Portofolio & suasana
-                                </h2>
-                            </div>
-                            <Badge variant="secondary" className="shrink-0 tabular-nums">
-                                {galleries.length} foto
-                            </Badge>
-                        </div>
-
-                        <div
-                            role="region"
-                            aria-label="Galeri foto portofolio"
-                            tabIndex={0}
-                            className="flex snap-x snap-mandatory scroll-px-4 gap-3.5 overflow-x-auto pb-2 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:pb-0"
-                        >
-                            {galleries.map((item, idx) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => setLightboxIdx(idx)}
-                                    aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto portofolio ${idx + 1}`}
-                                    className="group flex w-[76%] shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-md border border-hairline-soft bg-canvas p-3 text-left transition-colors hover:bg-bone focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
-                                >
-                                    <div className="overflow-hidden rounded-xs">
-                                        <img
-                                            src={item.image_url}
-                                            alt={item.caption || `${business.name} portofolio ${idx + 1}`}
-                                            className="aspect-[4/3] w-full object-cover outline-1 -outline-offset-1 outline-black/10 motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-[1.03]"
-                                        />
-                                    </div>
-                                    {item.caption && (
-                                        <p className="mt-3 px-0.5 text-xs font-medium leading-relaxed text-ink line-clamp-2">
-                                            {item.caption}
-                                        </p>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-                )}
-
                 {services.length === 0 ? (
                     <div className="rounded-md bg-bone p-10 text-center">
                         <p className="text-lg font-semibold text-ink">Belum ada layanan tersedia.</p>
@@ -657,7 +327,7 @@ export default function BookingPortal({
                         {/* Left Column: Booking Steps */}
                         <div className="min-w-0 space-y-10">
                             {/* Step 1: Pilih Layanan */}
-                            <section aria-labelledby="step-services-heading">
+                            <section aria-labelledby="step-services-heading" id="layanan" className="scroll-mt-24">
                                 <div className="mb-4 flex items-center gap-2">
                                     <span className="font-mono text-xs font-semibold text-mute">01</span>
                                     <h2 id="step-services-heading" className="text-xl font-semibold text-ink">
@@ -1578,56 +1248,6 @@ export default function BookingPortal({
                 </span>
             </footer>
 
-            {/* Portfolio Lightbox Dialog */}
-            <Dialog open={lightboxIdx !== null} onOpenChange={(open) => !open && setLightboxIdx(null)}>
-                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
-                    {lightboxIdx !== null && galleries[lightboxIdx] && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle className="break-words text-base leading-snug font-semibold text-ink">
-                                    {galleries[lightboxIdx].caption || `${business.name} — Portofolio ${lightboxIdx + 1}`}
-                                </DialogTitle>
-                            </DialogHeader>
-
-                            <img
-                                src={galleries[lightboxIdx].image_url}
-                                alt={galleries[lightboxIdx].caption || `${business.name} portofolio ${lightboxIdx + 1}`}
-                                className="max-h-[60vh] w-full rounded-xs bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
-                            />
-
-                            {galleries.length > 1 && (
-                                <div className="flex items-center justify-between gap-1.5 pt-1 sm:gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
-                                        onClick={() =>
-                                            setLightboxIdx((lightboxIdx - 1 + galleries.length) % galleries.length)
-                                        }
-                                    >
-                                        <ChevronLeft className="size-4" aria-hidden="true" />
-                                        <span>Sebelumnya</span>
-                                    </Button>
-                                    <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold tabular-nums text-mute">
-                                        {lightboxIdx + 1} / {galleries.length}
-                                    </span>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
-                                        onClick={() => setLightboxIdx((lightboxIdx + 1) % galleries.length)}
-                                    >
-                                        <span>Berikutnya</span>
-                                        <ChevronRight className="size-4" aria-hidden="true" />
-                                    </Button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

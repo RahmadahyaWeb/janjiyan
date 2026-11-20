@@ -36,6 +36,7 @@ Route::post('/webhooks/mayar', [MayarWebhookController::class, 'handle'])
 // Public Booking Portal (/b/{slug})
 Route::prefix('b/{slug}')->group(function () {
     Route::get('/', [PublicBookingController::class, 'show'])->name('public.booking');
+    Route::get('/pesan', [PublicBookingController::class, 'booking'])->name('public.booking.form');
     Route::get('/slots', [PublicBookingController::class, 'slots'])
         ->middleware('throttle:public-slots')
         ->name('public.booking.slots');

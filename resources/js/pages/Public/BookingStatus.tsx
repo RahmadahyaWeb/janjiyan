@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Truck, Upload, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
+import { BusinessHeader } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ interface BookingStatusProps {
         phone: string | null;
         address: string | null;
         timezone: string;
+        logo_url: string | null;
+        brand_color: string | null;
         qris_url: string | null;
         bank_accounts: Array<{
             bank_name: string;
@@ -195,7 +198,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
             : null;
 
     return (
-        <div className="min-h-screen bg-canvas px-4 py-10 text-ink sm:px-6">
+        <div className="min-h-screen bg-canvas text-ink">
             <Head title={`Invoice ${invoiceLabel} — ${business.name}`} />
 
             <a
@@ -205,14 +208,10 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                 Lewati ke detail invoice
             </a>
 
-            <main id="main-content" tabIndex={-1} className="mx-auto max-w-xl space-y-6 outline-none">
-                <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-                    <Link
-                        href={route('public.booking', business.slug)}
-                        className="inline-flex min-h-8 items-center text-sm font-semibold text-mute hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                    >
-                        ← Kembali ke {business.name}
-                    </Link>
+            <BusinessHeader business={business} />
+
+            <main id="main-content" tabIndex={-1} className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 outline-none sm:px-6 print:py-0">
+                <div className="flex justify-end print:hidden">
                     <Link
                         href={route('public.booking.invoices', business.slug)}
                         className="inline-flex min-h-9 items-center gap-1.5 rounded-sm px-1 text-xs font-semibold text-ink underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
