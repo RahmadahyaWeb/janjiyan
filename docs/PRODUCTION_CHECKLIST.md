@@ -13,7 +13,7 @@
 - **Phase 2 (Completed):** Core auth, business CRUD, and validation/quota gaps.
 - **Phase 3 (Completed):** Custom error pages, favicon/SEO metadata, and legal pages (required for Google OAuth).
 - **Phase 4 (Completed):** SaaS monetization (Mayar API v2 + double-verified webhook), trial/subscription expiry soft-lock, superadmin web panel (`/admin`), and public hashed customer invoice tracking (`/b/{slug}/invoice/{token}`).
-- **Phase 5 (Pending):** VPS provisioning, environment setup, scheduler cron, and post-deploy smoke tests.
+- **Phase 5 (Live Deployed — Pending Mayar KYC & Final Smoke Checks):** Provisioned on Ubuntu 26.04 LTS (`https://janjiyan.web.id`) with Nginx, PHP 8.5.4-FPM, MySQL, Supervisor queue worker, 1-minute cron scheduler, Certbot HTTPS, Cloudflare DNS + Email Routing, and Brevo SMTP. Pending Mayar KYC approval (`MAYAR_API_KEY` / `MAYAR_WEBHOOK_TOKEN`) and remaining post-deploy smoke checks.
 
 ---
 
@@ -110,37 +110,27 @@
 
 ## Phase 5: VPS Deployment & Post-Deploy Verification (Nginx + PHP-FPM + MySQL/PostgreSQL)
 
-- [ ] **Initialize Git Repository & Clean Commit History**
-  - Run `git init`, verify `.gitignore` excludes `.env`, `vendor/`, `node_modules/`, `database/*.sqlite*`, `storage/logs/*`, and `public/hot`.
-- [ ] **Provision VPS Software Stack**
-  - Install PHP 8.3+ with required extensions (`pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `ctype`, `fileinfo`, `openssl`, `tokenizer`, `curl`, `zip`, `bcmath`, `gd`/`imagick`), Composer, Node.js, Nginx, and MySQL/PostgreSQL.
-  - Create dedicated production database and user.
-- [ ] **Configure Nginx Virtual Host & SSL**
-  - Point `root` to `/path/to/janjiyan/public`.
-  - Route requests with `try_files $uri $uri/ /index.php?$query_string;`.
-  - Set `client_max_body_size 10M;` (must exceed the 5MB DP proof upload limit).
-  - Provision HTTPS certificate via Certbot / Let's Encrypt.
-- [ ] **Deploy Application & Run Production Commands**
-  - Configure `.env` (`APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://...`, `SESSION_SECURE_COOKIE=true`, DB & Mail credentials, and optional Google OAuth credentials).
-  - Run:
-    ```sh
-    composer install --no-dev --optimize-autoloader
-    npm ci && npm run build
-    php artisan key:generate --force # only on initial deploy
-    php artisan migrate --force
-    php artisan db:seed --class=SubscriptionPlanSeeder --force
-    php artisan storage:link
-    php artisan optimize
-    ```
-  - Ensure `www-data` owns/has write permissions on `storage/` and `bootstrap/cache/`.
-- [ ] **Configure Cron Scheduler (`bookings:expire-unpaid`)**
-  - Add crontab entry so `routes/console.php` runs every minute:
-    ```cron
-    * * * * * cd /path/to/janjiyan && php artisan schedule:run >> /dev/null 2>&1
-    ```
-- [ ] **Run Post-Deploy Smoke Checks**
-  - Verify `/` renders without Vite `localhost` references or console errors.
-  - Verify `/register`, `/login`, and Google OAuth (if enabled) work over HTTPS and demo credentials are absent.
-  - Verify `/dashboard/billing` blocks plan simulation (`403`) and shows the non-simulation notice.
-  - Create a test business, upload logo/QRIS/service image (verifying `public/storage` symlink works), submit a public booking at `/b/{slug}` with DP proof upload, verify DP in dashboard, and confirm `schedule:run` expires unpaid bookings after deadline.
-  - Verify backups (daily DB dump + `storage/app/` backup) and log rotation.
+- [x] **Initialize Git Repository & Clean Commit History**
+  - Run `git init`, verify `.gitignore` excludes `.env`, `vendor/`, `node_modules/`, `database/*.sqlite*`, `storage/logs/*`, and `public/hot`. Pushed `main` to `origin`.
+- [x] **Provision VPS Software Stack**
+  - Installed PHP 8.5.4-FPM with required extensions, Composer, Node.js 22 LTS, Nginx, Supervisor, Certbot, and MySQL on Ubuntu 26.04 LTS (`43.173.21.218`).
+  - Created dedicated `janjiyan` production database and user.
+- [x] **Configure Nginx Virtual Host & SSL**
+  - Pointed `root` to `/var/www/janjiyan/public` for `janjiyan.web.id`.
+  - Routed requests with `try_files $uri $uri/ /index.php?$query_string;`.
+  - Set `client_max_body_size 10M;` (exceeding the 5MB DP proof upload limit).
+  - Provisioned HTTPS certificate via Certbot / Let's Encrypt and configured Cloudflare DNS (`janjiyan.web.id`) + Email Routing (`support@janjiyan.web.id`).
+- [x] **Deploy Application & Run Production Commands**
+  - Configured `.env` (`APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://janjiyan.web.id`, `SESSION_SECURE_COOKIE=true`, MySQL, and Brevo SMTP with `noreply@janjiyan.web.id` and VPS IP whitelisted).
+  - Ran `composer install --no-dev --optimize-autoloader`, `npm ci && npm run build`, `php artisan key:generate`, `php artisan migrate --force`, `php artisan db:seed --class=SubscriptionPlanSeeder --force`, `php artisan storage:link`, and `sudo -u www-data php artisan optimize`.
+  - Set `www-data:www-data` ownership on `storage/` and `bootstrap/cache/`.
+  - Added Sonner error toast handling (`resources/js/app.tsx`) and full-page Inertia `Error.tsx` (`bootstrap/app.php`).
+- [x] **Configure Cron Scheduler (`bookings:expire-unpaid`) & Queue Worker**
+  - Added `www-data` crontab entry so `routes/console.php` runs every minute (`* * * * * cd /var/www/janjiyan && php artisan schedule:run >> /dev/null 2>&1`).
+  - Configured Supervisor (`janjiyan-worker`) running `php artisan queue:work database` as `www-data`.
+- [ ] **Configure Mayar Production Keys & Final Smoke Checks**
+  - Add `MAYAR_API_KEY` and `MAYAR_WEBHOOK_TOKEN` to `/var/www/janjiyan/.env` and register `https://janjiyan.web.id/webhooks/mayar` once Mayar KYC is approved, then re-run `sudo -u www-data php artisan optimize`.
+  - [x] Verified `https://janjiyan.web.id` serves HTTP 200 over HTTPS and `/register` + email verification via Brevo SMTP works end-to-end.
+  - [ ] Verify `/dashboard/billing` blocks plan simulation (`403`) and shows the non-simulation notice.
+  - [ ] Create a test business, upload logo/QRIS/service image (verifying `public/storage` symlink works), submit a public booking at `/b/{slug}` with DP proof upload, verify DP in dashboard, and confirm `schedule:run` expires unpaid bookings after deadline.
+  - [ ] Verify backups (daily DB dump + `storage/app/` backup) and log rotation.
