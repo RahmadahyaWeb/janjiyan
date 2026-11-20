@@ -23,6 +23,7 @@ class AdminController extends Controller
         $statusFilter = trim((string) $request->string('status', ''));
 
         $merchantsQuery = User::query()
+            ->where('is_superadmin', false)
             ->with(['subscription.plan'])
             ->withCount('ownedBusinesses')
             ->when($search !== '', function ($q) use ($search) {
@@ -43,7 +44,7 @@ class AdminController extends Controller
             ->count();
 
         $stats = [
-            'total_merchants' => User::count(),
+            'total_merchants' => User::where('is_superadmin', false)->count(),
             'active_paid' => $activePaidCount,
             'trialing' => $trialingCount,
             'expired' => max(0, $totalSubscriptions - $activePaidCount - $trialingCount),

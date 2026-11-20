@@ -42,7 +42,10 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
-        $target = redirect()->intended(route('dashboard'))->getTargetUrl();
+        $defaultRoute = $request->user()?->is_superadmin ? route('admin.index') : route('dashboard');
+        $target = $request->user()?->is_superadmin
+            ? $defaultRoute
+            : redirect()->intended($defaultRoute)->getTargetUrl();
 
         if ($request->header('X-Inertia')) {
             return Inertia::location($target);
@@ -158,6 +161,10 @@ class AuthController extends Controller
 
         Auth::login($user, true);
         $request->session()->regenerate();
+
+        if ($user->is_superadmin) {
+            return redirect()->route('admin.index');
+        }
 
         return redirect()->intended(route('dashboard'));
     }

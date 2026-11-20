@@ -111,7 +111,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Merchant Dashboard
-Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
+Route::middleware(['auth', 'verified', 'merchant'])->prefix('dashboard')->group(function () {
     // Read-only & account/billing routes (remain accessible during soft-lock)
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/businesses/create', [DashboardController::class, 'createBusinessPage'])->name('dashboard.businesses.create');

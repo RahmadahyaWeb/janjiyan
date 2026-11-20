@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Ban, CheckCircle2, Clock, CreditCard, Search } from 'lucide-react';
+import { Ban, CheckCircle2, Clock, CreditCard, LogOut, Search } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
@@ -131,12 +131,15 @@ export default function AdminIndex({
                             Superadmin
                         </Badge>
                     </div>
-                    <Button asChild variant="outline" size="sm" className="shrink-0">
-                        <Link href={route('dashboard')}>
-                            <ArrowLeft className="size-4" aria-hidden="true" />
-                            <span className="sm:hidden">Dashboard</span>
-                            <span className="hidden sm:inline">Kembali ke Dashboard</span>
-                        </Link>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => router.post(route('logout'))}
+                    >
+                        <LogOut className="size-4" aria-hidden="true" />
+                        <span>Keluar</span>
                     </Button>
                 </div>
             </header>

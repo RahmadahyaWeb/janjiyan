@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureMerchantAccount;
 use App\Http\Middleware\EnsureSuperadmin;
 use App\Http\Middleware\EnsureWritableSubscription;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -18,12 +19,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->is_superadmin
+            ? route('admin.index')
+            : route('dashboard')
+        );
+
         $middleware->web(append: [
             SecurityHeaders::class,
             HandleInertiaRequests::class,
         ]);
 
         $middleware->alias([
+            'merchant' => EnsureMerchantAccount::class,
             'superadmin' => EnsureSuperadmin::class,
             'writable.subscription' => EnsureWritableSubscription::class,
         ]);

@@ -227,16 +227,23 @@ class Phase4MonetizationAndAdminTest extends TestCase
         // Regular user cannot access /admin
         $this->actingAs($this->owner)->get(route('admin.index'))->assertForbidden();
 
-        $admin = User::create([
-            'name' => 'Superadmin Janjiyan',
+        // Create dedicated superadmin directly via CLI without creating any business or trial subscription
+        $this->artisan('janjiyan:make-superadmin', [
             'email' => 'admin@janjiyan.test',
-            'password' => Hash::make('password123'),
-            'email_verified_at' => now(),
-        ]);
+            '--name' => 'Superadmin Janjiyan',
+            '--password' => 'password123',
+        ])->assertExitCode(0);
 
-        $this->artisan('janjiyan:make-superadmin', ['email' => $admin->email])->assertExitCode(0);
-        $admin->refresh();
+        $admin = User::where('email', 'admin@janjiyan.test')->firstOrFail();
         $this->assertTrue($admin->is_superadmin);
+        $this->assertNotNull($admin->email_verified_at);
+        $this->assertSame(0, $admin->businesses()->count());
+        $this->assertNull($admin->subscription);
+
+        // Superadmin cannot access merchant /dashboard and is redirected to /admin
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('admin.index'));
 
         $this->actingAs($admin)
             ->get(route('admin.index'))

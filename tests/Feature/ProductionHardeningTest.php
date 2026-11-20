@@ -358,7 +358,7 @@ class ProductionHardeningTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Index')
-                ->where('stats.total_merchants', 3)
+                ->where('stats.total_merchants', 2)
                 ->where('stats.active_paid', 1)
                 ->where('stats.expired', 1)
             );

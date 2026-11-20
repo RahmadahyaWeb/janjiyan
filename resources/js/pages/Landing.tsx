@@ -43,24 +43,32 @@ const VERTICALS = [
 const OUTCOMES = [
     {
         icon: ShieldCheck,
+        illustration: '/images/editorial-feature-dp.jpg',
+        illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran DP di smartphone',
         title: 'Jadwal terkunci, minim batal mendadak',
         desc: 'Kunci setiap booking dengan DP lewat transfer rekening atau QRIS bisnis kamu. Kalau lewat batas bayar, jam tersebut otomatis dibuka lagi untuk orang lain. Yang sering tidak datang bisa langsung diwajibkan DP penuh, dan pengingat terkirim otomatis di H-1 serta 2 jam sebelum jadwal.',
         highlights: ['Kunci jadwal dengan DP', 'Jam dibuka lagi otomatis', 'Aturan DP penuh', 'Pengingat H-1 & H-2 jam'],
     },
     {
         icon: QrCode,
+        illustration: '/images/editorial-feature-qr.jpg',
+        illustrationAlt: 'Ilustrasi pelanggan memindai poster QR booking di meja kasir studio',
         title: 'Satu link di bio, satu QR di kasir',
         desc: 'Bagikan link booking di Instagram atau cetak poster QR langsung dari dashboard untuk meja kasir. Pengunjung bisa lihat portofolio hasil kerjamu, pilih layanan dan staff favorit, lalu booking tanpa perlu download aplikasi atau bikin akun.',
         highlights: ['Link booking siap pakai', 'Poster QR siap cetak', 'Galeri portofolio', 'Tanpa install aplikasi'],
     },
     {
         icon: Calendar,
+        illustration: '/images/editorial-feature-calendar.jpg',
+        illustrationAlt: 'Ilustrasi dua staff memantau papan jadwal harian dan menerima notifikasi booking di smartphone',
         title: 'Kalender semua staff dalam satu layar',
         desc: 'Pantau jadwal harian tiap staff, termasuk tamu walk-in, jeda antar sesi, shift, dan cuti. Setiap ada booking baru atau bukti transfer masuk, notif langsung muncul di Telegram. Mau follow up? Tinggal klik template WhatsApp yang sudah disiapkan.',
         highlights: ['Kalender per staff', 'Atur shift & cuti', 'Notif Telegram', 'Template WhatsApp'],
     },
     {
         icon: BadgePercent,
+        illustration: '/images/editorial-feature-commission.jpg',
+        illustrationAlt: 'Ilustrasi pemilik bisnis dan staff melihat grafik rekap komisi bulanan otomatis di laptop',
         title: 'Komisi staff beres tanpa hitung manual',
         desc: 'Atur komisi tiap staff sekali di awal, mau pakai persentase atau nominal tetap. Setiap sesi selesai, komisinya langsung tercatat rapi, jadi akhir bulan tidak perlu buka catatan lagi. Tersedia juga catatan khusus pelanggan setia dan dukungan hingga 10 cabang dalam satu akun.',
         highlights: ['Komisi persen / nominal', 'Export CSV (Professional+)', 'Catatan pelanggan', 'Hingga 10 cabang'],
@@ -85,9 +93,24 @@ const PLAN_TAGLINES: Record<string, string> = {
 };
 
 const STEPS = [
-    'Daftar dan lengkapi profil bisnis, lengkap dengan rekening atau QRIS tujuan pembayaran.',
-    'Atur daftar layanan, harga, durasi, aturan DP, serta jadwal staff kamu.',
-    'Pasang link di bio media sosial atau cetak poster QR untuk meja kasir.',
+    {
+        title: 'Lengkapi profil & QRIS',
+        desc: 'Daftar dan lengkapi profil bisnis, lengkap dengan rekening atau QRIS tujuan pembayaran.',
+        illustration: '/images/editorial-step-1.jpg',
+        illustrationAlt: 'Ilustrasi pemilik bisnis menyiapkan profil bisnis dan rekening/QRIS di laptop',
+    },
+    {
+        title: 'Atur layanan & jadwal staff',
+        desc: 'Atur daftar layanan, harga, durasi, aturan DP, serta jadwal staff kamu.',
+        illustration: '/images/editorial-step-2.jpg',
+        illustrationAlt: 'Ilustrasi pengelola studio menyusun blok jadwal layanan dan shift staff di papan kalender',
+    },
+    {
+        title: 'Pasang link bio & QR kasir',
+        desc: 'Pasang link di bio media sosial atau cetak poster QR untuk meja kasir.',
+        illustration: '/images/editorial-step-3.jpg',
+        illustrationAlt: 'Ilustrasi pemilik studio meletakkan poster QR di meja kasir saat pelanggan datang membawa smartphone',
+    },
 ];
 
 const TESTIMONIALS = [
@@ -254,7 +277,9 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="flex items-center gap-1.5 sm:gap-2">
                         {auth.user ? (
                             <Button asChild size="sm">
-                                <Link href={route('dashboard')}>Dashboard</Link>
+                                <Link href={auth.user.is_superadmin ? route('admin.index') : route('dashboard')}>
+                                    {auth.user.is_superadmin ? 'Panel Superadmin' : 'Dashboard'}
+                                </Link>
                             </Button>
                         ) : (
                             <>
@@ -271,53 +296,70 @@ export default function Landing({ plans }: LandingProps) {
             </header>
 
             <main id="main-content" tabIndex={-1} className="outline-none">
-                {/* Hero Section */}
-                <section className="mx-auto max-w-4xl px-5 pt-10 pb-12 text-center sm:px-6 sm:pt-20 sm:pb-20">
-                    <div
-                        data-hero-item
-                        className="mb-6 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
-                    >
-                        <span>Untuk barbershop, salon, klinik, dan studio</span>
+                {/* Centered Hero Section with Monochrome Editorial Character Panorama */}
+                <section className="mx-auto max-w-6xl px-5 pt-8 pb-4 text-center sm:px-6 sm:pt-12 sm:pb-8">
+                    <div className="mx-auto max-w-4xl">
+                        <div
+                            data-hero-item
+                            className="mb-5 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
+                        >
+                            <span>Untuk barbershop, salon, klinik, dan studio</span>
+                        </div>
+
+                        <h1
+                            data-hero-item
+                            className="text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl md:text-[68px] text-balance"
+                        >
+                            Janji temu lebih pasti.
+                            <br />
+                            Kelola bisnis lebih rapi.
+                        </h1>
+
+                        <p
+                            data-hero-item
+                            className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-mute sm:mt-5 sm:text-lg text-pretty"
+                        >
+                            Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pengunjung tinggal pilih layanan, cek jam kosong, dan booking sendiri tanpa perlu repot balas chat satu per satu.
+                        </p>
+
+                        <div
+                            data-hero-item
+                            className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row"
+                        >
+                            <Button asChild size="lg" className="w-full max-w-[240px] sm:w-auto">
+                                <Link href={auth.user ? (auth.user.is_superadmin ? route('admin.index') : route('dashboard')) : route('register')}>
+                                    {auth.user?.is_superadmin ? 'Buka Panel Superadmin' : 'Coba gratis 14 hari'}
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="lg" className="w-full max-w-[240px] sm:w-auto">
+                                <a href="#fitur">
+                                    Lihat fiturnya
+                                </a>
+                            </Button>
+                        </div>
+
+                        <p
+                            data-hero-item
+                            className="mt-3 text-xs font-medium text-mute"
+                        >
+                            Coba gratis 14 hari. Bisa dibatalkan kapan saja.
+                        </p>
                     </div>
 
-                    <h1
-                        data-hero-item
-                        className="text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl md:text-[72px] text-balance"
-                    >
-                        Janji temu lebih pasti.
-                        <br />
-                        Kelola bisnis lebih rapi.
-                    </h1>
-
-                    <p
-                        data-hero-item
-                        className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-mute sm:mt-6 sm:text-xl text-pretty"
-                    >
-                        Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pengunjung tinggal pilih layanan, cek jam kosong, dan booking sendiri tanpa perlu repot balas chat satu per satu.
-                    </p>
-
+                    {/* Monochrome Editorial Line-Art Panorama below CTA */}
                     <div
                         data-hero-item
-                        className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
+                        className="mx-auto mt-4 max-w-4xl sm:mt-6"
                     >
-                        <Button asChild size="lg" className="w-full max-w-[240px] sm:w-auto">
-                            <Link href={auth.user ? route('dashboard') : route('register')}>
-                                Coba gratis 14 hari
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="lg" className="w-full max-w-[240px] sm:w-auto">
-                            <a href="#fitur">
-                                Lihat fiturnya
-                            </a>
-                        </Button>
+                        <img
+                            src="/images/hero-editorial-panorama.jpg"
+                            alt="Ilustrasi pelanggan scan QR di meja kasir, kapster barbershop memangkas rambut, pelanggan cek jadwal booking lewat HP, layanan nail studio, dan pemilik studio memantau jadwal harian"
+                            fetchPriority="high"
+                            width={1376}
+                            height={459}
+                            className="h-auto w-full select-none mix-blend-multiply"
+                        />
                     </div>
-
-                    <p
-                        data-hero-item
-                        className="mt-4 text-xs font-medium text-mute"
-                    >
-                        Coba gratis 14 hari. Bisa dibatalkan kapan saja.
-                    </p>
                 </section>
 
                 {/* Clean Monochrome Verticals Marquee */}
@@ -360,19 +402,37 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* Cost of no-show */}
-                <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24">
-                    <div className="mx-auto max-w-2xl text-center">
-                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Satu orang tidak jadi datang, satu jadwal ikut terbuang.
-                        </h2>
-                        <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
-                            Geser sesuai tarif rata-rata layananmu untuk lihat berapa pemasukan yang hilang tiap bulan saat jadwal batal tanpa kabar.
-                        </p>
-                    </div>
+                {/* Cost of no-show — 2-Column Editorial Story Banner + Simulator */}
+                <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
+                        {/* Editorial 2-Column Header inspired by "Break the bad habit" */}
+                        <div className="grid items-center gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
+                            <div className="text-center md:col-span-7 md:text-start">
+                                <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
+                                    Kenapa jadwal perlu dikunci DP?
+                                </span>
+                                <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
+                                    Satu orang batal mendadak, satu kursi kosong seharian.
+                                </h2>
+                                <p className="mt-3.5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
+                                    Kapster atau terapis sudah siap menunggu, tamu lain sudah terlanjur ditolak karena jamnya penuh, tapi yang booking malah tidak muncul. Geser simulasi di bawah untuk lihat dampaknya tiap bulan.
+                                </p>
+                            </div>
 
-                    <div className="mt-10 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8">
-                        <div className="grid gap-6 sm:grid-cols-2">
+                            <div className="md:col-span-5">
+                                <img
+                                    src="/images/editorial-noshow.jpg"
+                                    alt="Ilustrasi kapster menunggu di samping kursi barber yang kosong sambil melihat jam tangan ditemani kucing"
+                                    loading="lazy"
+                                    width={867}
+                                    height={530}
+                                    className="mx-auto h-auto w-full max-w-[360px] select-none mix-blend-multiply"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Interactive Sliders */}
+                        <div className="mt-8 grid gap-6 sm:grid-cols-2">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                                     <label htmlFor="calc-service-price" className="text-sm font-medium text-body">
@@ -477,7 +537,7 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* 4 Outcome Cards (Grid 2x2) */}
+                {/* 4 Outcome Cards (Grid 2x2 with Editorial Character Scenes) */}
                 <section id="fitur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
@@ -498,12 +558,25 @@ export default function Landing({ plans }: LandingProps) {
                                     className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-8"
                                 >
                                     <div>
-                                        <div className="flex size-10 items-center justify-center rounded-[30%] bg-bone text-ink">
-                                            <Icon className="size-5" aria-hidden="true" />
+                                        {/* Monochrome Editorial Scene Header inside Card */}
+                                        <div className="mb-6 flex h-44 items-end justify-center overflow-hidden rounded-sm bg-canvas px-4 pt-2">
+                                            <img
+                                                src={item.illustration}
+                                                alt={item.illustrationAlt}
+                                                loading="lazy"
+                                                className="max-h-40 w-auto object-contain select-none mix-blend-multiply"
+                                            />
                                         </div>
-                                        <h3 className="mt-5 text-2xl font-semibold leading-snug text-ink text-balance">
-                                            {item.title}
-                                        </h3>
+
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-[30%] bg-bone text-ink">
+                                                <Icon className="size-4" aria-hidden="true" />
+                                            </div>
+                                            <h3 className="text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                                {item.title}
+                                            </h3>
+                                        </div>
+
                                         <p className="mt-3 text-sm leading-relaxed text-mute sm:text-base text-pretty">
                                             {item.desc}
                                         </p>
@@ -525,22 +598,51 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* How to start */}
-                <section id="cara-mulai" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
-                    <h2 className="text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Tiga langkah, langsung jalan
-                    </h2>
-                    <ol className="mt-10 space-y-4">
+                {/* How to start — 3 Editorial Story Cards */}
+                <section id="cara-mulai" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mx-auto max-w-2xl text-center">
+                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Tiga langkah, langsung jalan
+                        </h2>
+                        <p className="mx-auto mt-3 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Tidak perlu setting teknis yang rumit. Siapkan sekali di awal, lalu biarkan link booking bekerja untuk bisnismu.
+                        </p>
+                    </div>
+
+                    <ol className="mt-12 grid gap-6 md:grid-cols-3">
                         {STEPS.map((step, idx) => (
-                            <li key={step} className="flex items-start gap-4 rounded-sm border border-hairline-soft bg-canvas p-5">
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bone text-sm font-semibold tabular-nums text-ink">
-                                    {idx + 1}
-                                </span>
-                                <p className="pt-1 text-base leading-relaxed text-body text-pretty">{step}</p>
+                            <li
+                                key={step.title}
+                                className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline"
+                            >
+                                <div>
+                                    <div className="flex h-44 items-end justify-center overflow-hidden pb-2">
+                                        <img
+                                            src={step.illustration}
+                                            alt={step.illustrationAlt}
+                                            loading="lazy"
+                                            className="max-h-40 w-auto object-contain select-none mix-blend-multiply"
+                                        />
+                                    </div>
+
+                                    <div className="mt-4 flex items-center gap-3">
+                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
+                                            {idx + 1}
+                                        </span>
+                                        <h3 className="text-lg font-semibold text-ink">
+                                            {step.title}
+                                        </h3>
+                                    </div>
+
+                                    <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                        {step.desc}
+                                    </p>
+                                </div>
                             </li>
                         ))}
                     </ol>
-                    <div className="mt-8 flex justify-center">
+
+                    <div className="mt-10 flex justify-center">
                         <Button asChild size="lg">
                             <Link href={auth.user ? route('dashboard') : route('register')}>Coba gratis 14 hari</Link>
                         </Button>
