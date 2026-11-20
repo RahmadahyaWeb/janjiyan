@@ -118,7 +118,11 @@ class JanjiyanBookingTest extends TestCase
 
     public function test_slot_availability_returns_slots_for_valid_date(): void
     {
-        $tomorrow = now('Asia/Jakarta')->addDays(2)->toDateString();
+        $targetCarbon = now('Asia/Jakarta')->addDays(2);
+        if ($targetCarbon->isSunday()) {
+            $targetCarbon = $targetCarbon->addDay();
+        }
+        $tomorrow = $targetCarbon->toDateString();
 
         $response = $this->getJson("/b/{$this->staffBusiness->slug}/slots?service_id={$this->staffService->id}&date={$tomorrow}");
 
