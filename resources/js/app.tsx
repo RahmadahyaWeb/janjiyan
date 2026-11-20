@@ -26,6 +26,11 @@ router.on('success', (event) => {
     }
 });
 
+// Reload starts at top: Inertia would otherwise restore the last saved scroll from history.state.
+if (performance.getEntriesByType('navigation')[0]?.type === 'reload' && window.history.state) {
+    window.history.replaceState({ ...window.history.state, documentScrollPosition: { top: 0, left: 0 } }, '');
+}
+
 createInertiaApp({
     title: (title) => (title ? `${title} — ${appName}` : appName),
     resolve: (name) =>
