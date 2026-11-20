@@ -28,7 +28,7 @@ export function PaginationBar({ pagination }: PaginationBarProps) {
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-hairline-soft bg-canvas px-4 py-3 text-xs text-mute">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline-soft bg-canvas px-4 py-3 text-xs text-mute">
             <p className="tabular-nums">
                 Menampilkan <span className="font-semibold text-ink">{pagination.from ?? 0}</span>–
                 <span className="font-semibold text-ink">{pagination.to ?? 0}</span> dari{' '}

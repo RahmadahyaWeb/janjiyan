@@ -65,7 +65,17 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
     );
 
     return (
-        <DashboardLayout title="Daftar Layanan">
+        <DashboardLayout
+            title="Daftar Layanan"
+            actions={
+                <Button asChild size="sm" className="h-10 px-4">
+                    <Link href={route('dashboard.services.create')}>
+                        <Plus className="size-4" aria-hidden="true" />
+                        Tambah Layanan
+                    </Link>
+                </Button>
+            }
+        >
             <Head title="Layanan" />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -93,20 +103,11 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                             </button>
                         )}
                     </div>
-                ) : (
-                    <div />
-                )}
-
-                <Button asChild size="sm" className="h-10 px-4">
-                    <Link href={route('dashboard.services.create')}>
-                        <Plus className="size-4" aria-hidden="true" />
-                        Tambah Layanan
-                    </Link>
-                </Button>
+                ) : null}
             </div>
 
             {services.length === 0 ? (
-                <div className="space-y-3 rounded-[24px] bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada layanan tersedia.</p>
                     <p className="text-sm text-mute">
                         Tambahkan layanan pertama Anda untuk mulai menerima booking dari pelanggan.
@@ -119,7 +120,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     </Button>
                 </div>
             ) : filteredServices.length === 0 ? (
-                <div className="space-y-3 rounded-[24px] bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">
                         Tidak ada layanan dengan nama &ldquo;{searchQuery}&rdquo;.
                     </p>
@@ -132,14 +133,14 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     {filteredServices.map((s) => (
                         <div
                             key={s.id}
-                            className="flex flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                            className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                         >
                             <div>
                                 {s.image_url && (
                                     <img
                                         src={s.image_url}
                                         alt={`Foto layanan ${s.name}`}
-                                        className="mb-4 aspect-[16/9] w-full rounded-[14px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                        className="mb-4 aspect-[16/9] w-full rounded-xl object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                 )}
                                 <div className="flex items-start justify-between gap-2">

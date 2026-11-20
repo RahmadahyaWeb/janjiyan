@@ -29,7 +29,7 @@ export default function PublicLegalLayout({ title, description, children }: Publ
             <header className="sticky top-4 z-50 px-3 sm:px-4">
                 <nav
                     aria-label="Navigasi legal"
-                    className="mx-auto flex min-h-14 max-w-4xl flex-wrap items-center justify-between gap-2 rounded-[24px] bg-bone px-3 py-2 sm:h-14 sm:flex-nowrap sm:rounded-full sm:px-6 sm:py-0"
+                    className="mx-auto flex min-h-14 max-w-4xl flex-wrap items-center justify-between gap-2 rounded-md bg-bone px-3 py-2 sm:h-14 sm:flex-nowrap sm:rounded-full sm:px-6 sm:py-0"
                 >
                     <Link
                         href={route('home')}
@@ -78,7 +78,7 @@ export default function PublicLegalLayout({ title, description, children }: Publ
                 {children}
             </main>
 
-            <footer className="mt-12 rounded-t-[24px] bg-dark px-6 py-12 text-on-dark sm:px-12">
+            <footer className="mt-12 rounded-t-md bg-dark px-6 py-12 text-on-dark sm:px-12">
                 <div className="mx-auto flex max-w-4xl flex-col justify-between gap-6 sm:flex-row sm:items-center">
                     <JanjiyanLogo dark size="md" />
                     <div className="flex flex-wrap gap-6 text-sm text-on-dark-mute">

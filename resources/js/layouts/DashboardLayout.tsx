@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import {
+    ArrowLeft,
     BadgePercent,
     CalendarDays,
     Check,
@@ -10,17 +11,19 @@ import {
     ExternalLink,
     LayoutDashboard,
     LogOut,
+    Menu,
     Plus,
     QrCode,
     Scissors,
     Settings,
+    Share2,
     ShieldAlert,
     User as UserIcon,
     Users,
     UserSquare2,
 } from 'lucide-react';
 import { ReactNode, useState } from 'react';
-import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +41,10 @@ import type { PageProps } from '@/types';
 interface DashboardLayoutProps {
     title: string;
     children: ReactNode;
+    /** Back link shown above the title on sub-pages (forms, detail pages). */
+    back?: { href: string; label: string };
+    /** Primary page actions (e.g. "Tambah …"), shown right of the title. */
+    actions?: ReactNode;
 }
 
 const NAV_ITEMS = [
@@ -52,10 +59,20 @@ const NAV_ITEMS = [
     { label: 'Paket & Billing', routeName: 'dashboard.billing', icon: CreditCard },
 ];
 
-export default function DashboardLayout({ title, children }: DashboardLayoutProps) {
+// Mobile/tablet bottom bar shows these; the rest live in the "Lainnya" sheet.
+const PRIMARY_NAV = ['dashboard', 'dashboard.bookings', 'dashboard.services', 'dashboard.customers'];
+
+// Sub-pages (create/edit/show) keep their section active; 'dashboard.*' would match every page.
+const isNavActive = (routeName: string) =>
+    route().current(routeName) || (routeName !== 'dashboard' && route().current(`${routeName}.*`));
+
+export default function DashboardLayout({ title, children, back, actions }: DashboardLayoutProps) {
     const { auth, activeBusiness, businesses, subscription, pendingBookingsCount = 0, flash } =
         usePage<PageProps>().props;
     const [qrOpen, setQrOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
+    const secondaryNav = NAV_ITEMS.filter((item) => !PRIMARY_NAV.includes(item.routeName));
+    const moreActive = secondaryNav.some((item) => isNavActive(item.routeName));
     const [copiedLink, setCopiedLink] = useState(false);
 
     const copyPublicBookingLink = () => {
@@ -98,19 +115,19 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                     <button
                                         type="button"
                                         aria-label={`Pilih bisnis aktif: ${activeBusiness.name}`}
-                                        className="inline-flex h-9 max-w-[160px] cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:h-10 sm:max-w-[260px] sm:gap-2 sm:px-4 sm:text-sm lg:max-w-[320px]"
+                                        className="inline-flex h-9 max-w-[220px] min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:h-10 sm:max-w-[260px] sm:gap-2 sm:px-4 sm:text-sm lg:max-w-[320px]"
                                     >
                                         <span className="truncate">{activeBusiness.name}</span>
                                         <ChevronDown className="size-3.5 shrink-0 text-mute sm:size-4" aria-hidden="true" />
                                     </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-64 rounded-[20px] border-hairline-soft p-2 shadow-none">
+                                <DropdownMenuContent align="start" className="w-64 rounded-md border-hairline-soft p-2 shadow-none">
                                     {businesses.map((b) => (
                                         <DropdownMenuItem
                                             key={b.id}
                                             onClick={() => handleSwitch(b.id)}
                                             className={cn(
-                                                'cursor-pointer rounded-[12px] px-3 py-2 text-sm',
+                                                'cursor-pointer rounded-xl px-3 py-2 text-sm',
                                                 b.id === activeBusiness.id && 'bg-bone font-semibold'
                                             )}
                                         >
@@ -123,7 +140,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         asChild
-                                        className="cursor-pointer rounded-[12px] px-3 py-2 text-sm font-semibold text-electric"
+                                        className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-electric"
                                     >
                                         <Link href={route('dashboard.businesses.create')}>
                                             <Plus className="mr-1.5 size-4" />
@@ -137,7 +154,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
 
                     <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
                         {subscription && (
-                            <Link href={route('dashboard.billing')} className="hidden sm:inline-flex">
+                            <Link href={route('dashboard.billing')} className="hidden lg:inline-flex">
                                 <Badge variant={subscription.is_expired ? 'destructive' : subscription.is_trial ? 'popular' : 'secondary'}>
                                     {subscription.is_expired
                                         ? 'Paket Berakhir'
@@ -150,13 +167,50 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
 
                         {activeBusiness && (
                             <>
+                                {/* Mobile: one share menu instead of three icon buttons, so the business name has room */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            aria-label={`Bagikan link booking ${activeBusiness.name}`}
+                                            className="size-9 px-0 sm:hidden"
+                                        >
+                                            <Share2 className="size-4" aria-hidden="true" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-56 rounded-md border-hairline-soft p-2 shadow-none">
+                                        <DropdownMenuItem
+                                            onClick={copyPublicBookingLink}
+                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
+                                        >
+                                            <Copy className="mr-2 size-4" aria-hidden="true" />
+                                            Salin Link Booking
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink">
+                                            <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
+                                                <ExternalLink className="mr-2 size-4" aria-hidden="true" />
+                                                Buka Link Booking
+                                            </a>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setQrOpen(true)}
+                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
+                                        >
+                                            <QrCode className="mr-2 size-4" aria-hidden="true" />
+                                            QR Poster
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 <Button
                                     type="button"
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => setQrOpen(true)}
                                     aria-label={`Tampilkan QR Poster booking ${activeBusiness.name}`}
-                                    className="size-9 px-0 sm:h-10 sm:w-auto sm:px-3.5"
+                                    className="hidden h-10 px-3.5 sm:inline-flex"
                                 >
                                     <QrCode className="size-3.5" aria-hidden="true" />
                                     <span className="hidden lg:inline">QR Poster</span>
@@ -172,19 +226,19 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                             ? 'Link booking tersalin ke clipboard'
                                             : `Salin link booking ${activeBusiness.name}`
                                     }
-                                    className="size-9 px-0 sm:h-10 sm:w-auto sm:px-3.5"
+                                    className="hidden h-10 px-3.5 sm:inline-flex"
                                 >
                                     {copiedLink ? (
                                         <Check className="size-3.5 text-success" aria-hidden="true" />
                                     ) : (
                                         <Copy className="size-3.5" aria-hidden="true" />
                                     )}
-                                    <span className="hidden md:inline">
+                                    <span className="hidden lg:inline">
                                         {copiedLink ? 'Tersalin' : 'Salin Link'}
                                     </span>
                                 </Button>
 
-                                <Button asChild variant="outline" size="sm" className="size-9 px-0 sm:h-10 sm:w-auto sm:px-4">
+                                <Button asChild variant="outline" size="sm" className="hidden h-10 px-4 sm:inline-flex">
                                     <a
                                         href={`/b/${activeBusiness.slug}`}
                                         target="_blank"
@@ -208,20 +262,20 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                     {auth.user?.name.slice(0, 2).toUpperCase()}
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-[20px] border-hairline-soft p-2 shadow-none">
+                            <DropdownMenuContent align="end" className="w-56 rounded-md border-hairline-soft p-2 shadow-none">
                                 <div className="px-3 py-2">
                                     <p className="text-sm font-semibold text-ink">{auth.user?.name}</p>
                                     <p className="truncate text-xs text-mute">{auth.user?.email}</p>
                                 </div>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink">
+                                <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink">
                                     <Link href={route('dashboard.profile')}>
                                         <UserIcon className="mr-2 size-4" aria-hidden="true" />
                                         Profil & Kata Sandi
                                     </Link>
                                 </DropdownMenuItem>
                                 {auth.user?.is_superadmin && (
-                                    <DropdownMenuItem asChild className="cursor-pointer rounded-[12px] px-3 py-2 text-sm font-semibold text-electric">
+                                    <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-electric">
                                         <Link href={route('admin.index')}>
                                             <ShieldAlert className="mr-2 size-4" aria-hidden="true" />
                                             Panel Superadmin
@@ -230,7 +284,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                                 )}
                                 <DropdownMenuItem
                                     onClick={() => router.post(route('logout'))}
-                                    className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
+                                    className="cursor-pointer rounded-xl px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
                                 >
                                     <LogOut className="mr-2 size-4" aria-hidden="true" />
                                     Keluar
@@ -241,18 +295,12 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                 </div>
             </header>
 
-            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 pt-4 pb-28 sm:gap-6 sm:px-6 sm:pt-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
                 {/* Sidebar Nav */}
-                <HorizontalScrollContainer
-                    as="aside"
-                    ariaLabel="Navigasi Dashboard"
-                    wrapperClassName="-mx-4 lg:mx-0"
-                    fadeBreakpointClass="lg:hidden"
-                    className="flex gap-1.5 px-4 pb-2 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
-                >
+                <aside aria-label="Navigasi Dashboard" className="hidden flex-col gap-1.5 lg:flex">
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
-                        const isActive = route().current(item.routeName);
+                        const isActive = isNavActive(item.routeName);
                         const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
 
                         return (
@@ -285,7 +333,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                             </Link>
                         );
                     })}
-                </HorizontalScrollContainer>
+                </aside>
 
                 {/* Main Content */}
                 <main id="main-content" tabIndex={-1} className="min-w-0 space-y-4 outline-none sm:space-y-6">
@@ -293,13 +341,25 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                         {copiedLink ? 'Link booking bisnis berhasil disalin ke clipboard.' : ''}
                     </div>
                     <div>
-                        <h1 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h1>
+                        {back && (
+                            <Link
+                                href={back.href}
+                                className="-ml-1 mb-1 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-mute transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            >
+                                <ArrowLeft className="size-4" aria-hidden="true" />
+                                {back.label}
+                            </Link>
+                        )}
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h1 className="min-w-0 text-2xl font-semibold text-ink sm:text-3xl">{title}</h1>
+                            {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+                        </div>
                     </div>
 
                     {activeBusiness?.is_suspended && (
                         <div
                             role="alert"
-                            className="flex flex-col justify-between gap-3 rounded-[20px] border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
+                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
                         >
                             <div>
                                 <p className="font-semibold">Bisnis ini sedang ditangguhkan oleh administrator.</p>
@@ -313,7 +373,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                     {subscription?.is_expired && (
                         <div
                             role="alert"
-                            className="flex flex-col justify-between gap-3 rounded-[20px] border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
+                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
                         >
                             <div>
                                 <p className="font-semibold">Masa trial atau paket langganan Anda telah berakhir.</p>
@@ -328,12 +388,12 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                     )}
 
                     {flash.success && (
-                        <div role="status" className="rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink">
+                        <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
                             {flash.success}
                         </div>
                     )}
                     {flash.error && (
-                        <div role="alert" className="rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+                        <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                             {flash.error}
                         </div>
                     )}
@@ -341,6 +401,100 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
                     {children}
                 </main>
             </div>
+
+            {/* Mobile/tablet bottom navigation */}
+            <nav
+                aria-label="Navigasi Dashboard"
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xs lg:hidden"
+            >
+                <div className="mx-auto grid max-w-xl grid-cols-5">
+                    {NAV_ITEMS.filter((item) => PRIMARY_NAV.includes(item.routeName)).map((item) => {
+                        const Icon = item.icon;
+                        const isActive = isNavActive(item.routeName);
+                        const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
+
+                        return (
+                            <Link
+                                key={item.routeName}
+                                href={route(item.routeName)}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={cn(
+                                    'relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                    isActive ? 'text-ink' : 'text-mute hover:text-ink'
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        'relative inline-flex h-7 w-12 items-center justify-center rounded-full transition-colors',
+                                        isActive && 'bg-ink text-canvas'
+                                    )}
+                                >
+                                    <Icon className="size-[18px]" aria-hidden="true" />
+                                    {showQueueCount && (
+                                        <span
+                                            aria-label={`${pendingBookingsCount} reservasi menunggu tindak lanjut`}
+                                            className="absolute -top-1 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-electric px-1 text-[10px] leading-4 font-semibold text-canvas tabular-nums"
+                                        >
+                                            {pendingBookingsCount}
+                                        </span>
+                                    )}
+                                </span>
+                                {item.label}
+                            </Link>
+                        );
+                    })}
+
+                    <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                        <SheetTrigger asChild>
+                            <button
+                                type="button"
+                                aria-current={moreActive ? 'page' : undefined}
+                                className={cn(
+                                    'flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                    moreActive ? 'text-ink' : 'text-mute hover:text-ink'
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        'inline-flex h-7 w-12 items-center justify-center rounded-full transition-colors',
+                                        moreActive && 'bg-ink text-canvas'
+                                    )}
+                                >
+                                    <Menu className="size-[18px]" aria-hidden="true" />
+                                </span>
+                                Lainnya
+                            </button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="rounded-t-md pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                            <SheetHeader className="pb-0">
+                                <SheetTitle>Menu lainnya</SheetTitle>
+                                <SheetDescription className="sr-only">Halaman dashboard lainnya</SheetDescription>
+                            </SheetHeader>
+                            <div className="grid gap-1 px-3">
+                                {secondaryNav.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = isNavActive(item.routeName);
+                                    return (
+                                        <Link
+                                            key={item.routeName}
+                                            href={route(item.routeName)}
+                                            aria-current={isActive ? 'page' : undefined}
+                                            onClick={() => setMoreOpen(false)}
+                                            className={cn(
+                                                'flex min-h-12 items-center gap-3 rounded-sm px-4 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                isActive ? 'bg-ink text-canvas' : 'text-ink hover:bg-bone'
+                                            )}
+                                        >
+                                            <Icon className="size-4" aria-hidden="true" />
+                                            {item.label}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            </nav>
 
             {activeBusiness && (
                 <QrPosterDialog

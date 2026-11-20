@@ -31,7 +31,7 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
             <div
                 role="status"
                 aria-live="polite"
-                className={status ? 'mt-4 rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink' : 'sr-only'}
+                className={status ? 'mt-4 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink' : 'sr-only'}
             >
                 {status ?? ''}
             </div>

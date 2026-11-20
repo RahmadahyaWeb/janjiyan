@@ -90,7 +90,7 @@ export default function BillingIndex({
             <Head title="Paket & Billing" />
 
             {/* Current Usage */}
-            <div className="rounded-[24px] bg-bone p-6">
+            <div className="rounded-md bg-bone p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-xs font-semibold text-mute">Paket Aktif Saat Ini</p>
@@ -114,7 +114,7 @@ export default function BillingIndex({
 
                     {/* Billing Cycle Toggle */}
                     <div
-                        className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 rounded-[20px] bg-canvas p-1 sm:rounded-full"
+                        className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 rounded-md bg-canvas p-1 sm:rounded-full"
                         role="group"
                         aria-label="Siklus penagihan"
                     >
@@ -143,26 +143,40 @@ export default function BillingIndex({
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    {meters.map((m) => (
-                        <div key={m.label} className="rounded-[16px] bg-canvas p-4">
-                            <p className="text-xs text-mute">{m.label}</p>
-                            <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">
-                                {m.used} / {m.max ?? '∞'}
-                            </p>
-                        </div>
-                    ))}
+                <div className="mt-6 grid gap-x-8 gap-y-4 rounded-sm bg-canvas p-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {meters.map((m) => {
+                        const pct = m.max ? Math.min(100, Math.round((m.used / m.max) * 100)) : 0;
+                        return (
+                            <div key={m.label}>
+                                <div className="flex items-baseline justify-between gap-3 text-sm">
+                                    <span className="text-mute">{m.label}</span>
+                                    <span className="font-semibold tabular-nums text-ink">
+                                        {m.used} / {m.max ?? '∞'}
+                                    </span>
+                                </div>
+                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bone" aria-hidden="true">
+                                    <div
+                                        className={cn(
+                                            'h-full rounded-full',
+                                            pct >= 90 ? 'bg-destructive' : pct >= 75 ? 'bg-warning' : 'bg-ink'
+                                        )}
+                                        style={{ width: `${pct}%` }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
             {!isOwner && (
-                <div className="rounded-[20px] border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
+                <div className="rounded-md border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
                     Pembayaran dan perubahan paket langganan hanya dapat dilakukan oleh pemilik bisnis (Owner).
                 </div>
             )}
 
             {!mayarEnabled && !billingSimulationEnabled && (
-                <div className="rounded-[20px] border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
+                <div className="rounded-md border border-hairline-soft bg-bone px-5 py-4 text-sm text-body">
                     Gateway pembayaran Mayar belum dikonfigurasi. Hubungi tim Janjiyan untuk aktivasi paket.
                 </div>
             )}
@@ -178,7 +192,7 @@ export default function BillingIndex({
                         <div
                             key={plan.id}
                             className={cn(
-                                'flex flex-col justify-between rounded-[24px] p-6',
+                                'flex flex-col justify-between rounded-md p-4 sm:p-6',
                                 isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas'
                             )}
                         >
@@ -266,7 +280,7 @@ export default function BillingIndex({
 
             {/* Subscription Invoices */}
             {invoices.length > 0 && (
-                <section aria-label="Riwayat invoice langganan" className="rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <section aria-label="Riwayat invoice langganan" className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-ink">Riwayat Tagihan Langganan</h2>
                     <div className="mt-4 divide-y divide-divider">
                         {invoices.map((inv) => (

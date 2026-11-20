@@ -36,8 +36,15 @@ export function HorizontalScrollContainer({
     }, []);
 
     useEffect(() => {
-        syncScrollEdges();
         const el = scrollerRef.current;
+        // Bring the current item (nav page / pressed tab) into view so mobile users see where they are.
+        const active = el?.querySelector<HTMLElement>('[aria-current="page"], [aria-pressed="true"]');
+        if (el && active && el.scrollWidth > el.clientWidth) {
+            const elBox = el.getBoundingClientRect();
+            const activeBox = active.getBoundingClientRect();
+            el.scrollLeft += activeBox.left - elBox.left - (elBox.width - activeBox.width) / 2;
+        }
+        syncScrollEdges();
         if (!el || typeof ResizeObserver === 'undefined') return;
         const observer = new ResizeObserver(syncScrollEdges);
         observer.observe(el);
@@ -51,7 +58,7 @@ export function HorizontalScrollContainer({
                 aria-label={ariaLabel}
                 role={role}
                 onScroll={syncScrollEdges}
-                className={cn('overflow-x-auto', className)}
+                className={cn('overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
             >
                 {children}
             </Tag>

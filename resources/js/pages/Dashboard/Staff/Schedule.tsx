@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, CalendarOff, Clock, Plus, Trash2 } from 'lucide-react';
+import { CalendarOff, Clock, Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,19 +99,11 @@ export default function StaffSchedule({
     };
 
     return (
-        <DashboardLayout title={`Jadwal & Cuti — ${staff_name}`}>
+        <DashboardLayout title={`Jadwal & Cuti — ${staff_name}`} back={{ href: route('dashboard.staff'), label: 'Kembali ke Tim & Staff' }}>
             <Head title={`Jadwal & Cuti ${staff_name}`} />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.staff')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Tim &amp; Staff
-                    </Link>
-                </Button>
-            </div>
 
-            <div className="max-w-3xl space-y-5 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6">
+            <div className="max-w-3xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6">
                 <div className="inline-flex rounded-full bg-bone p-1" role="tablist">
                     <button
                         type="button"
@@ -141,7 +133,7 @@ export default function StaffSchedule({
 
                 {activeTab === 'hours' ? (
                     <form onSubmit={handleSaveHours} className="space-y-4">
-                        <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-4">
+                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                             <div>
                                 <Label htmlFor="staff-use-default" className="text-sm font-semibold text-ink">
                                     Ikuti Jam Operasional Bisnis
@@ -162,7 +154,7 @@ export default function StaffSchedule({
                                 {hoursForm.data.hours.map((row, idx) => (
                                     <div
                                         key={row.day_of_week}
-                                        className="rounded-[16px] border border-hairline-soft bg-canvas p-3"
+                                        className="rounded-sm border border-hairline-soft bg-canvas p-3"
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
@@ -185,7 +177,7 @@ export default function StaffSchedule({
                                                         <Input
                                                             type="time"
                                                             aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.start_time}
                                                             onChange={(e) => updateDay(idx, { start_time: e.target.value })}
                                                             required
@@ -194,7 +186,7 @@ export default function StaffSchedule({
                                                         <Input
                                                             type="time"
                                                             aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.end_time}
                                                             onChange={(e) => updateDay(idx, { end_time: e.target.value })}
                                                             required
@@ -205,7 +197,7 @@ export default function StaffSchedule({
                                                         <Input
                                                             type="time"
                                                             aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.break_start}
                                                             onChange={(e) => updateDay(idx, { break_start: e.target.value })}
                                                         />
@@ -213,7 +205,7 @@ export default function StaffSchedule({
                                                         <Input
                                                             type="time"
                                                             aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.break_end}
                                                             onChange={(e) => updateDay(idx, { break_end: e.target.value })}
                                                         />
@@ -229,7 +221,7 @@ export default function StaffSchedule({
                         )}
 
                         {Object.values(hoursForm.errors).length > 0 && (
-                            <div className="rounded-[14px] bg-destructive-soft p-3 text-xs text-destructive">
+                            <div className="rounded-xl bg-destructive-soft p-3 text-xs text-destructive">
                                 {Object.values(hoursForm.errors)[0]}
                             </div>
                         )}
@@ -245,7 +237,7 @@ export default function StaffSchedule({
                     </form>
                 ) : (
                     <div className="space-y-5">
-                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-[20px] bg-bone p-4">
+                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-md bg-bone p-4">
                             <p className="text-sm font-semibold text-ink">Tambah Jadwal Cuti / Libur</p>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1">
@@ -296,7 +288,7 @@ export default function StaffSchedule({
                         </form>
 
                         {time_offs.length === 0 ? (
-                            <p className="rounded-[16px] border border-dashed border-hairline-soft py-6 text-center text-xs text-mute">
+                            <p className="rounded-sm border border-dashed border-hairline-soft py-6 text-center text-xs text-mute">
                                 Belum ada jadwal cuti atau izin untuk {staff_name}.
                             </p>
                         ) : (
@@ -304,7 +296,7 @@ export default function StaffSchedule({
                                 {time_offs.map((item) => (
                                     <div
                                         key={item.id}
-                                        className="flex items-center justify-between gap-3 rounded-[16px] border border-hairline-soft bg-canvas px-4 py-3 text-sm"
+                                        className="flex items-center justify-between gap-3 rounded-sm border border-hairline-soft bg-canvas px-4 py-3 text-sm"
                                     >
                                         <div>
                                             <p className="font-semibold text-ink">

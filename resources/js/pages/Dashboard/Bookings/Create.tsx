@@ -1,5 +1,4 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,20 +120,12 @@ export default function BookingCreate({ services }: BookingCreateProps) {
     };
 
     return (
-        <DashboardLayout title="Tambah Booking Manual">
+        <DashboardLayout title="Tambah Booking Manual" back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
             <Head title="Tambah Booking Manual" />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.bookings')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Daftar Reservasi
-                    </Link>
-                </Button>
-            </div>
 
             {services.length === 0 ? (
-                <div className="max-w-xl space-y-3 rounded-[24px] bg-bone p-8 text-center">
+                <div className="max-w-xl space-y-3 rounded-md bg-bone p-8 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada layanan aktif.</p>
                     <p className="text-sm text-mute">Tambahkan minimal satu layanan aktif sebelum membuat booking manual.</p>
                     <Button asChild size="sm">
@@ -145,7 +136,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                 <form
                     ref={formRef}
                     onSubmit={handleSubmit}
-                    className="max-w-2xl space-y-5 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                    className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
                 >
                     <div className="space-y-1.5">
                         <Label htmlFor="manual-service">Layanan *</Label>
@@ -228,7 +219,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
                     {isDropoff ? (
                         <div className="space-y-3">
-                            <div className="rounded-[16px] bg-bone px-4 py-3 text-xs" aria-live="polite">
+                            <div className="rounded-sm bg-bone px-4 py-3 text-xs" aria-live="polite">
                                 {showInitialLoading || !hasLoaded ? (
                                     <p className="text-mute">Memeriksa kuota harian…</p>
                                 ) : dropoff?.available ? (
@@ -323,7 +314,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                             ) : !hasLoaded ? (
                                 <div className="min-h-[56px]" />
                             ) : slots.length === 0 ? (
-                                <p className="rounded-[16px] bg-bone px-4 py-3 text-sm text-mute">
+                                <p className="rounded-sm bg-bone px-4 py-3 text-sm text-mute">
                                     Tidak ada slot tersedia pada tanggal yang dipilih.
                                 </p>
                             ) : (
@@ -448,7 +439,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         <div
                             role="alert"
                             data-form-error="true"
-                            className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                            className="rounded-xl border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
                         >
                             Periksa kembali data pemesan atau jadwal yang ditandai merah di atas.
                         </div>

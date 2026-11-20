@@ -31,7 +31,7 @@ export default function VerifyEmail({ status }: VerifyEmailProps) {
                 aria-live="polite"
                 className={
                     status || flash.success
-                        ? 'mt-4 rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink'
+                        ? 'mt-4 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink'
                         : 'sr-only'
                 }
             >

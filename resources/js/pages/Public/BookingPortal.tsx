@@ -24,6 +24,8 @@ import {
     Users,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { CopyButton } from '@/components/CopyButton';
+import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -196,6 +198,20 @@ export default function BookingPortal({
     const selectedDateDayOfWeek = getLocalDayOfWeek(selectedDate);
     const selectedDateSchedule = hoursByDay.get(selectedDateDayOfWeek);
     const isSelectedDateClosed = Boolean(selectedDateSchedule && !selectedDateSchedule.is_open);
+
+    // Quick-pick strip for the next 14 days; the native date input stays for dates further out.
+    const quickDates = useMemo(() => {
+        const days: { date: string; closed: boolean }[] = [];
+        const d = new Date(`${todayLocal}T00:00:00Z`);
+        for (let i = 0; i < 14; i++) {
+            const date = d.toISOString().slice(0, 10);
+            if (date > maxDateLocal) break;
+            const schedule = hoursByDay.get(d.getUTCDay());
+            days.push({ date, closed: Boolean(schedule && !schedule.is_open) || holidays.includes(date) });
+            d.setUTCDate(d.getUTCDate() + 1);
+        }
+        return days;
+    }, [todayLocal, maxDateLocal, hoursByDay, holidays]);
 
     const uniqueStaff = useMemo(() => {
         const seen = new Map<number, StaffOption>();
@@ -401,18 +417,18 @@ export default function BookingPortal({
 
             <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 outline-none sm:px-6 sm:py-10">
                 {bookingDisabledReason && (
-                    <div role="alert" className="mb-6 rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+                    <div role="alert" className="mb-6 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                         {bookingDisabledReason}
                     </div>
                 )}
                 {flash.error && (
-                    <div role="alert" className="mb-6 rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+                    <div role="alert" className="mb-6 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                         {flash.error}
                     </div>
                 )}
 
                 {/* Storefront Hero / Business Profile Card */}
-                <section aria-label="Profil bisnis" className="mb-8 rounded-[24px] bg-bone p-4 sm:mb-10 sm:p-8">
+                <section aria-label="Profil bisnis" className="mb-8 rounded-md bg-bone p-4 sm:mb-10 sm:p-8">
                     <div className="flex flex-col justify-between gap-5 sm:gap-6 lg:flex-row lg:items-start">
                         <div className="max-w-2xl space-y-3 sm:space-y-4">
                             {/* Desktop Badges */}
@@ -525,7 +541,7 @@ export default function BookingPortal({
                         </div>
 
                         {/* Mobile Compact Summary Card */}
-                        <div className="space-y-2.5 rounded-[8px] bg-canvas p-4 text-xs sm:hidden">
+                        <div className="space-y-2.5 rounded-xs bg-canvas p-4 text-xs sm:hidden">
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-semibold text-ink">
                                 <span className="inline-flex items-center gap-1.5 tabular-nums">
                                     <Sparkles className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
@@ -556,7 +572,7 @@ export default function BookingPortal({
 
                         {/* Desktop & Tablet Storefront Highlights */}
                         <div className="hidden shrink-0 gap-2.5 sm:grid sm:grid-cols-3 lg:w-72 lg:grid-cols-1">
-                            <div className="rounded-[16px] bg-canvas p-3.5">
+                            <div className="rounded-sm bg-canvas p-3.5">
                                 <div className="flex items-center gap-2 text-xs font-semibold text-mute">
                                     <Sparkles className="size-3.5 text-electric" aria-hidden="true" />
                                     <span>Layanan Aktif</span>
@@ -567,7 +583,7 @@ export default function BookingPortal({
                             </div>
 
                             {uniqueStaff.length > 0 && (
-                                <div className="rounded-[16px] bg-canvas p-3.5">
+                                <div className="rounded-sm bg-canvas p-3.5">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-mute">
                                         <Users className="size-3.5 text-electric" aria-hidden="true" />
                                         <span>Tim Profesional</span>
@@ -579,7 +595,7 @@ export default function BookingPortal({
                             )}
 
                             {hasPaymentInfo && (
-                                <div className="col-span-2 rounded-[16px] bg-canvas p-3.5 sm:col-span-1">
+                                <div className="col-span-2 rounded-sm bg-canvas p-3.5 sm:col-span-1">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-mute">
                                         <CreditCard className="size-3.5 text-electric" aria-hidden="true" />
                                         <span>Pembayaran DP 0% biaya admin</span>
@@ -613,7 +629,7 @@ export default function BookingPortal({
                                             <div
                                                 key={day}
                                                 className={cn(
-                                                    'flex items-center justify-between gap-2 rounded-[12px] bg-canvas px-3.5 py-2 text-xs',
+                                                    'flex items-center justify-between gap-2 rounded-xl bg-canvas px-3.5 py-2 text-xs',
                                                     isToday && 'ring-1 ring-ink'
                                                 )}
                                             >
@@ -639,7 +655,7 @@ export default function BookingPortal({
                             <div>
                                 <h2 className="mb-3 text-sm font-semibold text-ink">Hari Libur Khusus</h2>
                                 {holidays.length === 0 ? (
-                                    <p className="rounded-[12px] bg-canvas px-3.5 py-2.5 text-xs text-mute">
+                                    <p className="rounded-xl bg-canvas px-3.5 py-2.5 text-xs text-mute">
                                         Tidak ada jadwal libur khusus dalam waktu dekat.
                                     </p>
                                 ) : (
@@ -686,9 +702,9 @@ export default function BookingPortal({
                                     type="button"
                                     onClick={() => setLightboxIdx(idx)}
                                     aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto portofolio ${idx + 1}`}
-                                    className="group flex w-[76%] shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[20px] border border-hairline-soft bg-canvas p-3 text-left transition-colors hover:bg-bone focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
+                                    className="group flex w-[76%] shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-md border border-hairline-soft bg-canvas p-3 text-left transition-colors hover:bg-bone focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
                                 >
-                                    <div className="overflow-hidden rounded-[10px]">
+                                    <div className="overflow-hidden rounded-xs">
                                         <img
                                             src={item.image_url}
                                             alt={item.caption || `${business.name} portofolio ${idx + 1}`}
@@ -707,7 +723,7 @@ export default function BookingPortal({
                 )}
 
                 {services.length === 0 ? (
-                    <div className="rounded-[24px] bg-bone p-10 text-center">
+                    <div className="rounded-md bg-bone p-10 text-center">
                         <p className="text-lg font-semibold text-ink">Belum ada layanan tersedia.</p>
                         <p className="mt-1 text-sm text-mute">Merchant sedang menyiapkan daftar layanan.</p>
                     </div>
@@ -741,7 +757,7 @@ export default function BookingPortal({
                                                     setPickupAddressError('');
                                                 }}
                                                 className={cn(
-                                                    'flex cursor-pointer flex-col justify-between rounded-[24px] p-5 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                                    'flex cursor-pointer flex-col justify-between rounded-md p-5 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
                                                     active
                                                         ? 'bg-bone ring-2 ring-ink'
                                                         : 'border border-hairline-soft bg-canvas hover:bg-bone/60'
@@ -752,7 +768,7 @@ export default function BookingPortal({
                                                         <img
                                                             src={service.image_url}
                                                             alt={`Foto layanan ${service.name}`}
-                                                            className="size-20 shrink-0 rounded-[12px] object-cover outline-1 -outline-offset-1 outline-black/10 sm:mb-4 sm:aspect-[16/10] sm:h-auto sm:w-full sm:rounded-[8px]"
+                                                            className="size-20 shrink-0 rounded-xl object-cover outline-1 -outline-offset-1 outline-black/10 sm:mb-4 sm:aspect-[16/10] sm:h-auto sm:w-full sm:rounded-xs"
                                                         />
                                                     )}
                                                     <div className="min-w-0 flex-1">
@@ -879,7 +895,47 @@ export default function BookingPortal({
                                     </h2>
                                 </div>
 
-                                <div className="grid gap-6 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:grid-cols-[240px_1fr] sm:p-6">
+                                <div className="grid gap-6 rounded-md border border-hairline-soft bg-canvas p-4 sm:grid-cols-[240px_1fr] sm:p-6">
+                                    <HorizontalScrollContainer
+                                        role="group"
+                                        ariaLabel="Pilih tanggal cepat"
+                                        wrapperClassName="-mx-4 sm:col-span-2 sm:mx-0"
+                                        className="flex gap-2 px-4 pb-1 sm:px-0"
+                                    >
+                                        {quickDates.map(({ date, closed }) => {
+                                            const d = new Date(`${date}T00:00:00Z`);
+                                            const active = date === selectedDate;
+                                            return (
+                                                <button
+                                                    key={date}
+                                                    type="button"
+                                                    disabled={closed}
+                                                    aria-pressed={active}
+                                                    aria-label={`${formatDateIndo(date)}${closed ? ' (tutup)' : ''}`}
+                                                    onClick={() => setSelectedDate(date)}
+                                                    className={cn(
+                                                        'flex w-14 shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-sm border py-2 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed',
+                                                        active
+                                                            ? 'border-ink bg-ink text-canvas'
+                                                            : closed
+                                                              ? 'border-hairline-soft bg-bone text-stone line-through'
+                                                              : 'border-hairline-soft bg-canvas text-ink hover:border-ink/40'
+                                                    )}
+                                                >
+                                                    <span className="text-[11px] font-semibold">
+                                                        {date === todayLocal
+                                                            ? 'Hari ini'
+                                                            : new Intl.DateTimeFormat('id-ID', { weekday: 'short', timeZone: 'UTC' }).format(d)}
+                                                    </span>
+                                                    <span className="text-lg leading-6 font-semibold tabular-nums">{d.getUTCDate()}</span>
+                                                    <span className="text-[11px]">
+                                                        {new Intl.DateTimeFormat('id-ID', { month: 'short', timeZone: 'UTC' }).format(d)}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </HorizontalScrollContainer>
+
                                     <div className="space-y-2">
                                         <Label htmlFor="booking-date" className="inline-flex items-center gap-1.5">
                                             <Calendar className="size-4" aria-hidden="true" />
@@ -888,6 +944,7 @@ export default function BookingPortal({
                                                     ? 'Tanggal Penjemputan'
                                                     : 'Tanggal Drop-off'
                                                 : 'Tanggal Kunjungan'}
+                                            <span className="font-normal text-mute">(atau pilih tanggal lain)</span>
                                         </Label>
                                         <Input
                                             id="booking-date"
@@ -903,7 +960,7 @@ export default function BookingPortal({
 
                                     {isDropoffService ? (
                                         <div aria-live="polite" className="space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-bone p-4">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-4">
                                                 <div>
                                                     <p className="text-sm font-semibold text-ink">Jumlah Item / Pasang</p>
                                                     <p className="text-xs text-mute">
@@ -949,22 +1006,22 @@ export default function BookingPortal({
                                             </div>
 
                                             {isSelectedHoliday ? (
-                                                <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                                <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                     Bisnis libur pada tanggal yang dipilih. Silakan pilih tanggal lain.
                                                 </p>
                                             ) : isSelectedDateClosed ? (
-                                                <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                                <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                     Bisnis tutup pada hari ini sesuai jadwal operasional mingguan. Silakan pilih hari lain.
                                                 </p>
                                             ) : showInitialLoading || !slotsLoaded ? (
-                                                <div className="h-20 rounded-[16px] bg-bone" aria-label="Memeriksa kuota harian" />
+                                                <div className="h-20 rounded-sm bg-bone" aria-label="Memeriksa kuota harian" />
                                             ) : !dropoff?.available ? (
-                                                <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                                <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                     {dropoff?.reason ?? 'Kuota harian penuh pada tanggal ini. Silakan pilih tanggal lain.'}
                                                 </p>
                                             ) : (
                                                 <div className="space-y-4">
-                                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-hairline-soft bg-canvas px-4 py-3 text-xs">
+                                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline-soft bg-canvas px-4 py-3 text-xs">
                                                         <div className="flex items-center gap-2 text-ink">
                                                             <PackageCheck className="size-4 shrink-0 text-electric" aria-hidden="true" />
                                                             <span>
@@ -982,10 +1039,10 @@ export default function BookingPortal({
                                                     </div>
 
                                                     {selectedService?.supports_pickup && (
-                                                        <div className="space-y-3 rounded-[18px] border border-hairline-soft p-4">
+                                                        <div className="space-y-3 rounded-sm border border-hairline-soft p-4">
                                                             <p className="text-xs font-semibold text-ink">Metode Penyerahan</p>
                                                             <div
-                                                                className="grid grid-cols-2 rounded-[14px] bg-bone p-1"
+                                                                className="grid grid-cols-2 rounded-xl bg-bone p-1"
                                                                 role="group"
                                                                 aria-label="Pilih metode penyerahan barang"
                                                             >
@@ -997,7 +1054,7 @@ export default function BookingPortal({
                                                                         setPickupAddressError('');
                                                                     }}
                                                                     className={cn(
-                                                                        'min-h-10 cursor-pointer rounded-[10px] px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                                        'min-h-10 cursor-pointer rounded-xs px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                                                         fulfillmentType === 'dropoff' ? 'bg-canvas text-ink' : 'text-mute'
                                                                     )}
                                                                 >
@@ -1008,7 +1065,7 @@ export default function BookingPortal({
                                                                     aria-pressed={fulfillmentType === 'pickup'}
                                                                     onClick={() => setFulfillmentType('pickup')}
                                                                     className={cn(
-                                                                        'inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                                        'inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xs px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                                                         fulfillmentType === 'pickup' ? 'bg-canvas text-ink' : 'text-mute'
                                                                     )}
                                                                 >
@@ -1029,7 +1086,7 @@ export default function BookingPortal({
                                                                                     aria-pressed={pickupSession === sess}
                                                                                     onClick={() => setPickupSession(sess)}
                                                                                     className={cn(
-                                                                                        'min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                                                        'min-h-10 cursor-pointer rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                                                                         pickupSession === sess
                                                                                             ? 'bg-ink text-canvas'
                                                                                             : 'bg-bone text-ink hover:bg-hairline-soft'
@@ -1084,11 +1141,11 @@ export default function BookingPortal({
                                         </div>
 
                                         {isSelectedHoliday ? (
-                                            <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                            <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                 Bisnis libur pada tanggal yang dipilih. Silakan pilih tanggal lain.
                                             </p>
                                         ) : isSelectedDateClosed ? (
-                                            <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                            <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                 Bisnis tutup pada hari ini sesuai jadwal operasional mingguan. Silakan pilih hari lain.
                                             </p>
                                         ) : showInitialLoading ? (
@@ -1100,7 +1157,7 @@ export default function BookingPortal({
                                         ) : !slotsLoaded ? (
                                             <div className="min-h-[104px]" />
                                         ) : slots.length === 0 ? (
-                                            <p className="rounded-[16px] bg-bone p-4 text-sm text-mute">
+                                            <p className="rounded-sm bg-bone p-4 text-sm text-mute">
                                                 Tidak ada slot tersisa di tanggal ini. Coba pilih tanggal lain.
                                             </p>
                                         ) : (
@@ -1140,7 +1197,7 @@ export default function BookingPortal({
 
                             {/* Step 4: Data Pemesan & DP */}
                             {canShowCustomerStep ? (
-                                <section aria-labelledby="step-customer-heading" className="space-y-6 rounded-[24px] bg-bone p-5 sm:p-6">
+                                <section aria-labelledby="step-customer-heading" className="space-y-6 rounded-md bg-bone p-5 sm:p-6">
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className="font-mono text-xs font-semibold text-mute">
@@ -1243,7 +1300,7 @@ export default function BookingPortal({
 
                                     {/* DP Payment Section */}
                                     {requiresDp && selectedService && (
-                                        <div className="space-y-4 rounded-[8px] border border-hairline-soft bg-canvas p-5">
+                                        <div className="space-y-4 rounded-xs border border-hairline-soft bg-canvas p-5">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
                                                     <h3 className="text-base font-semibold text-ink">
@@ -1261,23 +1318,26 @@ export default function BookingPortal({
                                             {business.bank_accounts.length > 0 && (
                                                 <div className="grid gap-2 sm:grid-cols-2">
                                                     {business.bank_accounts.map((acc, idx) => (
-                                                        <div key={idx} className="rounded-[12px] bg-bone p-3 text-xs">
-                                                            <p className="font-semibold text-ink">{acc.bank_name}</p>
-                                                            <p className="mt-0.5 font-mono text-sm font-semibold text-ink">
-                                                                {acc.account_number}
-                                                            </p>
-                                                            <p className="text-mute">a.n. {acc.account_holder}</p>
+                                                        <div key={idx} className="flex items-center justify-between gap-3 rounded-xl bg-bone p-3 text-xs">
+                                                            <div className="min-w-0">
+                                                                <p className="font-semibold text-ink">{acc.bank_name}</p>
+                                                                <p className="mt-0.5 font-mono text-sm font-semibold text-ink">
+                                                                    {acc.account_number}
+                                                                </p>
+                                                                <p className="text-mute">a.n. {acc.account_holder}</p>
+                                                            </div>
+                                                            <CopyButton value={acc.account_number} label={`nomor rekening ${acc.bank_name}`} />
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
 
                                             {business.qris_url && (
-                                                <div className="flex items-center gap-4 rounded-[20px] bg-bone p-3">
+                                                <div className="flex items-center gap-4 rounded-md bg-bone p-3">
                                                     <img
                                                         src={business.qris_url}
                                                         alt={`QRIS ${business.name}`}
-                                                        className="size-24 shrink-0 rounded-[8px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                                        className="size-24 shrink-0 rounded-xs object-cover outline-1 -outline-offset-1 outline-black/10"
                                                     />
                                                     <div className="text-xs text-mute">
                                                         <p className="font-semibold text-ink">Scan QRIS Merchant</p>
@@ -1287,13 +1347,13 @@ export default function BookingPortal({
                                             )}
 
                                             {/* Segmented Choice: Upload Now vs Pay Later */}
-                                            <div className="grid w-full grid-cols-2 rounded-[16px] bg-bone p-1 sm:inline-flex sm:h-11 sm:w-auto sm:items-center sm:rounded-full" role="group" aria-label="Metode unggah bukti DP">
+                                            <div className="grid w-full grid-cols-2 rounded-sm bg-bone p-1 sm:inline-flex sm:h-11 sm:w-auto sm:items-center sm:rounded-full" role="group" aria-label="Metode unggah bukti DP">
                                                 <button
                                                     type="button"
                                                     aria-pressed={dpMode === 'now'}
                                                     onClick={() => setDpMode('now')}
                                                     className={cn(
-                                                        'min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-center text-xs font-semibold leading-tight transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:h-9 sm:min-h-0 sm:rounded-full sm:px-4 sm:py-0',
+                                                        'min-h-10 cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:h-9 sm:min-h-0 sm:rounded-full sm:px-4 sm:py-0',
                                                         dpMode === 'now' ? 'bg-canvas text-ink' : 'text-mute'
                                                     )}
                                                 >
@@ -1308,7 +1368,7 @@ export default function BookingPortal({
                                                         setDpProofError('');
                                                     }}
                                                     className={cn(
-                                                        'min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-center text-xs font-semibold leading-tight transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:h-9 sm:min-h-0 sm:rounded-full sm:px-4 sm:py-0',
+                                                        'min-h-10 cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:h-9 sm:min-h-0 sm:rounded-full sm:px-4 sm:py-0',
                                                         dpMode === 'later' ? 'bg-canvas text-ink' : 'text-mute'
                                                     )}
                                                 >
@@ -1321,7 +1381,7 @@ export default function BookingPortal({
                                                     <label
                                                         htmlFor="dp-proof-upload"
                                                         className={cn(
-                                                            'flex cursor-pointer items-center justify-center gap-2 rounded-[16px] border border-dashed bg-field px-4 py-4 text-sm text-ink transition-colors duration-150 hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2',
+                                                            'flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed bg-field px-4 py-4 text-sm text-ink transition-colors duration-150 hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2',
                                                             dpProofError || errors.dp_proof ? 'border-destructive' : 'border-control-border'
                                                         )}
                                                     >
@@ -1360,7 +1420,7 @@ export default function BookingPortal({
                                         <div
                                             role="alert"
                                             data-form-error="true"
-                                            className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs font-medium text-destructive"
+                                            className="rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs font-medium text-destructive"
                                         >
                                             {Object.values(errors)[0]}
                                         </div>
@@ -1369,10 +1429,14 @@ export default function BookingPortal({
                                     <div className="flex flex-col items-stretch justify-between gap-4 pt-2 sm:flex-row sm:items-center lg:hidden">
                                         <div className="text-sm">
                                             <p className="text-mute">
-                                                Ringkasan: <strong className="text-ink">{selectedService?.name}</strong>{' '}
-                                                {isDropoffService
-                                                    ? `· ${effectiveQuantity} item (${fulfillmentType === 'pickup' ? 'Jemput' : 'Drop-off'})`
-                                                    : `· ${selectedTime}`}
+                                                Ringkasan: <strong className="text-ink">{selectedService?.name}</strong>
+                                                {selectedStaffObj && ` · ${selectedStaffObj.name}`}
+                                                {isDropoffService &&
+                                                    ` · ${effectiveQuantity} item (${fulfillmentType === 'pickup' ? 'Jemput' : 'Drop-off'})`}
+                                            </p>
+                                            <p className="font-semibold text-ink">
+                                                {formatDateIndo(selectedDate)}
+                                                {!isDropoffService && ` · ${selectedTime}`}
                                             </p>
                                             <p className="font-semibold tabular-nums text-ink">
                                                 Total: {formatRupiah(computedTotalPrice)}
@@ -1391,7 +1455,7 @@ export default function BookingPortal({
                                     </div>
                                 </section>
                             ) : (
-                                <div className="rounded-[24px] border border-dashed border-hairline bg-canvas p-6 text-center">
+                                <div className="rounded-md border border-dashed border-hairline bg-canvas p-4 sm:p-6 text-center">
                                     <p className="text-sm font-semibold text-ink">
                                         {isDropoffService
                                             ? 'Pilih tanggal drop-off yang tersedia di atas untuk mengisi detail pemesan.'
@@ -1406,13 +1470,13 @@ export default function BookingPortal({
 
                         {/* Right Column: Sticky Booking Summary (Storefront Checkout Card) */}
                         <aside aria-label="Ringkasan reservasi" className="hidden lg:sticky lg:top-24 lg:block">
-                            <div className="space-y-5 rounded-[24px] bg-bone p-6">
+                            <div className="space-y-5 rounded-md bg-bone p-4 sm:p-6">
                                 <div className="flex items-center gap-3">
                                     {selectedService?.image_url && (
                                         <img
                                             src={selectedService.image_url}
                                             alt={selectedService.name}
-                                            className="size-12 shrink-0 rounded-[10px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                            className="size-12 shrink-0 rounded-xs object-cover outline-1 -outline-offset-1 outline-black/10"
                                         />
                                     )}
                                     <div className="min-w-0">
@@ -1511,7 +1575,7 @@ export default function BookingPortal({
                                     )}
                                 </div>
 
-                                <div className="space-y-2 rounded-[16px] bg-canvas p-4 text-xs text-mute">
+                                <div className="space-y-2 rounded-sm bg-canvas p-4 text-xs text-mute">
                                     <div className="flex items-center gap-2 font-semibold text-ink">
                                         <ShieldCheck className="size-4 shrink-0 text-electric" aria-hidden="true" />
                                         <span>{isDropoffService ? 'Jaminan Pesanan' : 'Jaminan Reservasi'}</span>
@@ -1543,7 +1607,7 @@ export default function BookingPortal({
 
             {/* Portfolio Lightbox Dialog */}
             <Dialog open={lightboxIdx !== null} onOpenChange={(open) => !open && setLightboxIdx(null)}>
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
+                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
                     {lightboxIdx !== null && galleries[lightboxIdx] && (
                         <>
                             <DialogHeader>
@@ -1555,7 +1619,7 @@ export default function BookingPortal({
                             <img
                                 src={galleries[lightboxIdx].image_url}
                                 alt={galleries[lightboxIdx].caption || `${business.name} portofolio ${lightboxIdx + 1}`}
-                                className="max-h-[60vh] w-full rounded-[8px] bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
+                                className="max-h-[60vh] w-full rounded-xs bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
                             />
 
                             {galleries.length > 1 && (

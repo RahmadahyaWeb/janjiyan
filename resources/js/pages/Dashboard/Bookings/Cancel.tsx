@@ -1,5 +1,4 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,23 +36,15 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
     };
 
     return (
-        <DashboardLayout title={`Batalkan Reservasi ${booking.booking_code}`}>
+        <DashboardLayout title={`Batalkan Reservasi ${booking.booking_code}`} back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
             <Head title={`Batalkan ${booking.booking_code}`} />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.bookings')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Daftar Reservasi
-                    </Link>
-                </Button>
-            </div>
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-lg space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
-                <div className="space-y-1 rounded-[16px] bg-bone p-4 text-sm">
+                <div className="space-y-1 rounded-sm bg-bone p-4 text-sm">
                     <p className="font-mono text-xs font-semibold text-mute">{booking.booking_code}</p>
                     <p className="font-semibold text-ink">{booking.customer_name}</p>
                     <p className="text-xs text-mute">

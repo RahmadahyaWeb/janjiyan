@@ -1,5 +1,4 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,22 +87,14 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
         : form.data.grant_login;
 
     return (
-        <DashboardLayout title={pageTitle}>
+        <DashboardLayout title={pageTitle} back={{ href: route('dashboard.staff'), label: 'Kembali ke Tim & Staff' }}>
             <Head title={pageTitle} />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.staff')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Tim &amp; Staff
-                    </Link>
-                </Button>
-            </div>
 
             <form
                 ref={formRef}
                 onSubmit={handleSubmit}
-                className="max-w-xl space-y-5 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
                 <div className="space-y-1.5">
                     <Label htmlFor="staff-name">Nama Lengkap *</Label>
@@ -164,7 +155,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                     </div>
                 </div>
 
-                <div className="space-y-3 rounded-[16px] border border-hairline-soft p-3.5">
+                <div className="space-y-3 rounded-sm border border-hairline-soft p-3.5">
                     <div className="space-y-1.5">
                         <Label htmlFor="staff-commission-type">Skema Komisi Default</Label>
                         <NativeSelect
@@ -206,7 +197,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                 </div>
 
                 {isEditing ? (
-                    <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-3.5">
+                    <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
                         <div>
                             <Label htmlFor="edit-staff-active" className="text-sm font-semibold text-ink">
                                 Staff Aktif untuk Reservasi
@@ -222,7 +213,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                         />
                     </div>
                 ) : (
-                    <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-3.5">
+                    <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
                         <div>
                             <Label htmlFor="staff-grant-login" className="text-sm font-semibold text-ink">
                                 Berikan Akses Login Dashboard
@@ -238,7 +229,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                 )}
 
                 {showPermissionFields && (
-                    <div className="space-y-3 rounded-[16px] border border-hairline-soft p-4">
+                    <div className="space-y-3 rounded-sm border border-hairline-soft p-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="staff-role">Role</Label>
                             <NativeSelect
@@ -302,7 +293,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                     <div
                         role="alert"
                         data-form-error="true"
-                        className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                        className="rounded-xl border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
                     >
                         Periksa kembali isian yang ditandai merah di atas sebelum menyimpan.
                     </div>

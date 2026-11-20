@@ -133,7 +133,7 @@ export default function DashboardIndex({
     };
 
     const kpiCardClass =
-        'group flex flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-5 transition-colors hover:border-ink/30 hover:bg-bone/40 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
+        'group flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-ink/30 hover:bg-bone/40 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
 
     return (
         <DashboardLayout title="Ringkasan Bisnis">
@@ -141,7 +141,7 @@ export default function DashboardIndex({
 
             {/* Public Link Share Banner */}
             {activeBusiness && (
-                <div className="flex flex-col justify-between gap-4 rounded-[24px] bg-bone p-5 sm:flex-row sm:items-center">
+                <div className="flex flex-col justify-between gap-4 rounded-md bg-bone p-5 sm:flex-row sm:items-center">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold text-mute">Link Booking Publik Anda</p>
                         <p className="mt-0.5 truncate font-mono text-sm font-semibold text-ink">
@@ -171,7 +171,7 @@ export default function DashboardIndex({
             {showOnboarding && (
                 <section
                     aria-label="Panduan mulai cepat"
-                    className="rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                    className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -191,7 +191,7 @@ export default function DashboardIndex({
                                 key={step.label}
                                 href={step.href}
                                 className={cn(
-                                    'flex items-center justify-between gap-3 rounded-[16px] border p-4 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                    'flex items-center justify-between gap-3 rounded-sm border p-4 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                     step.done
                                         ? 'border-success-border bg-success-soft/50 text-success'
                                         : 'border-hairline-soft bg-bone/50 text-ink hover:border-ink/30 hover:bg-bone'
@@ -224,7 +224,7 @@ export default function DashboardIndex({
             )}
 
             {/* Clickable KPI Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <Link
                     href={route(
                         'dashboard.bookings',
@@ -269,7 +269,7 @@ export default function DashboardIndex({
                         <CheckCircle2 className="size-4" aria-hidden="true" />
                     </div>
                     <div className="mt-3 flex items-baseline justify-between gap-2">
-                        <p className="text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
+                        <p className="text-lg font-semibold tabular-nums text-ink sm:text-3xl">
                             {formatRupiah(stats.monthly_revenue)}
                         </p>
                     </div>
@@ -293,7 +293,7 @@ export default function DashboardIndex({
             {weeklyTrend.length > 0 && (
                 <section
                     aria-label="Tren 7 hari terakhir"
-                    className="rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                    className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -390,7 +390,7 @@ export default function DashboardIndex({
                                                     ? `${day.bookings_count} reservasi`
                                                     : formatRupiah(day.revenue)
                                             }`}
-                                            className="group flex min-w-0 flex-col items-center rounded-[14px] px-1 pt-1 pb-2 transition-colors hover:bg-bone/50 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-2"
+                                            className="group flex min-w-0 flex-col items-center rounded-xl px-1 pt-1 pb-2 transition-colors hover:bg-bone/50 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-2"
                                         >
                                             <span
                                                 className={cn(
@@ -405,7 +405,7 @@ export default function DashboardIndex({
                                                 {val > 0 ? (
                                                     <div
                                                         className={cn(
-                                                            'w-full max-w-10 rounded-t-[8px] transition-[height,background-color] duration-200',
+                                                            'w-full max-w-10 rounded-t-xs transition-[height,background-color] duration-200',
                                                             isToday
                                                                 ? 'bg-electric group-hover:bg-ink'
                                                                 : 'bg-ink group-hover:bg-electric'
@@ -441,7 +441,7 @@ export default function DashboardIndex({
 
             <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                 {/* Recent Bookings */}
-                <div className="min-w-0 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div className="mb-4 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-ink">Reservasi Terbaru</h2>
                         <Link
@@ -453,7 +453,7 @@ export default function DashboardIndex({
                     </div>
 
                     {recentBookings.length === 0 ? (
-                        <p className="rounded-[16px] bg-bone p-6 text-center text-sm text-mute">
+                        <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
                             Belum ada reservasi masuk. Bagikan link booking Anda!
                         </p>
                     ) : (
@@ -462,7 +462,7 @@ export default function DashboardIndex({
                                 <Link
                                     key={b.id}
                                     href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
-                                    className="flex items-center justify-between gap-4 rounded-[12px] px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                    className="flex items-center justify-between gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                 >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold text-ink">
@@ -493,10 +493,10 @@ export default function DashboardIndex({
                 </div>
 
                 {/* Top Services */}
-                <div className="min-w-0 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="mb-4 text-lg font-semibold text-ink">Layanan Terpopuler</h2>
                     {topServices.length === 0 ? (
-                        <p className="rounded-[16px] bg-bone p-6 text-center text-sm text-mute">
+                        <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
                             Belum ada layanan.
                         </p>
                     ) : (
@@ -504,7 +504,7 @@ export default function DashboardIndex({
                             {topServices.map((s) => (
                                 <div
                                     key={s.id}
-                                    className="flex items-center justify-between gap-3 rounded-[16px] bg-bone p-4"
+                                    className="flex items-center justify-between gap-3 rounded-sm bg-bone p-4"
                                 >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold text-ink">{s.name}</p>

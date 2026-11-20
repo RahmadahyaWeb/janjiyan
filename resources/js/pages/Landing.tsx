@@ -371,7 +371,7 @@ export default function Landing({ plans }: LandingProps) {
                         </p>
                     </div>
 
-                    <div className="mt-10 rounded-[24px] border border-hairline-soft bg-canvas p-4 sm:p-8">
+                    <div className="mt-10 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8">
                         <div className="grid gap-6 sm:grid-cols-2">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -431,7 +431,7 @@ export default function Landing({ plans }: LandingProps) {
                         </div>
 
                         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                            <div className="flex min-w-0 flex-col justify-between rounded-[16px] bg-bone p-4 sm:p-6">
+                            <div className="flex min-w-0 flex-col justify-between rounded-sm bg-bone p-4 sm:p-6">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-mute">
                                         Potensi pendapatan hilang
@@ -448,7 +448,7 @@ export default function Landing({ plans }: LandingProps) {
                                 </p>
                             </div>
 
-                            <div className="flex min-w-0 flex-col justify-between rounded-[16px] bg-dark p-4 text-on-dark sm:p-6">
+                            <div className="flex min-w-0 flex-col justify-between rounded-sm bg-dark p-4 text-on-dark sm:p-6">
                                 <div>
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
@@ -495,7 +495,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <div
                                     key={item.title}
                                     data-outcome-card
-                                    className="flex min-w-0 flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-8"
+                                    className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-8"
                                 >
                                     <div>
                                         <div className="flex size-10 items-center justify-center rounded-[30%] bg-bone text-ink">
@@ -532,7 +532,7 @@ export default function Landing({ plans }: LandingProps) {
                     </h2>
                     <ol className="mt-10 space-y-4">
                         {STEPS.map((step, idx) => (
-                            <li key={step} className="flex items-start gap-4 rounded-[16px] border border-hairline-soft bg-canvas p-5">
+                            <li key={step} className="flex items-start gap-4 rounded-sm border border-hairline-soft bg-canvas p-5">
                                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bone text-sm font-semibold tabular-nums text-ink">
                                     {idx + 1}
                                 </span>
@@ -595,7 +595,7 @@ export default function Landing({ plans }: LandingProps) {
                                     key={plan.id}
                                     data-pricing-card
                                     className={cn(
-                                        'flex min-w-0 flex-col justify-between rounded-[24px] p-5 transition-colors sm:p-6',
+                                        'flex min-w-0 flex-col justify-between rounded-md p-5 transition-colors sm:p-6',
                                         isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas hover:border-hairline'
                                     )}
                                 >
@@ -672,7 +672,7 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
 
                     {/* Included in All Plans Summary */}
-                    <div className="mt-8 rounded-[24px] bg-bone p-6 sm:p-8">
+                    <div className="mt-8 rounded-md bg-bone p-6 sm:p-8">
                         <p className="text-sm font-semibold text-ink">
                             Sudah termasuk di semua paket
                         </p>
@@ -700,7 +700,7 @@ export default function Landing({ plans }: LandingProps) {
                             <div
                                 key={t.name}
                                 data-testimonial-card
-                                className="flex min-w-0 flex-col justify-between rounded-[16px] border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
+                                className="flex min-w-0 flex-col justify-between rounded-sm border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
                             >
                                 <p className="text-sm leading-relaxed text-ink text-pretty">“{t.quote}”</p>
                                 <div className="mt-6 flex items-center gap-3">
@@ -729,7 +729,7 @@ export default function Landing({ plans }: LandingProps) {
                             const buttonId = `faq-trigger-${idx}`;
                             const panelId = `faq-panel-${idx}`;
                             return (
-                                <div key={item.q} className="rounded-[16px] bg-bone p-4">
+                                <div key={item.q} className="rounded-sm bg-bone p-4">
                                     <h3>
                                         <button
                                             id={buttonId}
@@ -737,7 +737,7 @@ export default function Landing({ plans }: LandingProps) {
                                             aria-expanded={isOpen}
                                             aria-controls={panelId}
                                             onClick={() => setOpenFaq(isOpen ? null : idx)}
-                                            className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-[8px] text-start text-base font-semibold text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                            className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-xs text-start text-base font-semibold text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                                         >
                                             <span>{item.q}</span>
                                             <ChevronDown
@@ -773,7 +773,7 @@ export default function Landing({ plans }: LandingProps) {
             </main>
 
             {/* Unified Closing CTA + Inverse Dark Footer */}
-            <footer className="mt-16 rounded-t-[24px] bg-dark px-6 py-16 text-on-dark sm:px-12 sm:py-20">
+            <footer className="mt-16 rounded-t-md bg-dark px-6 py-16 text-on-dark sm:px-12 sm:py-20">
                 <div className="mx-auto max-w-6xl">
                     {/* Closing CTA Band */}
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">

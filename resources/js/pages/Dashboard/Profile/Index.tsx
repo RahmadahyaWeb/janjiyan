@@ -44,7 +44,7 @@ export default function ProfileIndex({ hasPassword }: ProfileIndexProps) {
                 {/* Account Information */}
                 <form
                     onSubmit={handleProfileSubmit}
-                    className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                    className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                 >
                     <div>
                         <h2 className="text-lg font-semibold text-ink">Informasi Akun</h2>
@@ -98,7 +98,7 @@ export default function ProfileIndex({ hasPassword }: ProfileIndexProps) {
                 {/* Change / Set Password */}
                 <form
                     onSubmit={handlePasswordSubmit}
-                    className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                    className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                 >
                     <div>
                         <h2 className="text-lg font-semibold text-ink">

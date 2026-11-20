@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ExternalLink, MessageCircle, Plus, Save, ShieldBan, X } from 'lucide-react';
+import { ExternalLink, MessageCircle, Plus, Save, ShieldBan, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { Badge } from '@/components/ui/badge';
@@ -118,43 +118,38 @@ export default function CustomerShow({
     );
 
     return (
-        <DashboardLayout title={`Profil Pelanggan — ${customer.name}`}>
-            <Head title={`${customer.name} — Pelanggan`} />
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button asChild variant="outline" size="sm">
-                    <Link href={route('dashboard.customers')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Pelanggan
-                    </Link>
-                </Button>
-
+        <DashboardLayout
+            title={`Profil Pelanggan — ${customer.name}`}
+            back={{ href: route('dashboard.customers'), label: 'Kembali ke Pelanggan' }}
+            actions={
                 <Button asChild variant="outline" size="sm">
                     <a href={waLink} target="_blank" rel="noopener noreferrer">
                         <MessageCircle className="size-4" aria-hidden="true" />
-                        Chat WhatsApp (+{customer.phone})
+                        Chat WhatsApp
                     </a>
                 </Button>
-            </div>
+            }
+        >
+            <Head title={`${customer.name} — Pelanggan`} />
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Total Reservasi</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.total_bookings}</p>
                 </div>
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Selesai</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.completed_count}</p>
                 </div>
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Tidak Hadir (No-Show)</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.no_show_count}</p>
                 </div>
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Dibatalkan</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.cancelled_count}</p>
                 </div>
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4">
+                <div className="col-span-2 rounded-md border border-hairline-soft bg-canvas p-4 lg:col-span-1">
                     <p className="text-xs font-medium text-mute">Total Transaksi</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{formatRupiah(stats.total_spent)}</p>
                 </div>
@@ -163,7 +158,7 @@ export default function CustomerShow({
             <div className="grid gap-6 lg:grid-cols-3">
                 <form
                     onSubmit={handleSubmit}
-                    className="min-w-0 space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6 lg:col-span-1"
+                    className="min-w-0 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6 lg:col-span-1"
                 >
                     <div>
                         <h2 className="text-base font-semibold text-ink">Profil & Catatan Internal</h2>
@@ -292,7 +287,7 @@ export default function CustomerShow({
                         )}
                     </div>
 
-                    <div className="flex items-start justify-between gap-3 rounded-[16px] border border-hairline-soft bg-bone/60 p-3.5">
+                    <div className="flex items-start justify-between gap-3 rounded-sm border border-hairline-soft bg-bone/60 p-3.5">
                         <div className="space-y-0.5">
                             <Label
                                 htmlFor="cust-blocked"
@@ -326,7 +321,7 @@ export default function CustomerShow({
                 </form>
 
                 <div className="min-w-0 space-y-4 lg:col-span-2">
-                    <div className="rounded-[24px] border border-hairline-soft bg-canvas">
+                    <div className="rounded-md border border-hairline-soft bg-canvas">
                         <div className="border-b border-divider px-6 py-4">
                             <h2 className="text-base font-semibold text-ink">Riwayat Reservasi</h2>
                         </div>

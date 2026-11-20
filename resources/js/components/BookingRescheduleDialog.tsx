@@ -116,7 +116,7 @@ export function BookingRescheduleDialog({
 
     return (
         <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+            <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-ink">
                         <CalendarClock className="size-5" aria-hidden="true" />
@@ -126,7 +126,7 @@ export function BookingRescheduleDialog({
 
                 {booking && (
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="rounded-[16px] bg-bone p-3.5 text-xs">
+                        <div className="rounded-sm bg-bone p-3.5 text-xs">
                             <p className="font-mono font-semibold text-ink">{booking.booking_code}</p>
                             <p className="mt-0.5 text-mute">
                                 {booking.customer_name} · {booking.service_name}
@@ -165,7 +165,7 @@ export function BookingRescheduleDialog({
                         )}
 
                         {isDropoff ? (
-                            <div className="space-y-2 rounded-[16px] bg-bone p-4 text-xs" aria-live="polite">
+                            <div className="space-y-2 rounded-sm bg-bone p-4 text-xs" aria-live="polite">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="font-semibold text-ink">Ketersediaan Kuota Drop-off</span>
                                     {showRefreshing && <span className="text-mute">Memperbarui…</span>}
@@ -203,13 +203,13 @@ export function BookingRescheduleDialog({
                             {showInitialLoading ? (
                                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                     {Array.from({ length: 8 }).map((_, idx) => (
-                                        <div key={idx} className="h-9 rounded-[12px] bg-bone" />
+                                        <div key={idx} className="h-9 rounded-xl bg-bone" />
                                     ))}
                                 </div>
                             ) : !hasLoaded ? (
                                 <div className="min-h-[80px]" />
                             ) : slots.length === 0 ? (
-                                <p className="rounded-[14px] bg-bone p-3 text-xs text-mute">
+                                <p className="rounded-xl bg-bone p-3 text-xs text-mute">
                                     Tidak ada slot tersedia pada tanggal / staff ini. Coba pilih tanggal lain.
                                 </p>
                             ) : (
@@ -228,7 +228,7 @@ export function BookingRescheduleDialog({
                                                     setTimeError('');
                                                     form.setData('time', slot.time);
                                                 }}
-                                                className={`cursor-pointer rounded-[12px] border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
+                                                className={`cursor-pointer rounded-xl border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
                                                     selected
                                                         ? 'border-ink bg-ink text-white'
                                                         : 'border-hairline-soft bg-canvas text-ink hover:bg-bone'

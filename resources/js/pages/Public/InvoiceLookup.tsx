@@ -70,7 +70,7 @@ export default function InvoiceLookup({
                     </Link>
                 </div>
 
-                <div className="rounded-[24px] border border-hairline-soft bg-canvas p-6 sm:p-8">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-6 sm:p-8">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bone text-ink">
                             <FileText className="size-5" aria-hidden="true" />
@@ -124,7 +124,7 @@ export default function InvoiceLookup({
                 </div>
 
                 {history && (
-                    <section aria-label="Riwayat invoice pelanggan" className="space-y-3 rounded-[24px] bg-bone p-6">
+                    <section aria-label="Riwayat invoice pelanggan" className="space-y-3 rounded-md bg-bone p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">
                                 Riwayat Pemesanan {customerName ? `· ${customerName}` : ''}
@@ -144,7 +144,7 @@ export default function InvoiceLookup({
                                 return (
                                     <div
                                         key={item.booking_code}
-                                        className="flex flex-col justify-between gap-3 rounded-[20px] bg-canvas p-4 sm:flex-row sm:items-center"
+                                        className="flex flex-col justify-between gap-3 rounded-md bg-canvas p-4 sm:flex-row sm:items-center"
                                     >
                                         <div className="space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">

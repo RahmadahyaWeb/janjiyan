@@ -1,5 +1,4 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,21 +19,13 @@ export default function BusinessCreate() {
     };
 
     return (
-        <DashboardLayout title="Tambah Bisnis Baru">
+        <DashboardLayout title="Tambah Bisnis Baru" back={{ href: route('dashboard'), label: 'Kembali ke Ringkasan' }}>
             <Head title="Tambah Bisnis Baru" />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Ringkasan
-                    </Link>
-                </Button>
-            </div>
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-xl space-y-5 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
                 <div className="space-y-1.5">
                     <Label htmlFor="create-business-name">Nama Bisnis *</Label>

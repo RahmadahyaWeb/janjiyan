@@ -93,7 +93,7 @@ export function BookingCalendarView({
     return (
         <div className="space-y-4">
             {/* Week Navigation & Day Strip */}
-            <div className="rounded-[24px] border border-hairline-soft bg-canvas p-4">
+            <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-base font-semibold text-ink">{formatDateIndo(calendar.selected_date)}</p>
@@ -144,7 +144,7 @@ export function BookingCalendarView({
                                 key={day.date}
                                 type="button"
                                 onClick={() => onSelectDate(day.date)}
-                                className={`flex cursor-pointer flex-col items-center rounded-[14px] border px-1 py-2 text-center transition-colors sm:rounded-[16px] sm:px-2 sm:py-2.5 ${
+                                className={`flex cursor-pointer flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors sm:rounded-sm sm:px-2 sm:py-2.5 ${
                                     isSelected
                                         ? 'border-ink bg-ink text-white'
                                         : isToday
@@ -175,7 +175,7 @@ export function BookingCalendarView({
 
             {/* Staff / Resource Columns for Selected Day */}
             {calendar.bookings.length === 0 ? (
-                <div className="rounded-[24px] bg-bone p-12 text-center">
+                <div className="rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">
                         Tidak ada jadwal reservasi aktif pada {formatDateIndo(calendar.selected_date)}.
                     </p>
@@ -193,11 +193,11 @@ export function BookingCalendarView({
                         return (
                             <div
                                 key={col.id ?? 'unassigned'}
-                                className={`flex-col rounded-[24px] border border-hairline-soft bg-canvas ${
+                                className={`flex-col rounded-md border border-hairline-soft bg-canvas ${
                                     colBookings.length === 0 ? 'hidden md:flex' : 'flex'
                                 }`}
                             >
-                                <div className="flex items-center justify-between border-b border-divider bg-bone/60 px-4 py-3 rounded-t-[24px]">
+                                <div className="flex items-center justify-between border-b border-divider bg-bone/60 px-4 py-3 rounded-t-md">
                                     <div>
                                         <p className="text-sm font-semibold text-ink">{col.name}</p>
                                         {col.title && <p className="text-xs text-mute">{col.title}</p>}
@@ -216,7 +216,7 @@ export function BookingCalendarView({
                                                 key={b.id}
                                                 type="button"
                                                 onClick={() => onSelectBooking(b)}
-                                                className={`w-full cursor-pointer rounded-[16px] border p-3 text-left transition-colors ${statusPillClasses(b.reservation_status)}`}
+                                                className={`w-full cursor-pointer rounded-sm border p-3 text-left transition-colors ${statusPillClasses(b.reservation_status)}`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="font-mono text-xs font-semibold tabular-nums">

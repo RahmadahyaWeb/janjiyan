@@ -57,7 +57,9 @@
     --color-input: var(--input);
     --color-ring: var(--ring);
 
+    /* Radius scale: xs 8 (chips, thumbs) · xl 12 (inner rows) · sm 16 (inputs, tiles) · md 24 (cards, dialogs). Use these, not rounded-[Npx]. */
     --radius-xs: 8px;
+    --radius-xl: 12px;
     --radius-sm: 16px;
     --radius-md: 24px;
     --radius-lg: 24px;

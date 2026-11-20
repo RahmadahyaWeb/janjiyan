@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { BellRing, ImagePlus, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Trash2, Upload } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,15 @@ import {
     type WhatsappTemplateKey,
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
+
+const SECTION_LINKS = [
+    { id: 'profil', label: 'Profil' },
+    { id: 'aturan', label: 'Aturan Booking' },
+    { id: 'whatsapp', label: 'Template WA' },
+    { id: 'telegram', label: 'Telegram' },
+    { id: 'rekening', label: 'Rekening' },
+    { id: 'galeri', label: 'Galeri' },
+];
 
 interface BankAccount {
     [key: string]: string;
@@ -222,8 +232,25 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
             <Head title="Pengaturan" />
 
             <div className="max-w-3xl space-y-8">
+                <HorizontalScrollContainer
+                    as="div"
+                    ariaLabel="Lompat ke bagian pengaturan"
+                    wrapperClassName="sticky top-16 z-30 -mx-4 bg-canvas/95 py-2 backdrop-blur-xs sm:mx-0"
+                    className="flex gap-1.5 px-4 sm:px-0"
+                >
+                    {SECTION_LINKS.map((s) => (
+                        <a
+                            key={s.id}
+                            href={`#${s.id}`}
+                            className="inline-flex h-9 shrink-0 items-center rounded-full border border-hairline-soft bg-canvas px-3.5 text-xs font-semibold text-mute transition-colors hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                        >
+                            {s.label}
+                        </a>
+                    ))}
+                </HorizontalScrollContainer>
+
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <div id="profil" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <h2 className="text-lg font-semibold text-ink">Profil & Link Publik</h2>
                             <Button
@@ -260,7 +287,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             )}
                             <label
                                 htmlFor="settings-logo-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-[16px] border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                 <span className="break-words">
@@ -380,7 +407,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-4">
+                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                             <div>
                                 <Label htmlFor="settings-is-active" className="text-sm font-semibold text-ink">
                                     Portal Booking Publik Aktif
@@ -398,7 +425,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Booking Window & Automated Reminders */}
-                    <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <div id="aturan" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">Aturan Booking & Pengingat Otomatis</h2>
                             <p className="text-xs text-mute">
@@ -448,7 +475,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-4">
+                            <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                                 <div>
                                     <Label htmlFor="settings-reminder-h1" className="text-sm font-semibold text-ink">
                                         Email Pengingat H-1 Hari (24 Jam Sebelumnya)
@@ -464,7 +491,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-4">
+                            <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                                 <div>
                                     <Label htmlFor="settings-reminder-h2" className="text-sm font-semibold text-ink">
                                         Email Pengingat H-2 Jam
@@ -480,7 +507,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                             </div>
 
-                            <div className="space-y-3 rounded-[16px] border border-hairline-soft bg-bone/70 p-4">
+                            <div className="space-y-3 rounded-sm border border-hairline-soft bg-bone/70 p-4">
                                 <div className="flex items-center justify-between gap-4">
                                     <div>
                                         <Label
@@ -525,7 +552,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Template Pesan WhatsApp 1-Klik */}
-                    <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <div id="whatsapp" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -597,7 +624,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </div>
                         </div>
 
-                        <div className="rounded-[16px] bg-bone p-4">
+                        <div className="rounded-sm bg-bone p-4">
                             <p className="text-xs font-semibold tracking-wider text-mute uppercase">
                                 Pratinjau Pesan
                             </p>
@@ -622,7 +649,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Notifikasi Instan Telegram Bot */}
-                    <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <div id="telegram" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -698,7 +725,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-bone p-3.5 text-xs text-mute">
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-3.5 text-xs text-mute">
                             <span>
                                 Cara cepat: buat bot di <strong className="text-ink">@BotFather</strong> → mulai chat dengan bot Anda → cek Chat ID via <strong className="text-ink">@userinfobot</strong>, lalu simpan pengaturan sebelum tes.
                             </span>
@@ -719,7 +746,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </div>
 
                     {/* Bank & QRIS */}
-                    <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                    <div id="rekening" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <h2 className="text-lg font-semibold text-ink">Rekening Bank & QRIS</h2>
@@ -732,10 +759,10 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         {form.data.bank_accounts.map((bank, idx) => (
-                            <div key={idx} className="grid items-center gap-2 rounded-[20px] bg-bone p-3 sm:grid-cols-[1fr_1.3fr_1.3fr_auto]">
+                            <div key={idx} className="grid items-center gap-2 rounded-md bg-bone p-3 sm:grid-cols-[1fr_1.3fr_1.3fr_auto]">
                                 <Input
                                     aria-label={`Nama bank rekening ${idx + 1}`}
-                                    className="h-10 rounded-[8px] bg-canvas text-base md:text-sm"
+                                    className="h-10 rounded-xs bg-canvas text-base md:text-sm"
                                     placeholder="Bank (BCA)"
                                     value={bank.bank_name}
                                     onChange={(e) => updateBank(idx, 'bank_name', e.target.value)}
@@ -743,7 +770,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                                 <Input
                                     aria-label={`Nomor rekening ${idx + 1}`}
-                                    className="h-10 rounded-[8px] bg-canvas font-mono text-base md:text-sm"
+                                    className="h-10 rounded-xs bg-canvas font-mono text-base md:text-sm"
                                     placeholder="No. Rekening"
                                     value={bank.account_number}
                                     onChange={(e) => updateBank(idx, 'account_number', e.target.value)}
@@ -751,7 +778,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                                 <Input
                                     aria-label={`Atas nama rekening ${idx + 1}`}
-                                    className="h-10 rounded-[8px] bg-canvas text-base md:text-sm"
+                                    className="h-10 rounded-xs bg-canvas text-base md:text-sm"
                                     placeholder="Atas Nama"
                                     value={bank.account_holder}
                                     onChange={(e) => updateBank(idx, 'account_holder', e.target.value)}
@@ -777,7 +804,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     <img
                                         src={business.qris_url}
                                         alt={`QRIS ${business.name}`}
-                                        className="size-32 rounded-[16px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                        className="size-32 rounded-sm object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                     <Button
                                         type="button"
@@ -792,7 +819,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             )}
                             <label
                                 htmlFor="settings-qris-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-[16px] border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                 <span className="break-words">{form.data.qris_image ? form.data.qris_image.name : 'Unggah gambar QRIS (JPG/PNG)'}</span>
@@ -821,19 +848,22 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         <div
                             role="alert"
                             data-form-error="true"
-                            className="rounded-[16px] border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs text-destructive"
+                            className="rounded-sm border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs text-destructive"
                         >
                             Terdapat isian pengaturan yang belum valid. Periksa bagian yang ditandai merah di atas.
                         </div>
                     )}
 
-                    <Button type="submit" size="lg" disabled={form.processing}>
-                        {form.processing ? 'Menyimpan…' : 'Simpan Pengaturan'}
-                    </Button>
+                    {/* Sticky so the single save button is reachable from any of the 5 sections above */}
+                    <div className="sticky bottom-20 z-30 flex justify-end lg:bottom-4">
+                        <Button type="submit" size="lg" disabled={form.processing} className="shadow-lg">
+                            {form.processing ? 'Menyimpan…' : 'Simpan Pengaturan'}
+                        </Button>
+                    </div>
                 </form>
 
                 {/* Portfolio / Business Gallery */}
-                <section aria-labelledby="gallery-section-heading" className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <section id="galeri" aria-labelledby="gallery-section-heading" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div>
                         <h2 id="gallery-section-heading" className="text-lg font-semibold text-ink">
                             Portofolio & Galeri Usaha
@@ -843,12 +873,12 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </p>
                     </div>
 
-                    <form onSubmit={handleAddGallery} className="space-y-3 rounded-[20px] bg-bone p-4">
+                    <form onSubmit={handleAddGallery} className="space-y-3 rounded-md bg-bone p-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="gallery-image-upload">Foto Portofolio</Label>
                             <label
                                 htmlFor="gallery-image-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-[16px] border border-dashed border-control-border bg-canvas px-4 py-3 text-sm text-ink transition-colors hover:bg-hairline-soft focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-3 text-sm text-ink transition-colors hover:bg-hairline-soft focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <ImagePlus className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                 <span className="break-words">
@@ -892,18 +922,18 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     </form>
 
                     {galleries.length === 0 ? (
-                        <p className="rounded-[16px] bg-bone p-6 text-center text-sm text-mute">
+                        <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
                             Belum ada foto portofolio yang diunggah.
                         </p>
                     ) : (
                         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                             {galleries.map((item) => (
-                                <div key={item.id} className="flex flex-col justify-between rounded-[16px] bg-bone p-2.5">
+                                <div key={item.id} className="flex flex-col justify-between rounded-sm bg-bone p-2.5">
                                     <div>
                                         <img
                                             src={item.image_url}
                                             alt={item.caption || 'Foto portofolio bisnis'}
-                                            className="aspect-[4/3] w-full rounded-[10px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                            className="aspect-[4/3] w-full rounded-xs object-cover outline-1 -outline-offset-1 outline-black/10"
                                         />
                                         {item.caption && (
                                             <p className="mt-2 px-1 text-xs font-medium text-ink line-clamp-2">
@@ -933,7 +963,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                 {business.is_owner && (
                     <section
                         aria-labelledby="danger-zone-heading"
-                        className="space-y-4 rounded-[24px] border border-destructive/30 bg-destructive-soft p-6"
+                        className="space-y-4 rounded-md border border-destructive/30 bg-destructive-soft p-4 sm:p-6"
                     >
                         <div>
                             <h2 id="danger-zone-heading" className="text-lg font-semibold text-destructive">
@@ -960,7 +990,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         ) : (
                             <form
                                 onSubmit={handleDeleteBusiness}
-                                className="space-y-4 rounded-[18px] border border-destructive/30 bg-canvas p-4"
+                                className="space-y-4 rounded-sm border border-destructive/30 bg-canvas p-4"
                             >
                                 <p className="text-sm leading-relaxed text-mute">
                                     Ketik{' '}

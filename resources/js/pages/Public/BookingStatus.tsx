@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Truck, Upload, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { CopyButton } from '@/components/CopyButton';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,6 +72,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     const [fileError, setFileError] = useState<string>('');
     const [uploading, setUploading] = useState(false);
     const [remainingText, setRemainingText] = useState<string>('');
+    const dpExpired = remainingText === 'Waktu habis';
 
     const invoiceLabel = booking.invoice_number || booking.booking_code;
     const isDropoff = booking.booking_mode === 'dropoff';
@@ -221,17 +223,17 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                 </div>
 
                 {flash.success && (
-                    <div role="status" className="rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink print:hidden">
+                    <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink print:hidden">
                         {flash.success}
                     </div>
                 )}
                 {flash.error && (
-                    <div role="alert" className="rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive print:hidden">
+                    <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive print:hidden">
                         {flash.error}
                     </div>
                 )}
 
-                <div className="rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-8 print:border-0 print:p-0">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-8 print:border-0 print:p-0">
                     <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <p className="font-mono text-xs font-semibold text-mute">
@@ -256,7 +258,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                     </div>
 
                     {isDropoff && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show' && (
-                        <div className="mt-6 rounded-[18px] bg-bone p-4" aria-label="Progres pengerjaan pesanan">
+                        <div className="mt-6 rounded-sm bg-bone p-4" aria-label="Progres pengerjaan pesanan">
                             <p className="mb-3 text-xs font-semibold text-mute">Progres Pengerjaan</p>
                             <ol className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                                 {dropoffSteps.map((step, idx) => {
@@ -267,7 +269,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                         <li
                                             key={step.key}
                                             className={cn(
-                                                'flex items-center gap-2 rounded-[12px] px-3 py-2 text-xs font-semibold',
+                                                'flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold',
                                                 isCurrent
                                                     ? 'bg-ink text-canvas'
                                                     : isDone
@@ -366,10 +368,10 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
 
                     {/* Pay-Later DP Upload Box */}
                     {booking.dp_amount > 0 && booking.payment_status === 'unpaid' && booking.reservation_status !== 'cancelled' && (
-                        <div className="mt-6 space-y-4 rounded-[20px] bg-bone p-5 print:hidden">
+                        <div className="mt-6 space-y-4 rounded-md bg-bone p-5 print:hidden">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-semibold text-ink">Unggah Bukti Transfer DP</p>
-                                {remainingText && (
+                                <p className="text-sm font-semibold text-ink">{dpExpired ? 'Pembayaran DP' : 'Unggah Bukti Transfer DP'}</p>
+                                {remainingText && !dpExpired && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold tabular-nums text-electric">
                                         <Clock className="size-3.5" aria-hidden="true" />
                                         {remainingText}
@@ -377,24 +379,34 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                 )}
                             </div>
 
-                            {business.bank_accounts.length > 0 && (
+                            {/* Server rejects uploads after expiry, so show what to do instead of a dead form */}
+                            {dpExpired && (
+                                <p role="alert" className="rounded-xl bg-destructive-soft p-3 text-sm text-destructive">
+                                    Batas waktu unggah DP sudah lewat. Hubungi bisnis lewat WhatsApp untuk mengatur ulang jadwal.
+                                </p>
+                            )}
+
+                            {!dpExpired && business.bank_accounts.length > 0 && (
                                 <div className="grid gap-2 sm:grid-cols-2">
                                     {business.bank_accounts.map((acc, idx) => (
-                                        <div key={idx} className="rounded-[12px] bg-canvas p-3 text-xs">
-                                            <p className="font-semibold text-ink">{acc.bank_name}</p>
-                                            <p className="font-mono font-semibold text-ink">{acc.account_number}</p>
-                                            <p className="text-mute">a.n. {acc.account_holder}</p>
+                                        <div key={idx} className="flex items-center justify-between gap-3 rounded-xl bg-canvas p-3 text-xs">
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-ink">{acc.bank_name}</p>
+                                                <p className="font-mono text-sm font-semibold text-ink">{acc.account_number}</p>
+                                                <p className="text-mute">a.n. {acc.account_holder}</p>
+                                            </div>
+                                            <CopyButton value={acc.account_number} label={`nomor rekening ${acc.bank_name}`} />
                                         </div>
                                     ))}
                                 </div>
                             )}
 
-                            {business.qris_url && (
-                                <div className="flex items-center gap-4 rounded-[20px] bg-canvas p-3">
+                            {!dpExpired && business.qris_url && (
+                                <div className="flex items-center gap-4 rounded-md bg-canvas p-3">
                                     <img
                                         src={business.qris_url}
                                         alt={`QRIS ${business.name}`}
-                                        className="size-20 shrink-0 rounded-[8px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                        className="size-20 shrink-0 rounded-xs object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                     <div className="text-xs text-mute">
                                         <p className="font-semibold text-ink">Scan QRIS Merchant</p>
@@ -403,10 +415,11 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                 </div>
                             )}
 
+                            {!dpExpired && (
                             <form onSubmit={handleUpload} className="space-y-3">
                                 <label
                                     htmlFor="status-dp-proof"
-                                    className="flex cursor-pointer items-center justify-center gap-2 rounded-[16px] border border-dashed border-control-border bg-canvas px-4 py-4 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                                    className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-4 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                                 >
                                     <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                     <span className="break-words">{file ? file.name : 'Pilih gambar bukti bayar (JPG/PNG)'}</span>
@@ -430,15 +443,16 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                     {uploading ? 'Mengunggah…' : 'Kirim Bukti Pembayaran'}
                                 </Button>
                             </form>
+                            )}
                         </div>
                     )}
 
                     {/* Action CTAs */}
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row print:hidden">
+                    <div className="mt-6 grid grid-cols-2 gap-3 print:hidden">
                         <Button asChild variant="outline" className="h-auto min-h-12 flex-1 whitespace-normal py-2.5 text-center leading-snug">
                             <a href={buildWhatsAppUrl(business.phone, waMessage)} target="_blank" rel="noreferrer">
                                 <MessageCircle className="size-4 shrink-0" aria-hidden="true" />
-                                <span>Kirim ke WhatsApp</span>
+                                <span>WhatsApp</span>
                             </a>
                         </Button>
                         <Button
@@ -448,15 +462,12 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             className="h-auto min-h-12 flex-1 whitespace-normal py-2.5 text-center leading-snug"
                         >
                             <Printer className="size-4 shrink-0" aria-hidden="true" />
-                            <span>Cetak / Simpan PDF</span>
-                        </Button>
-                        <Button asChild variant="secondary" className="h-auto min-h-12 flex-1 whitespace-normal py-2.5 text-center leading-snug">
-                            <Link href={route('public.booking', business.slug)}>Booking Lagi</Link>
+                            <span>Cetak / PDF</span>
                         </Button>
                     </div>
 
                     {showCalendarActions && (googleCalendarUrl || booking.calendar_ics_url) && (
-                        <div className="print:hidden rounded-[18px] border border-hairline-soft bg-bone/50 p-3.5">
+                        <div className="mt-3 print:hidden rounded-sm border border-hairline-soft bg-bone/50 p-3.5">
                             <p className="text-xs font-medium text-mute">
                                 Simpan jadwal agar tidak terlewat:
                             </p>
@@ -481,6 +492,15 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                         </div>
                     )}
                 </div>
+
+                <p className="text-center print:hidden">
+                    <Link
+                        href={route('public.booking', business.slug)}
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                    >
+                        Buat reservasi lain
+                    </Link>
+                </p>
 
                 <p className="text-center text-xs text-ash">
                     <span className="inline-flex items-center gap-1.5">

@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, CalendarClock } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,23 +84,15 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
     };
 
     return (
-        <DashboardLayout title="Ubah Jadwal Reservasi">
+        <DashboardLayout title="Ubah Jadwal Reservasi" back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
             <Head title={`Ubah Jadwal ${booking.booking_code}`} />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.bookings')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Daftar Reservasi
-                    </Link>
-                </Button>
-            </div>
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-lg space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
-                <div className="flex items-start gap-3 rounded-[16px] bg-bone p-4 text-xs">
+                <div className="flex items-start gap-3 rounded-sm bg-bone p-4 text-xs">
                     <CalendarClock className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
                     <div>
                         <p className="font-mono font-semibold text-ink">{booking.booking_code}</p>
@@ -142,7 +134,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                 )}
 
                 {isDropoff ? (
-                    <div className="space-y-2 rounded-[16px] bg-bone p-4 text-xs" aria-live="polite">
+                    <div className="space-y-2 rounded-sm bg-bone p-4 text-xs" aria-live="polite">
                         <div className="flex items-center justify-between gap-2">
                             <span className="font-semibold text-ink">Ketersediaan Kuota Drop-off</span>
                             {showRefreshing && <span className="text-mute">Memperbarui…</span>}
@@ -180,13 +172,13 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                         {showInitialLoading ? (
                             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 {Array.from({ length: 8 }).map((_, idx) => (
-                                    <div key={idx} className="h-9 rounded-[12px] bg-bone" />
+                                    <div key={idx} className="h-9 rounded-xl bg-bone" />
                                 ))}
                             </div>
                         ) : !hasLoaded ? (
                             <div className="min-h-[80px]" />
                         ) : slots.length === 0 ? (
-                            <p className="rounded-[14px] bg-bone p-3 text-xs text-mute">
+                            <p className="rounded-xl bg-bone p-3 text-xs text-mute">
                                 Tidak ada slot tersedia pada tanggal / staff ini. Coba pilih tanggal lain.
                             </p>
                         ) : (
@@ -205,7 +197,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                                                 setTimeError('');
                                                 form.setData('time', slot.time);
                                             }}
-                                            className={`cursor-pointer rounded-[12px] border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
+                                            className={`cursor-pointer rounded-xl border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
                                                 selected
                                                     ? 'border-ink bg-ink text-white'
                                                     : 'border-hairline-soft bg-canvas text-ink hover:bg-bone'

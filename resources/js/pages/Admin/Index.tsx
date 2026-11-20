@@ -150,39 +150,39 @@ export default function AdminIndex({
                 </div>
 
                 {flash.success && (
-                    <div role="status" className="rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink">
+                    <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
                         {flash.success}
                     </div>
                 )}
                 {flash.error && (
-                    <div role="alert" className="rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+                    <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                         {flash.error}
                     </div>
                 )}
 
                 {/* KPI Stats */}
                 <section aria-label="Ringkasan platform" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Total Merchant</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.total_merchants}</p>
                     </div>
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Paket Aktif</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.active_paid}</p>
                     </div>
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Dalam Trial</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-electric">{stats.trialing}</p>
                     </div>
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Expired</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-destructive">{stats.expired}</p>
                     </div>
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Bisnis Ditangguhkan</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.suspended_businesses}</p>
                     </div>
-                    <div className="rounded-[20px] bg-bone p-4">
+                    <div className="rounded-md bg-bone p-4">
                         <p className="text-xs text-mute">Total Pendapatan</p>
                         <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">{formatRupiah(stats.total_revenue)}</p>
                     </div>
@@ -191,7 +191,7 @@ export default function AdminIndex({
                 {/* Filter & Tabs */}
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <div
-                        className="flex max-w-full flex-wrap gap-1 rounded-[20px] bg-bone p-1 sm:inline-flex sm:rounded-full"
+                        className="flex max-w-full flex-wrap gap-1 rounded-md bg-bone p-1 sm:inline-flex sm:rounded-full"
                         role="tablist"
                         aria-label="Menu superadmin"
                     >
@@ -254,7 +254,7 @@ export default function AdminIndex({
                 {activeTab === 'merchants' && (
                     <div className="space-y-3">
                         {merchants.length === 0 ? (
-                            <div className="rounded-[24px] bg-bone p-8 text-center text-sm text-mute">
+                            <div className="rounded-md bg-bone p-8 text-center text-sm text-mute">
                                 Tidak ada merchant yang cocok dengan filter.
                             </div>
                         ) : (
@@ -264,7 +264,7 @@ export default function AdminIndex({
                                 return (
                                     <div
                                         key={m.id}
-                                        className="flex flex-col justify-between gap-4 rounded-[24px] border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
+                                        className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
                                     >
                                         <div className="space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">
@@ -308,14 +308,14 @@ export default function AdminIndex({
                 {activeTab === 'businesses' && (
                     <div className="space-y-3">
                         {businesses.length === 0 ? (
-                            <div className="rounded-[24px] bg-bone p-8 text-center text-sm text-mute">
+                            <div className="rounded-md bg-bone p-8 text-center text-sm text-mute">
                                 Belum ada bisnis terdaftar.
                             </div>
                         ) : (
                             businesses.map((b) => (
                                 <div
                                     key={b.id}
-                                    className="flex flex-col justify-between gap-4 rounded-[24px] border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
+                                    className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
                                 >
                                     <div className="space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -367,14 +367,14 @@ export default function AdminIndex({
                 {activeTab === 'invoices' && (
                     <div className="space-y-3">
                         {invoices.length === 0 ? (
-                            <div className="rounded-[24px] bg-bone p-8 text-center text-sm text-mute">
+                            <div className="rounded-md bg-bone p-8 text-center text-sm text-mute">
                                 Belum ada transaksi invoice langganan.
                             </div>
                         ) : (
                             invoices.map((inv) => (
                                 <div
                                     key={inv.id}
-                                    className="flex flex-col justify-between gap-3 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:flex-row sm:items-center"
+                                    className="flex flex-col justify-between gap-3 rounded-md border border-hairline-soft bg-canvas p-5 sm:flex-row sm:items-center"
                                 >
                                     <div className="space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">

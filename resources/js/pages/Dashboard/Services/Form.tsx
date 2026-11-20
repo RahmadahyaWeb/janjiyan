@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,22 +102,14 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
     const pageTitle = isEditing ? 'Edit Layanan' : 'Tambah Layanan Baru';
 
     return (
-        <DashboardLayout title={pageTitle}>
+        <DashboardLayout title={pageTitle} back={{ href: route('dashboard.services'), label: 'Kembali ke Daftar Layanan' }}>
             <Head title={pageTitle} />
 
-            <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2 text-mute hover:text-ink">
-                    <Link href={route('dashboard.services')}>
-                        <ArrowLeft className="size-4" aria-hidden="true" />
-                        Kembali ke Daftar Layanan
-                    </Link>
-                </Button>
-            </div>
 
             <form
                 ref={formRef}
                 onSubmit={handleSubmit}
-                className="max-w-2xl space-y-5 rounded-[24px] border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
                 <div className="space-y-1.5">
                     <Label htmlFor="service-name">Nama Layanan *</Label>
@@ -156,7 +148,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             <img
                                 src={service.image_url}
                                 alt="Preview foto layanan"
-                                className="size-16 rounded-[12px] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                className="size-16 rounded-xl object-cover outline-1 -outline-offset-1 outline-black/10"
                             />
                             <Button
                                 type="button"
@@ -171,7 +163,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                     )}
                     <label
                         htmlFor="service-image-upload"
-                        className="flex cursor-pointer items-center gap-2 rounded-[16px] border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
+                        className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                     >
                         <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
                         <span className="break-words">
@@ -202,7 +194,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                 <div className="space-y-1.5">
                     <Label>Tipe Penjadwalan Layanan</Label>
                     <div
-                        className="grid grid-cols-2 rounded-[16px] bg-bone p-1"
+                        className="grid grid-cols-2 rounded-sm bg-bone p-1"
                         role="group"
                         aria-label="Pilih tipe penjadwalan layanan"
                     >
@@ -210,7 +202,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             type="button"
                             aria-pressed={form.data.booking_mode === 'time_slot'}
                             onClick={() => form.setData('booking_mode', 'time_slot')}
-                            className={`min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                            className={`min-h-10 cursor-pointer rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                 form.data.booking_mode === 'time_slot'
                                     ? 'bg-canvas text-ink'
                                     : 'text-mute hover:text-ink'
@@ -229,7 +221,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     capacity: Math.max(Number(prev.capacity || 0), 10),
                                 }))
                             }
-                            className={`min-h-10 cursor-pointer rounded-[12px] px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                            className={`min-h-10 cursor-pointer rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                 form.data.booking_mode === 'dropoff'
                                     ? 'bg-canvas text-ink'
                                     : 'text-mute hover:text-ink'
@@ -301,7 +293,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 rounded-[16px] bg-bone px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 rounded-sm bg-bone px-4 py-3">
                             <div>
                                 <Label htmlFor="service-supports-pickup" className="cursor-pointer text-sm font-semibold text-ink">
                                     Sediakan opsi Jemput &amp; Antar
@@ -474,7 +466,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                 </div>
 
                 {isEditing && (
-                    <div className="flex items-center justify-between rounded-[16px] bg-bone px-4 py-3">
+                    <div className="flex items-center justify-between rounded-sm bg-bone px-4 py-3">
                         <div>
                             <Label htmlFor="service-edit-active" className="cursor-pointer text-sm font-semibold text-ink">
                                 Tampilkan di portal booking
@@ -493,7 +485,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                     <div
                         role="alert"
                         data-form-error="true"
-                        className="rounded-[14px] border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
+                        className="rounded-xl border border-destructive/30 bg-destructive-soft px-3.5 py-2.5 text-xs text-destructive"
                     >
                         Periksa kembali isian yang ditandai merah di atas sebelum menyimpan.
                     </div>

@@ -358,7 +358,7 @@ export function QrPosterDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-lg sm:p-6">
+            <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-lg sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-ink">
                         <QrCode className="size-5 shrink-0 text-ink" aria-hidden="true" />
@@ -369,7 +369,7 @@ export function QrPosterDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-2 rounded-[16px] bg-bone p-3.5">
+                <div className="space-y-2 rounded-sm bg-bone p-3.5">
                     <div className="flex items-center justify-between gap-2">
                         <Label htmlFor="qr-poster-subtitle" className="text-xs font-semibold text-ink">
                             Sub-headline Poster
@@ -412,7 +412,7 @@ export function QrPosterDialog({
                     </div>
                 </div>
 
-                <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4 text-center sm:p-5">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4 text-center sm:p-5">
                     <span className="inline-block rounded-full bg-bone px-3 py-1 text-xs font-semibold tracking-wider text-mute uppercase">
                         {businessCategory}
                     </span>
@@ -423,7 +423,7 @@ export function QrPosterDialog({
                         {resolvedSubtitle}
                     </p>
 
-                    <div className="mx-auto mt-4 inline-flex items-center justify-center rounded-[18px] border border-hairline-soft bg-bone/50 p-3 sm:p-4">
+                    <div className="mx-auto mt-4 inline-flex items-center justify-center rounded-sm border border-hairline-soft bg-bone/50 p-3 sm:p-4">
                         {qrDataUrl ? (
                             <img
                                 src={qrDataUrl}

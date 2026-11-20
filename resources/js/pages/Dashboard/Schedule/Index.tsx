@@ -72,7 +72,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
 
             <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                 {/* Operating Hours */}
-                <form onSubmit={submitHours} className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <form onSubmit={submitHours} className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-ink">Jam Operasional Mingguan</h2>
                     <div className="space-y-3">
                         {hoursForm.data.hours.map((row, idx) => {
@@ -86,7 +86,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                             return (
                                 <div
                                     key={row.day_of_week}
-                                    className="space-y-2.5 rounded-[16px] bg-bone p-3.5"
+                                    className="space-y-2.5 rounded-sm bg-bone p-3.5"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="flex w-32 items-center gap-2.5">
@@ -174,7 +174,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                 </form>
 
                 {/* Holidays */}
-                <div className="space-y-4 rounded-[24px] border border-hairline-soft bg-canvas p-6">
+                <div className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-ink">Tanggal Libur Khusus</h2>
                     <form onSubmit={submitHoliday} className="space-y-3">
                         <div className="space-y-1.5">
@@ -212,7 +212,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
 
                     <div className="space-y-2 pt-2">
                         {holidays.map((h) => (
-                            <div key={h.id} className="flex items-center justify-between rounded-[14px] bg-bone px-4 py-2.5 text-sm">
+                            <div key={h.id} className="flex items-center justify-between rounded-xl bg-bone px-4 py-2.5 text-sm">
                                 <div>
                                     <p className="font-mono font-semibold tabular-nums text-ink">{h.date}</p>
                                     {h.reason && <p className="text-xs text-mute">{h.reason}</p>}

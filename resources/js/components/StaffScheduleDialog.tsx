@@ -146,7 +146,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
 
     return (
         <Dialog open={staffId !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-2xl">
+            <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold text-ink">
                         Jadwal Shift & Cuti — {staffName}
@@ -178,7 +178,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                     <div className="py-10 text-center text-sm text-mute">Memuat jadwal staff…</div>
                 ) : activeTab === 'hours' ? (
                     <form onSubmit={handleSaveHours} className="space-y-4">
-                        <div className="flex items-center justify-between gap-4 rounded-[16px] bg-bone p-4">
+                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                             <div>
                                 <Label htmlFor="staff-use-default" className="text-sm font-semibold text-ink">
                                     Ikuti Jam Operasional Bisnis
@@ -199,7 +199,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                 {hoursForm.data.hours.map((row, idx) => (
                                     <div
                                         key={row.day_of_week}
-                                        className="rounded-[16px] border border-hairline-soft bg-canvas p-3"
+                                        className="rounded-sm border border-hairline-soft bg-canvas p-3"
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                         <Input
                                                             type="time"
                                                             aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.start_time}
                                                             onChange={(e) => updateDay(idx, { start_time: e.target.value })}
                                                             required
@@ -231,7 +231,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                         <Input
                                                             type="time"
                                                             aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.end_time}
                                                             onChange={(e) => updateDay(idx, { end_time: e.target.value })}
                                                             required
@@ -242,7 +242,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                         <Input
                                                             type="time"
                                                             aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.break_start}
                                                             onChange={(e) => updateDay(idx, { break_start: e.target.value })}
                                                         />
@@ -250,7 +250,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                         <Input
                                                             type="time"
                                                             aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
                                                             value={row.break_end}
                                                             onChange={(e) => updateDay(idx, { break_end: e.target.value })}
                                                         />
@@ -266,7 +266,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                         )}
 
                         {Object.values(hoursForm.errors).length > 0 && (
-                            <div className="rounded-[14px] bg-destructive-soft p-3 text-xs text-destructive">
+                            <div className="rounded-xl bg-destructive-soft p-3 text-xs text-destructive">
                                 {Object.values(hoursForm.errors)[0]}
                             </div>
                         )}
@@ -282,7 +282,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                     </form>
                 ) : (
                     <div className="space-y-5">
-                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-[20px] bg-bone p-4">
+                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-md bg-bone p-4">
                             <p className="text-sm font-semibold text-ink">Tambah Jadwal Cuti / Libur</p>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1">
@@ -332,7 +332,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                 Belum ada jadwal cuti atau libur untuk staff ini.
                             </p>
                         ) : (
-                            <div className="divide-y divide-divider rounded-[20px] border border-hairline-soft bg-canvas">
+                            <div className="divide-y divide-divider rounded-md border border-hairline-soft bg-canvas">
                                 {timeOffs.map((item) => (
                                     <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
                                         <div>

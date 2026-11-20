@@ -31,20 +31,21 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
     const [deletingStaff, setDeletingStaff] = useState<StaffMember | null>(null);
 
     return (
-        <DashboardLayout title="Tim & Staff">
-            <Head title="Tim & Staff" />
-
-            <div className="flex justify-end">
+        <DashboardLayout
+            title="Tim & Staff"
+            actions={
                 <Button asChild size="sm" className="h-10 px-4">
                     <Link href={route('dashboard.staff.create')}>
                         <Plus className="size-4" aria-hidden="true" />
                         Tambah Staff
                     </Link>
                 </Button>
-            </div>
+            }
+        >
+            <Head title="Tim & Staff" />
 
             {staffMembers.length === 0 ? (
-                <div className="space-y-3 rounded-[24px] bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada staff terdaftar.</p>
                     <p className="text-sm text-mute">
                         Tambahkan anggota tim agar pelanggan dapat memilih staff saat membuat reservasi.
@@ -61,7 +62,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                     {staffMembers.map((st) => (
                         <div
                             key={st.id}
-                            className="flex flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-6"
+                            className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                         >
                             <div>
                                 <div className="flex items-start justify-between gap-2">

@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Search, SlidersHorizontal, UserX, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
@@ -149,6 +149,13 @@ export default function BookingsIndex({
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
     const [selectedCalendarBooking, setSelectedCalendarBooking] = useState<CalendarBookingItem | null>(null);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+    useEffect(() => {
+        if (!mobileFilterOpen) return;
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMobileFilterOpen(false);
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [mobileFilterOpen]);
 
     const STATUS_TABS = [
         { value: 'active', label: 'Aktif' },
@@ -327,7 +334,35 @@ export default function BookingsIndex({
     };
 
     return (
-        <DashboardLayout title="Manajemen Reservasi">
+        <DashboardLayout
+            title="Manajemen Reservasi"
+            actions={
+                services.length > 0 ? (
+                    <Button
+                        asChild
+                        size="sm"
+                        className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
+                    >
+                        <Link href={route('dashboard.bookings.create')}>
+                            <Plus className="size-4" aria-hidden="true" />
+                            <span className="sm:hidden">Baru</span>
+                            <span className="hidden sm:inline">Tambah Reservasi</span>
+                        </Link>
+                    </Button>
+                ) : (
+                    <Button
+                        type="button"
+                        size="sm"
+                        disabled
+                        className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
+                    >
+                        <Plus className="size-4" aria-hidden="true" />
+                        <span className="sm:hidden">Baru</span>
+                        <span className="hidden sm:inline">Tambah Reservasi</span>
+                    </Button>
+                )
+            }
+        >
             <Head title="Reservasi" />
 
             {/* Toolbar */}
@@ -393,30 +428,6 @@ export default function BookingsIndex({
                             </Button>
                         )}
 
-                        {services.length > 0 ? (
-                            <Button
-                                asChild
-                                size="sm"
-                                className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
-                            >
-                                <Link href={route('dashboard.bookings.create')}>
-                                    <Plus className="size-4" aria-hidden="true" />
-                                    <span className="sm:hidden">Baru</span>
-                                    <span className="hidden sm:inline">Tambah Reservasi</span>
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button
-                                type="button"
-                                size="sm"
-                                disabled
-                                className="h-9 px-3.5 text-xs sm:h-10 sm:px-4 sm:text-sm"
-                            >
-                                <Plus className="size-4" aria-hidden="true" />
-                                <span className="sm:hidden">Baru</span>
-                                <span className="hidden sm:inline">Tambah Reservasi</span>
-                            </Button>
-                        )}
                     </div>
                 </div>
 
@@ -498,7 +509,7 @@ export default function BookingsIndex({
                                 size="sm"
                                 aria-expanded={mobileFilterOpen}
                                 onClick={() => setMobileFilterOpen((prev) => !prev)}
-                                className="h-11 shrink-0 rounded-[16px] px-3.5"
+                                className="h-11 shrink-0 rounded-sm px-3.5"
                             >
                                 <SlidersHorizontal className="size-4" aria-hidden="true" />
                                 <span>Filter</span>
@@ -511,7 +522,7 @@ export default function BookingsIndex({
                         </div>
 
                         {mobileFilterOpen && (
-                            <div className="space-y-4 rounded-[20px] border border-hairline-soft bg-canvas p-4 md:hidden">
+                            <div className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 md:hidden">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mobile-filter-payment">Status Pembayaran</Label>
                                     <NativeSelect
@@ -608,7 +619,7 @@ export default function BookingsIndex({
                         )}
 
                         {/* Desktop Inline Filter Panel */}
-                        <div className="hidden space-y-2.5 rounded-[20px] border border-hairline-soft bg-bone/50 p-3 md:block">
+                        <div className="hidden space-y-2.5 rounded-md border border-hairline-soft bg-bone/50 p-3 md:block">
                             <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
                                 <div className="relative flex min-w-0 items-center">
                                     <label htmlFor="bookings-search" className="sr-only">
@@ -728,7 +739,7 @@ export default function BookingsIndex({
                     onSelectBooking={(booking) => setSelectedCalendarBooking(booking)}
                 />
             ) : bookings.length === 0 ? (
-                <div className="space-y-3 rounded-[24px] bg-bone p-10 text-center sm:p-12">
+                <div className="space-y-3 rounded-md bg-bone p-10 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         {hasActiveFilter
                             ? 'Tidak ada reservasi yang cocok dengan filter saat ini.'
@@ -794,7 +805,7 @@ export default function BookingsIndex({
                         return (
                             <div
                                 key={b.id}
-                                className="flex flex-col justify-between gap-3.5 rounded-[24px] border border-hairline-soft bg-canvas p-4 sm:p-5 md:flex-row md:items-start md:gap-6"
+                                className="flex flex-col justify-between gap-3.5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5 md:flex-row md:items-start md:gap-6"
                             >
                                 <div className="min-w-0 flex-1 space-y-2">
                                     {/* Mobile-first header: Customer & Schedule lead, Price aligned top-right */}
@@ -874,19 +885,19 @@ export default function BookingsIndex({
                                     </p>
 
                                     {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
-                                        <p className="rounded-[12px] bg-bone px-3 py-2 text-xs text-body">
+                                        <p className="rounded-xl bg-bone px-3 py-2 text-xs text-body">
                                             Alamat Jemput ({FULFILLMENT_TYPE_LABELS[b.fulfillment_type] ?? 'Jemput'}): {b.pickup_address}
                                         </p>
                                     )}
 
                                     {b.customer_notes && (
-                                        <p className="rounded-[12px] bg-bone px-3 py-2 text-xs text-body">
+                                        <p className="rounded-xl bg-bone px-3 py-2 text-xs text-body">
                                             Catatan: {b.customer_notes}
                                         </p>
                                     )}
 
                                     {b.reservation_status === 'cancelled' && b.cancellation_reason && (
-                                        <p className="rounded-[12px] bg-destructive-soft px-3 py-2 text-xs text-destructive">
+                                        <p className="rounded-xl bg-destructive-soft px-3 py-2 text-xs text-destructive">
                                             Alasan pembatalan: {b.cancellation_reason}
                                         </p>
                                     )}
@@ -977,13 +988,13 @@ export default function BookingsIndex({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent
                                                 align="end"
-                                                className="w-56 rounded-[20px] border-hairline-soft p-2 shadow-none"
+                                                className="w-56 rounded-md border-hairline-soft p-2 shadow-none"
                                             >
                                                 {WHATSAPP_TEMPLATE_META.map((item) => (
                                                     <DropdownMenuItem
                                                         key={item.key}
                                                         asChild
-                                                        className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink"
+                                                        className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
                                                     >
                                                         <a
                                                             href={buildTemplateWaUrl(b, item.key)}
@@ -998,7 +1009,7 @@ export default function BookingsIndex({
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     asChild
-                                                    className="cursor-pointer rounded-[12px] px-3 py-2 text-xs text-mute"
+                                                    className="cursor-pointer rounded-xl px-3 py-2 text-xs text-mute"
                                                 >
                                                     <a
                                                         href={buildQuickWaUrl(b)}
@@ -1025,12 +1036,12 @@ export default function BookingsIndex({
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent
                                                     align="end"
-                                                    className="w-52 rounded-[20px] border-hairline-soft p-2 shadow-none"
+                                                    className="w-52 rounded-md border-hairline-soft p-2 shadow-none"
                                                 >
                                                     {canSettle && !showSettleAsPrimary && (
                                                         <DropdownMenuItem
                                                             onClick={() => settlePayment(b.id)}
-                                                            className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink"
+                                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
                                                         >
                                                             <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
                                                             Tandai Lunas
@@ -1039,7 +1050,7 @@ export default function BookingsIndex({
                                                     {canReschedule && (
                                                         <DropdownMenuItem
                                                             asChild
-                                                            className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink"
+                                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
                                                         >
                                                             <Link href={route('dashboard.bookings.reschedule.edit', b.id)}>
                                                                 <CalendarClock className="mr-2 size-4" aria-hidden="true" />
@@ -1050,7 +1061,7 @@ export default function BookingsIndex({
                                                     {canNoShow && (
                                                         <DropdownMenuItem
                                                             onClick={() => setNoShowBooking(b)}
-                                                            className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-ink"
+                                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
                                                         >
                                                             <UserX className="mr-2 size-4" aria-hidden="true" />
                                                             Tandai Tidak Hadir
@@ -1063,7 +1074,7 @@ export default function BookingsIndex({
                                                             )}
                                                             <DropdownMenuItem
                                                                 asChild
-                                                                className="cursor-pointer rounded-[12px] px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
+                                                                className="cursor-pointer rounded-xl px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
                                                             >
                                                                 <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
                                                                     <X className="mr-2 size-4" aria-hidden="true" />
@@ -1086,7 +1097,7 @@ export default function BookingsIndex({
 
             {/* Proof Preview Modal */}
             <Dialog open={previewUrl !== null} onOpenChange={(open) => !open && setPreviewUrl(null)}>
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-lg">
+                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-semibold text-ink">Bukti Pembayaran DP</DialogTitle>
                     </DialogHeader>
@@ -1094,7 +1105,7 @@ export default function BookingsIndex({
                         <img
                             src={previewUrl}
                             alt="Bukti pembayaran DP pelanggan"
-                            className="max-h-[70vh] w-full rounded-[16px] bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
+                            className="max-h-[70vh] w-full rounded-sm bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
                         />
                     )}
                 </DialogContent>
@@ -1105,7 +1116,7 @@ export default function BookingsIndex({
                 open={selectedCalendarBooking !== null}
                 onOpenChange={(open) => !open && setSelectedCalendarBooking(null)}
             >
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
+                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-semibold text-ink">
                             Detail Reservasi {selectedCalendarBooking?.booking_code}

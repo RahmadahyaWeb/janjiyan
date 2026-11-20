@@ -75,8 +75,8 @@ export default function CustomersIndex({
 
             <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="grid w-full flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:max-w-3xl lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                        <div className="relative flex min-w-0 items-center sm:col-span-2 lg:col-span-1">
+                    <div className="grid w-full grid-cols-2 gap-2.5 lg:w-auto lg:max-w-3xl lg:flex-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="relative col-span-2 flex min-w-0 items-center lg:col-span-1">
                             <label htmlFor="customer-search" className="sr-only">
                                 Cari pelanggan berdasarkan nama, email, atau nomor WhatsApp
                             </label>
@@ -127,7 +127,7 @@ export default function CustomersIndex({
                         </NativeSelect>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="ml-auto flex items-center gap-2">
                         {hasActiveFilter && (
                             <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
                                 Reset Filter
@@ -157,7 +157,7 @@ export default function CustomersIndex({
             </div>
 
             {customers.length === 0 ? (
-                <div className="space-y-3 rounded-[24px] bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">
                         {hasActiveFilter
                             ? 'Tidak ada pelanggan yang cocok dengan filter saat ini.'
@@ -181,7 +181,7 @@ export default function CustomersIndex({
                         {customers.map((c) => (
                             <div
                                 key={c.id}
-                                className="space-y-3 rounded-[24px] border border-hairline-soft bg-canvas p-4"
+                                className="space-y-3 rounded-md border border-hairline-soft bg-canvas p-4"
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
@@ -248,7 +248,7 @@ export default function CustomersIndex({
                     </div>
 
                     {/* Desktop Table (md+) */}
-                    <div className="hidden overflow-x-auto rounded-[24px] border border-hairline-soft bg-canvas md:block">
+                    <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas md:block">
                         <table className="w-full min-w-[680px] text-left text-sm">
                             <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
                                 <tr>

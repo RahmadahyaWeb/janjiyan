@@ -33,12 +33,12 @@ export default function Login({ googleEnabled }: LoginProps) {
             </p>
 
             {flash.success && (
-                <div role="status" className="mt-4 rounded-[16px] bg-bone px-4 py-3 text-sm font-semibold text-ink">
+                <div role="status" className="mt-4 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
                     {flash.success}
                 </div>
             )}
             {flash.error && (
-                <div role="alert" className="mt-4 rounded-[16px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+                <div role="alert" className="mt-4 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                     {flash.error}
                 </div>
             )}

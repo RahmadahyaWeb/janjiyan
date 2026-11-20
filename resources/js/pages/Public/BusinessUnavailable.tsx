@@ -13,7 +13,7 @@ export default function BusinessUnavailable({ businessName, reason }: BusinessUn
         <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 py-12 text-ink">
             <Head title={`${businessName} Tidak Tersedia`} />
 
-            <main className="w-full max-w-md space-y-6 rounded-[24px] border border-hairline-soft bg-canvas p-8 text-center">
+            <main className="w-full max-w-md space-y-6 rounded-md border border-hairline-soft bg-canvas p-8 text-center">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive-soft text-destructive">
                     <ShieldAlert className="size-6" aria-hidden="true" />
                 </div>
@@ -24,7 +24,7 @@ export default function BusinessUnavailable({ businessName, reason }: BusinessUn
                         Portal reservasi untuk <span className="font-semibold text-ink">{businessName}</span> saat ini tidak tersedia.
                     </p>
                     {reason && (
-                        <p className="rounded-[12px] bg-bone px-3 py-2 text-xs text-body">
+                        <p className="rounded-xl bg-bone px-3 py-2 text-xs text-body">
                             Keterangan: {reason}
                         </p>
                     )}
