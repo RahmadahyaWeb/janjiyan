@@ -14,6 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,25 +30,29 @@ class BookingController extends Controller
         $business = $user->resolveActiveBusiness();
         $tz = $business?->timezone ?: 'Asia/Jakarta';
 
-        $staffFilter = $request->integer('staff_id') ?: null;
-        $serviceFilter = $request->integer('service_id') ?: null;
+        $filters = $this->listFilters($request);
+        $search = $filters['search'];
 
-        $hasExplicitFilter = $request->has('status')
-            || $request->filled('payment')
-            || $request->filled('search')
-            || $request->filled('date_from')
-            || $request->filled('date_to')
-            || $staffFilter !== null
-            || $serviceFilter !== null;
+        $modes = $business ? $this->bookingModes($business) : collect(['time_slot']);
+        $hasBothModes = $modes->count() > 1;
+        $requestedMode = in_array($request->string('mode')->toString(), ['time_slot', 'dropoff'], true)
+            ? $request->string('mode')->toString()
+            : null;
 
-        $statusFilter = $request->has('status')
-            ? $request->string('status')->toString()
-            : ($hasExplicitFilter ? 'all' : 'active');
-        $paymentFilter = $request->string('payment')->toString();
-        $search = $request->string('search')->toString();
-        $dateFrom = $this->sanitizeDateString($request->string('date_from')->toString());
-        $dateTo = $this->sanitizeDateString($request->string('date_to')->toString());
-        $viewMode = $request->string('view')->toString() === 'calendar' ? 'calendar' : 'list';
+        // Per-mode result counts under the current filters, so the toggle shows where bookings are.
+        $modeCounts = null;
+        if ($business && $hasBothModes) {
+            $modeCounts = collect(['time_slot', 'dropoff'])->mapWithKeys(fn (string $m) => [
+                $m => $this->applyListFilters($business->bookings(), $filters, $m, true)->count(),
+            ])->all();
+        }
+
+        $mode = $hasBothModes
+            ? ($requestedMode ?? (($modeCounts['time_slot'] === 0 && $modeCounts['dropoff'] > 0) ? 'dropoff' : 'time_slot'))
+            : ($modes->first() ?? 'time_slot');
+        $statusFilter = $this->sanitizeStatus($filters['status'], $mode);
+
+        $viewMode = $request->string('view')->toString() === 'calendar' && $mode === 'time_slot' ? 'calendar' : 'list';
         $calendarDateString = $this->sanitizeDateString($request->string('calendar_date')->toString())
             ?? CarbonImmutable::now($tz)->toDateString();
 
@@ -102,25 +107,7 @@ class BookingController extends Controller
                         'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
                     ]),
                 ])
-                ->when(
-                    $statusFilter === 'active',
-                    fn ($q) => $q->whereIn('reservation_status', ['pending', 'confirmed'])
-                )
-                ->when(
-                    $statusFilter !== '' && $statusFilter !== 'all' && $statusFilter !== 'active',
-                    fn ($q) => $q->where('reservation_status', $statusFilter)
-                )
-                ->when($paymentFilter, fn ($q) => $q->where('payment_status', $paymentFilter))
-                ->when($staffFilter, fn ($q) => $q->where('staff_id', $staffFilter))
-                ->when($serviceFilter, fn ($q) => $q->where('service_id', $serviceFilter))
-                ->whereBookingDateBetween($dateFrom, $dateTo)
-                ->when($search, function ($q) use ($search) {
-                    $q->where(function ($sub) use ($search) {
-                        $sub->where('booking_code', 'like', "%{$search}%")
-                            ->orWhere('invoice_number', 'like', "%{$search}%")
-                            ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
-                    });
-                })
+                ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode, $hasBothModes))
                 ->orderByDesc('booking_date')
                 ->orderByDesc('start_at')
                 ->orderByDesc('id')
@@ -145,6 +132,7 @@ class BookingController extends Controller
                 ])
                 ->whereBookingDateBetween($weekStart->toDateString(), $weekEnd->toDateString())
                 ->whereNotIn('reservation_status', ['cancelled'])
+                ->when($hasBothModes, fn ($q) => $this->whereMode($q, 'time_slot'))
                 ->orderBy('start_at')
                 ->get()
             : collect();
@@ -203,15 +191,18 @@ class BookingController extends Controller
             'staffOptions' => $staffColumns,
             'filters' => [
                 'status' => $statusFilter,
-                'payment' => $paymentFilter,
-                'staff_id' => $staffFilter ? (string) $staffFilter : '',
-                'service_id' => $serviceFilter ? (string) $serviceFilter : '',
+                'payment' => $filters['payment'],
+                'staff_id' => $filters['staff_id'] ? (string) $filters['staff_id'] : '',
+                'service_id' => $filters['service_id'] ? (string) $filters['service_id'] : '',
                 'search' => $search,
-                'date_from' => $dateFrom ?? '',
-                'date_to' => $dateTo ?? '',
+                'date_from' => $filters['date_from'] ?? '',
+                'date_to' => $filters['date_to'] ?? '',
+                'mode' => $mode,
                 'view' => $viewMode,
                 'calendar_date' => $calendarDateString,
             ],
+            'hasBothModes' => $hasBothModes,
+            'modeCounts' => $modeCounts,
             'calendar' => [
                 'selected_date' => $calendarDateString,
                 'days' => $calendarDays,
@@ -481,7 +472,7 @@ class BookingController extends Controller
             $booking->reservation_status === 'confirmed' ? 'confirmed' : 'created'
         );
 
-        return to_route('dashboard.bookings')->with('success', "Reservasi manual {$booking->booking_code} berhasil dibuat.");
+        return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', "Reservasi manual {$booking->booking_code} berhasil dibuat.");
     }
 
     public function reschedule(
@@ -525,7 +516,7 @@ class BookingController extends Controller
             ? "Tanggal drop-off {$updated->booking_code} berhasil diubah ke {$validated['date']}."
             : "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.";
 
-        return to_route('dashboard.bookings')->with('success', $message);
+        return to_route('dashboard.bookings', ['mode' => $updated->booking_mode ?? 'time_slot'])->with('success', $message);
     }
 
     public function updateStatus(
@@ -574,7 +565,7 @@ class BookingController extends Controller
         }
 
         if ($request->boolean('redirect_to_index')) {
-            return to_route('dashboard.bookings')->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
+            return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
         }
 
         return back()->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
@@ -630,38 +621,21 @@ class BookingController extends Controller
             return back()->with('error', 'Export CSV hanya tersedia pada paket Professional dan Enterprise.');
         }
 
-        $staffFilter = $request->integer('staff_id') ?: null;
-        $serviceFilter = $request->integer('service_id') ?: null;
+        $filters = $this->listFilters($request);
+        $modes = $this->bookingModes($business);
+        $hasBothModes = $modes->count() > 1;
+        $mode = $hasBothModes
+            ? ($request->string('mode')->toString() === 'dropoff' ? 'dropoff' : 'time_slot')
+            : ($modes->first() ?? 'time_slot');
+        $filters['status'] = $this->sanitizeStatus($filters['status'], $mode);
+        $filters['search'] = '';
 
-        $hasExplicitFilter = $request->has('status')
-            || $request->filled('payment')
-            || $request->filled('search')
-            || $request->filled('date_from')
-            || $request->filled('date_to')
-            || $staffFilter !== null
-            || $serviceFilter !== null;
-
-        $statusFilter = $request->has('status')
-            ? $request->string('status')->toString()
-            : ($hasExplicitFilter ? 'all' : 'active');
-        $paymentFilter = $request->string('payment')->toString();
-        $dateFrom = $this->sanitizeDateString($request->string('date_from')->toString());
-        $dateTo = $this->sanitizeDateString($request->string('date_to')->toString());
-
-        $bookingsQuery = $business->bookings()
-            ->with(['service', 'staff', 'customer'])
-            ->when(
-                $statusFilter === 'active',
-                fn ($q) => $q->whereIn('reservation_status', ['pending', 'confirmed'])
-            )
-            ->when(
-                $statusFilter !== '' && $statusFilter !== 'all' && $statusFilter !== 'active',
-                fn ($q) => $q->where('reservation_status', $statusFilter)
-            )
-            ->when($paymentFilter, fn ($q) => $q->where('payment_status', $paymentFilter))
-            ->when($staffFilter, fn ($q) => $q->where('staff_id', $staffFilter))
-            ->when($serviceFilter, fn ($q) => $q->where('service_id', $serviceFilter))
-            ->whereBookingDateBetween($dateFrom, $dateTo)
+        $bookingsQuery = $this->applyListFilters(
+            $business->bookings()->with(['service', 'staff', 'customer']),
+            $filters,
+            $mode,
+            $hasBothModes
+        )
             ->orderByDesc('booking_date')
             ->orderByDesc('start_at')
             ->orderByDesc('id');
@@ -690,6 +664,104 @@ class BookingController extends Controller
             }
             fclose($handle);
         }, "janjiyan-bookings-{$business->slug}.csv");
+    }
+
+    /** Status tabs each booking mode shows on the reservations page. */
+    private const MODE_STATUS_TABS = [
+        'time_slot' => ['active', 'pending', 'confirmed', 'completed', 'no_show', 'cancelled', 'all'],
+        'dropoff' => ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup', 'completed', 'no_show', 'cancelled', 'all'],
+    ];
+
+    /**
+     * @return array{status: string, payment: string, staff_id: ?int, service_id: ?int, search: string, date_from: ?string, date_to: ?string}
+     */
+    private function listFilters(Request $request): array
+    {
+        $staffFilter = $request->integer('staff_id') ?: null;
+        $serviceFilter = $request->integer('service_id') ?: null;
+
+        $hasExplicitFilter = $request->has('status')
+            || $request->filled('payment')
+            || $request->filled('search')
+            || $request->filled('date_from')
+            || $request->filled('date_to')
+            || $staffFilter !== null
+            || $serviceFilter !== null;
+
+        return [
+            'status' => $request->has('status')
+                ? $request->string('status')->toString()
+                : ($hasExplicitFilter ? 'all' : 'active'),
+            'payment' => $request->string('payment')->toString(),
+            'staff_id' => $staffFilter,
+            'service_id' => $serviceFilter,
+            'search' => $request->string('search')->toString(),
+            'date_from' => $this->sanitizeDateString($request->string('date_from')->toString()),
+            'date_to' => $this->sanitizeDateString($request->string('date_to')->toString()),
+        ];
+    }
+
+    private function sanitizeStatus(string $status, string $mode): string
+    {
+        return in_array($status, self::MODE_STATUS_TABS[$mode], true) ? $status : 'active';
+    }
+
+    /**
+     * Modes this business uses, from all services (active or not) and existing bookings, so
+     * switching a service off never hides its open orders.
+     *
+     * @return Collection<int, string>
+     */
+    private function bookingModes(Business $business)
+    {
+        return $business->services()->distinct()->pluck('booking_mode')
+            ->merge($business->bookings()->distinct()->pluck('booking_mode'))
+            ->unique()
+            ->sort()
+            ->reverse() // time_slot first
+            ->values();
+    }
+
+    private function whereMode($query, string $mode)
+    {
+        return $query->where('booking_mode', $mode);
+    }
+
+    /** Expects an already-sanitized status (see sanitizeStatus). */
+    private function applyListFilters($query, array $filters, string $mode, bool $filterMode)
+    {
+        $status = $this->sanitizeStatus($filters['status'], $mode);
+        $search = $filters['search'];
+
+        return $query
+            ->when($filterMode, fn ($q) => $this->whereMode($q, $mode))
+            ->when(
+                in_array($status, ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup'], true),
+                fn ($q) => $q->whereIn('reservation_status', ['pending', 'confirmed'])
+            )
+            ->when(
+                $status === 'awaiting_dropoff',
+                fn ($q) => $q->where(fn ($w) => $w->whereNull('work_status')->orWhere('work_status', 'awaiting_dropoff'))
+            )
+            ->when(
+                in_array($status, ['in_progress', 'ready_for_pickup'], true),
+                fn ($q) => $q->where('work_status', $status)
+            )
+            ->when(
+                in_array($status, ['pending', 'confirmed', 'completed', 'no_show', 'cancelled'], true),
+                fn ($q) => $q->where('reservation_status', $status)
+            )
+            ->when($filters['payment'], fn ($q) => $q->where('payment_status', $filters['payment']))
+            ->when($filters['staff_id'], fn ($q) => $q->where('staff_id', $filters['staff_id']))
+            ->when($filters['service_id'], fn ($q) => $q->where('service_id', $filters['service_id']))
+            ->whereBookingDateBetween($filters['date_from'], $filters['date_to'])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('booking_code', 'like', "%{$search}%")
+                        ->orWhere('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
+                });
+            });
     }
 
     private function sanitizeDateString(string $value): ?string

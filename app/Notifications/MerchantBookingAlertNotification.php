@@ -86,7 +86,7 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
         }
 
         return $mail
-            ->action('Buka Dashboard Reservasi', route('dashboard.bookings', ['search' => $booking->booking_code]))
+            ->action('Buka Dashboard Reservasi', route('dashboard.bookings', ['search' => $booking->booking_code, 'mode' => $booking->booking_mode ?? 'time_slot']))
             ->line('Kelola verifikasi DP dan status reservasi langsung dari dashboard Janjiyan.');
     }
 }

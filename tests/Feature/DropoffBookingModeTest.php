@@ -82,6 +82,108 @@ class DropoffBookingModeTest extends TestCase
         return $candidate;
     }
 
+    private function makeBooking(Service $service, string $code, array $attrs = []): Booking
+    {
+        $customer = Customer::firstOrCreate(
+            ['business_id' => $this->business->id, 'phone' => '6281200000000'],
+            ['name' => 'Rina']
+        );
+        $day = $this->nextOpenWeekday(1);
+
+        return Booking::create(array_merge([
+            'business_id' => $this->business->id,
+            'customer_id' => $customer->id,
+            'service_id' => $service->id,
+            'booking_mode' => $service->booking_mode,
+            'booking_code' => $code,
+            'booking_date' => $day->toDateString(),
+            'start_at' => $day->setTime(10, 0)->utc(),
+            'end_at' => $day->setTime(11, 0)->utc(),
+            'buffer_end_at' => $day->setTime(11, 0)->utc(),
+            'total_price' => 50000,
+            'dp_amount' => 0,
+            'reservation_status' => 'confirmed',
+            'payment_status' => 'unpaid',
+        ], $attrs));
+    }
+
+    public function test_bookings_index_splits_time_slot_and_dropoff_modes(): void
+    {
+        $slotService = Service::create([
+            'business_id' => $this->business->id,
+            'name' => 'Express Clean On-Site',
+            'price' => 40000,
+            'duration_minutes' => 30,
+            'buffer_minutes' => 0,
+            'capacity' => 1,
+            'assignment_mode' => 'capacity',
+            'booking_mode' => 'time_slot',
+            'dp_type' => 'none',
+            'dp_value' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->makeBooking($slotService, 'JNY-SLOT1');
+        $this->makeBooking($slotService, 'JNY-SLOT2');
+        $this->makeBooking($this->dropoffService, 'JNY-DROP1', ['work_status' => 'awaiting_dropoff']);
+        $this->makeBooking($this->dropoffService, 'JNY-DROP2', ['work_status' => 'ready_for_pickup']);
+
+        $codes = fn ($res) => collect($res->viewData('page')['props']['bookings'])->pluck('booking_code')->sort()->values()->all();
+
+        // Default: Janji Temu, with per-mode counts exposed.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings'))->assertOk();
+        $props = $res->viewData('page')['props'];
+        $this->assertTrue($props['hasBothModes']);
+        $this->assertSame('time_slot', $props['filters']['mode']);
+        $this->assertSame(['time_slot' => 2, 'dropoff' => 2], $props['modeCounts']);
+        $this->assertSame(['JNY-SLOT1', 'JNY-SLOT2'], $codes($res));
+
+        // Drop-off tab filters by work status.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'ready_for_pickup']));
+        $this->assertSame(['JNY-DROP2'], $codes($res));
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'awaiting_dropoff']));
+        $this->assertSame(['JNY-DROP1'], $codes($res));
+
+        $this->makeBooking($this->dropoffService, 'JNY-DROP3', ['reservation_status' => 'no_show']);
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'no_show']));
+        $this->assertSame(['JNY-DROP3'], $codes($res));
+
+        // Export follows the same mode + work-status filter as the list.
+        $csv = $this->actingAs($this->owner)
+            ->get(route('dashboard.bookings.export', ['mode' => 'dropoff', 'status' => 'ready_for_pickup']))
+            ->assertOk()
+            ->streamedContent();
+        $this->assertStringContainsString('JNY-DROP2', $csv);
+        $this->assertStringNotContainsString('JNY-DROP1', $csv);
+        $this->assertStringNotContainsString('JNY-SLOT1', $csv);
+
+        // A status from the other mode falls back to active instead of an empty list.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'time_slot', 'status' => 'ready_for_pickup']));
+        $this->assertSame('active', $res->viewData('page')['props']['filters']['status']);
+        $this->assertSame(['JNY-SLOT1', 'JNY-SLOT2'], $codes($res));
+
+        // Search for a drop-off code without a mode lands on the drop-off list.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['search' => 'JNY-DROP2']));
+        $this->assertSame('dropoff', $res->viewData('page')['props']['filters']['mode']);
+        $this->assertSame(['JNY-DROP2'], $codes($res));
+
+        // Drop-off mode never renders the calendar.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'view' => 'calendar']));
+        $this->assertSame('list', $res->viewData('page')['props']['filters']['view']);
+    }
+
+    public function test_dropoff_only_shop_defaults_to_dropoff_without_mode_switch(): void
+    {
+        $this->makeBooking($this->dropoffService, 'JNY-DROP1', ['work_status' => 'in_progress']);
+
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['status' => 'in_progress']))->assertOk();
+        $props = $res->viewData('page')['props'];
+        $this->assertFalse($props['hasBothModes']);
+        $this->assertNull($props['modeCounts']);
+        $this->assertSame('dropoff', $props['filters']['mode']);
+        $this->assertSame(['JNY-DROP1'], collect($props['bookings'])->pluck('booking_code')->all());
+    }
+
     public function test_merchant_can_create_dropoff_service_without_time_slot_duration(): void
     {
         $response = $this->actingAs($this->owner)->post('/dashboard/services', [

@@ -108,6 +108,36 @@ interface StaffFilterOption {
     title: string | null;
 }
 
+type BookingMode = 'time_slot' | 'dropoff';
+
+const MODE_TABS: { value: BookingMode; label: string }[] = [
+    { value: 'time_slot', label: 'Janji Temu' },
+    { value: 'dropoff', label: 'Drop-off' },
+];
+
+// Must match BookingController::MODE_STATUS_TABS.
+const STATUS_TABS: Record<BookingMode, { value: string; label: string }[]> = {
+    time_slot: [
+        { value: 'active', label: 'Aktif' },
+        { value: 'pending', label: 'Menunggu' },
+        { value: 'confirmed', label: 'Dikonfirmasi' },
+        { value: 'completed', label: 'Selesai' },
+        { value: 'no_show', label: 'Tidak Hadir' },
+        { value: 'cancelled', label: 'Dibatalkan' },
+        { value: 'all', label: 'Semua' },
+    ],
+    dropoff: [
+        { value: 'active', label: 'Aktif' },
+        { value: 'awaiting_dropoff', label: 'Masuk' },
+        { value: 'in_progress', label: 'Dikerjakan' },
+        { value: 'ready_for_pickup', label: 'Siap Diambil' },
+        { value: 'completed', label: 'Selesai' },
+        { value: 'no_show', label: 'Tidak Hadir' },
+        { value: 'cancelled', label: 'Dibatalkan' },
+        { value: 'all', label: 'Semua' },
+    ],
+};
+
 interface BookingsIndexProps {
     bookings: BookingRow[];
     pagination?: PaginationMeta | null;
@@ -121,9 +151,12 @@ interface BookingsIndexProps {
         search: string;
         date_from: string;
         date_to: string;
+        mode: BookingMode;
         view: 'list' | 'calendar';
         calendar_date: string;
     };
+    hasBothModes: boolean;
+    modeCounts: Record<BookingMode, number> | null;
     calendar: CalendarPayload;
     businessName: string;
     businessAddress?: string;
@@ -137,6 +170,8 @@ export default function BookingsIndex({
     services,
     staffOptions = [],
     filters,
+    hasBothModes,
+    modeCounts,
     calendar,
     businessName,
     businessAddress = '',
@@ -157,15 +192,8 @@ export default function BookingsIndex({
         return () => window.removeEventListener('keydown', onKey);
     }, [mobileFilterOpen]);
 
-    const STATUS_TABS = [
-        { value: 'active', label: 'Aktif' },
-        { value: 'pending', label: 'Menunggu' },
-        { value: 'confirmed', label: 'Dikonfirmasi' },
-        { value: 'completed', label: 'Selesai' },
-        { value: 'no_show', label: 'Tidak Hadir' },
-        { value: 'cancelled', label: 'Dibatalkan' },
-        { value: 'all', label: 'Semua' },
-    ] as const;
+    const statusTabs = STATUS_TABS[filters.mode];
+    const modeServices = hasBothModes ? services.filter((svc) => svc.booking_mode === filters.mode) : services;
 
     const currentStatus = filters.status || 'active';
     const advancedFilterCount = [
@@ -197,21 +225,21 @@ export default function BookingsIndex({
         setSearch('');
         router.get(
             route('dashboard.bookings'),
-            { view: filters.view, calendar_date: filters.calendar_date },
+            { mode: filters.mode, view: filters.view, calendar_date: filters.calendar_date },
             { preserveState: true, preserveScroll: true, replace: true }
         );
     };
 
     const exportUrl = (() => {
         const params = new URLSearchParams();
-        if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+        params.set('mode', filters.mode);
+        params.set('status', filters.status);
         if (filters.payment) params.set('payment', filters.payment);
         if (filters.staff_id) params.set('staff_id', filters.staff_id);
         if (filters.service_id) params.set('service_id', filters.service_id);
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
-        const qs = params.toString();
-        return qs ? `${route('dashboard.bookings.export')}?${qs}` : route('dashboard.bookings.export');
+        return `${route('dashboard.bookings.export')}?${params.toString()}`;
     })();
 
     const buildQuickWaUrl = (
@@ -367,9 +395,55 @@ export default function BookingsIndex({
 
             {/* Toolbar */}
             <div className="space-y-3">
+                {hasBothModes && (
+                    <div
+                        className="grid grid-cols-2 gap-1 rounded-md border border-hairline-soft bg-bone p-1 sm:inline-grid sm:w-auto"
+                        role="group"
+                        aria-label="Jenis layanan"
+                    >
+                        {MODE_TABS.map((tab) => {
+                            const active = filters.mode === tab.value;
+                            const count = modeCounts?.[tab.value] ?? 0;
+                            return (
+                                <button
+                                    key={tab.value}
+                                    type="button"
+                                    aria-pressed={active}
+                                    onClick={() =>
+                                        !active &&
+                                        applyFilters({
+                                            mode: tab.value,
+                                            status: 'active',
+                                            service_id: '',
+                                            view: tab.value === 'dropoff' ? 'list' : filters.view,
+                                        })
+                                    }
+                                    className={cn(
+                                        'inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 text-sm sm:px-5 font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                        active ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                                    )}
+                                >
+                                    {tab.label}
+                                    <span
+                                        className={cn(
+                                            'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums leading-none',
+                                            active ? 'bg-canvas text-ink' : 'bg-canvas text-mute'
+                                        )}
+                                    >
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div
-                        className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
+                        className={cn(
+                            'inline-flex rounded-full border border-hairline-soft bg-bone p-1',
+                            filters.mode === 'dropoff' && 'hidden'
+                        )}
                         role="group"
                         aria-label="Tampilan reservasi"
                     >
@@ -397,7 +471,7 @@ export default function BookingsIndex({
                         </button>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
                         {canExportCsv ? (
                             <Button
                                 asChild
@@ -441,9 +515,10 @@ export default function BookingsIndex({
                             fadeBreakpointClass="sm:hidden"
                             className="flex gap-1.5 px-4 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
                         >
-                            {STATUS_TABS.map((tab) => {
+                            {statusTabs.map((tab) => {
                                 const active = currentStatus === tab.value;
-                                const showPendingBadge = tab.value === 'pending' && pendingBookingsCount > 0;
+                                // Global count spans both modes, so only show it when there is one mode.
+                                const showPendingBadge = !hasBothModes && tab.value === 'pending' && pendingBookingsCount > 0;
                                 return (
                                     <button
                                         key={tab.value}
@@ -546,7 +621,7 @@ export default function BookingsIndex({
                                         onChange={(e) => applyFilters({ service_id: e.target.value })}
                                     >
                                         <option value="">Semua Layanan</option>
-                                        {services.map((svc) => (
+                                        {modeServices.map((svc) => (
                                             <option key={svc.id} value={String(svc.id)}>
                                                 {svc.name}
                                             </option>
@@ -669,7 +744,7 @@ export default function BookingsIndex({
                                     className="bg-canvas"
                                 >
                                     <option value="">Semua Layanan</option>
-                                    {services.map((svc) => (
+                                    {modeServices.map((svc) => (
                                         <option key={svc.id} value={String(svc.id)}>
                                             {svc.name}
                                         </option>
@@ -786,8 +861,14 @@ export default function BookingsIndex({
             ) : (
                 <div className="space-y-3">
                     {bookings.map((b) => {
-                        const canReschedule = b.reservation_status === 'pending' || b.reservation_status === 'confirmed';
-                        const canNoShow = b.reservation_status === 'confirmed';
+                        const isDropoff = b.booking_mode === 'dropoff';
+                        // Once a drop-off item is in the shop, rescheduling or no-show no longer apply.
+                        const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
+                        const canReschedule =
+                            !dropoffInShop && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
+                        const canNoShow = !dropoffInShop && b.reservation_status === 'confirmed';
+                        const showWorkBadge =
+                            isDropoff && !!b.work_status && b.reservation_status !== 'cancelled' && b.reservation_status !== 'no_show';
                         const canCancel =
                             b.reservation_status !== 'cancelled' &&
                             b.reservation_status !== 'completed' &&
@@ -849,11 +930,12 @@ export default function BookingsIndex({
                                     </p>
 
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                        {reservationBadge(b.reservation_status)}
-                                        {b.booking_mode === 'dropoff' && b.work_status && (
-                                            <Badge variant="outline">
-                                                {WORK_STATUS_LABELS[b.work_status] ?? b.work_status}
+                                        {showWorkBadge ? (
+                                            <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
+                                                {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
                                             </Badge>
+                                        ) : (
+                                            reservationBadge(b.reservation_status)
                                         )}
                                         {paymentBadge(b.payment_status)}
                                         {(b.rescheduled_count ?? 0) > 0 && (

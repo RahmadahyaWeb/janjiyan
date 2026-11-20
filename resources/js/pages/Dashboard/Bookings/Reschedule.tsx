@@ -84,7 +84,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
     };
 
     return (
-        <DashboardLayout title="Ubah Jadwal Reservasi" back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
+        <DashboardLayout title="Ubah Jadwal Reservasi" back={{ href: route('dashboard.bookings', { mode: booking.booking_mode }), label: 'Kembali ke Daftar Reservasi' }}>
             <Head title={`Ubah Jadwal ${booking.booking_code}`} />
 
 
@@ -219,7 +219,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
 
                 <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <Button asChild type="button" variant="outline">
-                        <Link href={route('dashboard.bookings')}>Batal</Link>
+                        <Link href={route('dashboard.bookings', { mode: booking.booking_mode })}>Batal</Link>
                     </Button>
                     <Button
                         type="submit"

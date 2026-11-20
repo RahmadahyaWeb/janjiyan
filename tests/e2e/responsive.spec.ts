@@ -30,6 +30,7 @@ const ROUTES: Route[] = [
 
     { name: 'dashboard', path: '/dashboard', as: 'owner' },
     { name: 'bookings', path: '/dashboard/bookings', as: 'owner' },
+    { name: 'bookings-dropoff', path: '/dashboard/bookings?mode=dropoff', as: 'owner' },
     { name: 'bookings-create', path: '/dashboard/bookings/create', as: 'owner' },
     { name: 'bookings-cancel', path: '/dashboard/bookings/3/cancel', as: 'owner' },
     { name: 'bookings-reschedule', path: '/dashboard/bookings/3/reschedule', as: 'owner' },

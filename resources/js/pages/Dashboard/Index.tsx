@@ -461,7 +461,7 @@ export default function DashboardIndex({
                             {recentBookings.map((b) => (
                                 <Link
                                     key={b.id}
-                                    href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
+                                    href={route('dashboard.bookings', { status: 'all', search: b.booking_code, mode: b.booking_mode ?? 'time_slot' })}
                                     className="flex items-center justify-between gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                 >
                                     <div className="min-w-0">
