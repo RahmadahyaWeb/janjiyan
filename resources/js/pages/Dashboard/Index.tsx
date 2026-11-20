@@ -224,7 +224,7 @@ export default function DashboardIndex({
             )}
 
             {/* Clickable KPI Cards */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                 <Link
                     href={route(
                         'dashboard.bookings',
@@ -439,7 +439,7 @@ export default function DashboardIndex({
                 </section>
             )}
 
-            <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Recent Bookings */}
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div className="mb-4 flex items-center justify-between">

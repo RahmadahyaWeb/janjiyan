@@ -75,8 +75,8 @@ export default function CustomersIndex({
 
             <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="grid w-full grid-cols-2 gap-2.5 lg:w-auto lg:max-w-3xl lg:flex-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                        <div className="relative col-span-2 flex min-w-0 items-center lg:col-span-1">
+                    <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 lg:w-auto lg:max-w-3xl lg:flex-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="relative flex min-w-0 items-center sm:col-span-2 lg:col-span-1">
                             <label htmlFor="customer-search" className="sr-only">
                                 Cari pelanggan berdasarkan nama, email, atau nomor WhatsApp
                             </label>
@@ -250,7 +250,7 @@ export default function CustomersIndex({
                     {/* Desktop Table (md+) */}
                     <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas md:block">
                         <table className="w-full min-w-[680px] text-left text-sm">
-                            <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
+                            <thead className="border-b border-divider bg-bone text-xs font-semibold whitespace-nowrap text-mute">
                                 <tr>
                                     <th scope="col" className="px-5 py-3.5">Pelanggan</th>
                                     <th scope="col" className="px-5 py-3.5">WhatsApp</th>

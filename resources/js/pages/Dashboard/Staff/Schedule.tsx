@@ -110,19 +110,19 @@ export default function StaffSchedule({
                         role="tab"
                         aria-selected={activeTab === 'hours'}
                         onClick={() => setActiveTab('hours')}
-                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors sm:px-4 ${
                             activeTab === 'hours' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                         }`}
                     >
                         <Clock className="size-3.5" aria-hidden="true" />
-                        Jam Shift Mingguan
+                        <span><span className="hidden sm:inline">Jam </span>Shift Mingguan</span>
                     </button>
                     <button
                         type="button"
                         role="tab"
                         aria-selected={activeTab === 'time_offs'}
                         onClick={() => setActiveTab('time_offs')}
-                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors sm:px-4 ${
                             activeTab === 'time_offs' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                         }`}
                     >
@@ -192,8 +192,8 @@ export default function StaffSchedule({
                                                             required
                                                         />
                                                     </div>
-                                                    <div className="grid w-full grid-cols-[auto_1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
-                                                        <span className="text-mute sm:ml-1">Istirahat:</span>
+                                                    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
+                                                        <span className="col-span-3 text-mute sm:ml-1">Istirahat:</span>
                                                         <Input
                                                             type="time"
                                                             aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}

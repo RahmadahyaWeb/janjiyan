@@ -143,9 +143,9 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                         className="mb-4 aspect-[16/9] w-full rounded-xl object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                 )}
-                                <div className="flex items-start justify-between gap-2">
-                                    <h2 className="min-w-0 text-lg font-semibold text-ink">{s.name}</h2>
-                                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                                <div className="flex flex-col gap-2">
+                                    <h2 className="text-lg font-semibold break-words text-ink">{s.name}</h2>
+                                    <div className="flex flex-wrap items-center gap-1.5">
                                         {!s.is_active && <Badge variant="danger">Nonaktif</Badge>}
                                         {s.booking_mode === 'dropoff' ? (
                                             <>

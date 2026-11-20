@@ -70,7 +70,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
         <DashboardLayout title="Jadwal Operasional & Libur">
             <Head title="Jadwal" />
 
-            <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Operating Hours */}
                 <form onSubmit={submitHours} className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-ink">Jam Operasional Mingguan</h2>

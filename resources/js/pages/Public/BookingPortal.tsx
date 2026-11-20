@@ -395,19 +395,19 @@ export default function BookingPortal({
                                       : 'Tutup hari ini'}
                             </Badge>
                         )}
-                        <Button asChild variant="outline" size="sm">
+                        <Button asChild variant="outline" size="sm" className="px-3 sm:px-4">
                             <Link href={route('public.booking.invoices', business.slug)}>
                                 <FileText className="size-4" aria-hidden="true" />
                                 <span className="hidden sm:inline">Cek Invoice</span>
-                                <span className="sm:hidden">Invoice</span>
+                                <span className="sr-only sm:hidden">Invoice</span>
                             </Link>
                         </Button>
                         {whatsappChatUrl && (
-                            <Button asChild variant="outline" size="sm">
+                            <Button asChild variant="outline" size="sm" className="px-3 sm:px-4">
                                 <a href={whatsappChatUrl} target="_blank" rel="noreferrer">
                                     <MessageCircle className="size-4" aria-hidden="true" />
                                     <span className="hidden sm:inline">Chat WhatsApp</span>
-                                    <span className="sm:hidden">WhatsApp</span>
+                                    <span className="sr-only sm:hidden">WhatsApp</span>
                                 </a>
                             </Button>
                         )}
@@ -615,7 +615,7 @@ export default function BookingPortal({
                     {hoursExpanded && operatingHours.length > 0 && (
                         <div
                             id="business-operating-hours"
-                            className="mt-6 grid gap-4 border-t border-divider pt-5 md:grid-cols-[1.5fr_1fr]"
+                            className="mt-6 grid gap-4 border-t border-divider pt-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
                         >
                             <div>
                                 <h2 className="mb-3 text-sm font-semibold text-ink">
@@ -728,7 +728,7 @@ export default function BookingPortal({
                         <p className="mt-1 text-sm text-mute">Merchant sedang menyiapkan daftar layanan.</p>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="grid items-start gap-8 lg:grid-cols-[1.55fr_1fr]">
+                    <form onSubmit={handleSubmit} className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
                         {/* Left Column: Booking Steps */}
                         <div className="min-w-0 space-y-10">
                             {/* Step 1: Pilih Layanan */}
@@ -937,7 +937,7 @@ export default function BookingPortal({
                                     </HorizontalScrollContainer>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="booking-date" className="inline-flex items-center gap-1.5">
+                                        <Label htmlFor="booking-date" className="inline-flex flex-wrap items-center gap-1.5">
                                             <Calendar className="size-4" aria-hidden="true" />
                                             {isDropoffService
                                                 ? fulfillmentType === 'pickup'

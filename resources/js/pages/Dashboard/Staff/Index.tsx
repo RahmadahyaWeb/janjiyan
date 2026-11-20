@@ -65,12 +65,12 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                             className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                         >
                             <div>
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <h2 className="text-lg font-semibold text-ink">{st.name}</h2>
+                                <div className="flex flex-col gap-2">
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg font-semibold break-words text-ink">{st.name}</h2>
                                         {st.title && <p className="text-sm text-mute">{st.title}</p>}
                                     </div>
-                                    <div className="flex flex-wrap justify-end gap-1.5">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {!st.is_active && <Badge variant="danger">Nonaktif</Badge>}
                                         {st.has_custom_schedule && <Badge variant="outline">Shift Khusus</Badge>}
                                         {(st.upcoming_time_offs_count ?? 0) > 0 && (

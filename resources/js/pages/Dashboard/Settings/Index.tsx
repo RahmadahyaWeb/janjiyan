@@ -747,8 +747,8 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
                     {/* Bank & QRIS */}
                     <div id="rekening" className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
                                 <h2 className="text-lg font-semibold text-ink">Rekening Bank & QRIS</h2>
                                 <p className="text-xs text-mute">Ditampilkan ke pelanggan saat melakukan DP (0% fee).</p>
                             </div>

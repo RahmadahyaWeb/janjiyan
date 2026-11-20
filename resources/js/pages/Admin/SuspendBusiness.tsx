@@ -36,7 +36,8 @@ export default function AdminSuspendBusiness({ business }: SuspendBusinessProps)
                     <Button asChild variant="outline" size="sm">
                         <Link href={route('admin.index')}>
                             <ArrowLeft className="size-3.5" aria-hidden="true" />
-                            Kembali ke Admin
+                            <span className="hidden sm:inline">Kembali ke Admin</span>
+                            <span className="sr-only sm:hidden">Kembali ke Admin</span>
                         </Link>
                     </Button>
                 </div>

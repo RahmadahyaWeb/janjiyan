@@ -288,8 +288,8 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
 
                     <div className="mt-6 space-y-3 border-t border-divider pt-6 text-sm">
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">No. Invoice</span>
-                            <span className="font-mono font-semibold text-ink">{invoiceLabel}</span>
+                            <span className="shrink-0 text-mute">No. Invoice</span>
+                            <span className="min-w-0 text-right font-mono font-semibold break-all text-ink">{invoiceLabel}</span>
                         </div>
                         <div className="flex justify-between gap-4">
                             <span className="text-mute">Kode Booking</span>
@@ -372,7 +372,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-semibold text-ink">{dpExpired ? 'Pembayaran DP' : 'Unggah Bukti Transfer DP'}</p>
                                 {remainingText && !dpExpired && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold tabular-nums text-electric">
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap tabular-nums text-electric">
                                         <Clock className="size-3.5" aria-hidden="true" />
                                         {remainingText}
                                     </span>
@@ -448,8 +448,8 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                     )}
 
                     {/* Action CTAs */}
-                    <div className="mt-6 grid grid-cols-2 gap-3 print:hidden">
-                        <Button asChild variant="outline" className="h-auto min-h-12 flex-1 whitespace-normal py-2.5 text-center leading-snug">
+                    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 print:hidden">
+                        <Button asChild variant="outline" className="w-full">
                             <a href={buildWhatsAppUrl(business.phone, waMessage)} target="_blank" rel="noreferrer">
                                 <MessageCircle className="size-4 shrink-0" aria-hidden="true" />
                                 <span>WhatsApp</span>
@@ -459,7 +459,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             type="button"
                             variant="outline"
                             onClick={() => window.print()}
-                            className="h-auto min-h-12 flex-1 whitespace-normal py-2.5 text-center leading-snug"
+                            className="w-full"
                         >
                             <Printer className="size-4 shrink-0" aria-hidden="true" />
                             <span>Cetak / PDF</span>
