@@ -40,7 +40,13 @@ class EmailVerificationController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
-        $request->user()->sendEmailVerificationNotification();
+        try {
+            $request->user()->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Gagal mengirim email verifikasi. Coba lagi beberapa saat lagi.');
+        }
 
         return back()->with('status', 'Tautan verifikasi baru telah dikirim ke alamat email Anda.');
     }

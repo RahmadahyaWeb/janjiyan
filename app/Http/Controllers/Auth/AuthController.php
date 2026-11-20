@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -67,15 +68,25 @@ class AuthController extends Controller
             'business_category' => ['required', 'string', 'max:80'],
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        // Atomic: a failed provisioning step must not leave an orphan user that blocks re-registering.
+        $user = DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
 
-        $this->provisionNewOwner($user, $validated['business_name'], $validated['business_category']);
+            $this->provisionNewOwner($user, $validated['business_name'], $validated['business_category']);
 
-        event(new Registered($user));
+            return $user;
+        });
+
+        // Mail outage must not 500 an account that already exists; user can resend from the notice page.
+        try {
+            event(new Registered($user));
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         Auth::login($user);
         $request->session()->regenerate();

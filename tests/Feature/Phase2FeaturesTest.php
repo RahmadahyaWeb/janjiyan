@@ -11,9 +11,11 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\PlanLimitService;
 use Database\Seeders\SubscriptionPlanSeeder;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -52,6 +54,33 @@ class Phase2FeaturesTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_registration_survives_mail_failure_and_resend_reports_error(): void
+    {
+        // Simulates a broken SMTP: anything sent on Registered blows up.
+        Event::listen(Registered::class, fn () => throw new \RuntimeException('SMTP down'));
+
+        $this->post(route('register.store'), [
+            'name' => 'Merchant Mail Rusak',
+            'business_name' => 'Salon Cantik',
+            'business_category' => 'Salon & Kecantikan',
+            'email' => 'mailrusak@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertRedirect(route('verification.notice'));
+
+        $user = User::where('email', 'mailrusak@example.com')->firstOrFail();
+        $this->assertNotNull($user->active_business_id);
+        $this->assertAuthenticatedAs($user);
+
+        Notification::shouldReceive('send')->andThrow(new \RuntimeException('SMTP down'));
+
+        $this->actingAs($user)
+            ->from(route('verification.notice'))
+            ->post(route('verification.send'))
+            ->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('error');
     }
 
     public function test_forgot_and_reset_password_flow_updates_password(): void
