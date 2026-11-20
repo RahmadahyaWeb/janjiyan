@@ -8,11 +8,30 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Booking extends Model
 {
+    public const PICKUP_SESSIONS = [
+        'morning' => 'Pagi (09:00–12:00)',
+        'afternoon' => 'Siang (13:00–17:00)',
+        'evening' => 'Sore (17:00–20:00)',
+        'anytime' => 'Fleksibel (Jam Buka)',
+    ];
+
+    public const WORK_STATUSES = [
+        'awaiting_dropoff',
+        'in_progress',
+        'ready_for_pickup',
+        'picked_up',
+    ];
+
     protected $fillable = [
         'business_id',
         'service_id',
         'staff_id',
         'customer_id',
+        'booking_mode',
+        'quantity',
+        'fulfillment_type',
+        'pickup_session',
+        'pickup_address',
         'booking_code',
         'invoice_number',
         'invoice_token',
@@ -20,10 +39,12 @@ class Booking extends Model
         'start_at',
         'end_at',
         'buffer_end_at',
+        'estimated_ready_date',
         'total_price',
         'dp_amount',
         'commission_amount',
         'reservation_status',
+        'work_status',
         'payment_status',
         'dp_proof_path',
         'dp_expires_at',
@@ -38,10 +59,12 @@ class Booking extends Model
     protected function casts(): array
     {
         return [
+            'quantity' => 'integer',
             'booking_date' => 'date',
             'start_at' => 'datetime',
             'end_at' => 'datetime',
             'buffer_end_at' => 'datetime',
+            'estimated_ready_date' => 'date',
             'dp_expires_at' => 'datetime',
             'commission_amount' => 'integer',
             'rescheduled_count' => 'integer',
@@ -49,6 +72,26 @@ class Booking extends Model
             'reminder_h1_sent_at' => 'datetime',
             'reminder_h2_sent_at' => 'datetime',
         ];
+    }
+
+    public function isDropoff(): bool
+    {
+        return $this->booking_mode === 'dropoff';
+    }
+
+    public function scheduleDisplayLabel(string $timezone = 'Asia/Jakarta'): string
+    {
+        if (! $this->isDropoff()) {
+            return $this->start_at->setTimezone($timezone)->format('H:i');
+        }
+
+        if ($this->fulfillment_type === 'pickup') {
+            $sessionLabel = self::PICKUP_SESSIONS[$this->pickup_session ?? 'anytime'] ?? 'Fleksibel';
+
+            return "Jemput · {$sessionLabel}";
+        }
+
+        return 'Drop-off (Jam Buka)';
     }
 
     public function business(): BelongsTo

@@ -56,14 +56,30 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
             ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer DP sebesar {$dpFormatted} dan menunggu verifikasi Anda."
             : "Ada reservasi baru dari {$booking->customer->name} untuk layanan {$booking->service->name}.";
 
+        $serviceLine = $booking->isDropoff()
+            ? "Layanan: {$booking->service->name} ({$booking->quantity} item)"
+            : "Layanan: {$booking->service->name}";
+
+        $scheduleLine = $booking->isDropoff()
+            ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
+            : "Jadwal: {$dateLabel}, {$timeLabel}";
+
         $mail = (new MailMessage)
             ->subject($subject)
             ->greeting("Halo {$notifiable->name},")
             ->line($intro)
             ->line("Kode Booking: {$booking->booking_code}")
-            ->line("Layanan: {$booking->service->name}")
-            ->line("Jadwal: {$dateLabel}, {$timeLabel}")
+            ->line($serviceLine)
+            ->line($scheduleLine)
             ->line("Pelanggan: {$booking->customer->name} ({$booking->customer->phone})");
+
+        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+            $mail->line('Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y'));
+        }
+
+        if ($booking->isDropoff() && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
+            $mail->line("Alamat Jemput: {$booking->pickup_address}");
+        }
 
         if ($booking->staff) {
             $mail->line("Staff: {$booking->staff->name}");

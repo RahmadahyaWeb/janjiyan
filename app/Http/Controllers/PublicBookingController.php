@@ -78,6 +78,9 @@ class PublicBookingController extends Controller
                 'buffer_minutes' => $service->buffer_minutes,
                 'capacity' => $service->capacity,
                 'assignment_mode' => $service->assignment_mode,
+                'booking_mode' => $service->booking_mode ?? 'time_slot',
+                'turnaround_days' => (int) ($service->turnaround_days ?? 1),
+                'supports_pickup' => (bool) ($service->supports_pickup ?? false),
                 'dp_type' => $service->dp_type,
                 'dp_value' => $service->dp_value,
                 'dp_amount' => $service->calculateDpAmount(),
@@ -118,6 +121,14 @@ class PublicBookingController extends Controller
 
         $service = $business->services()->where('id', $validated['service_id'])->where('is_active', true)->firstOrFail();
 
+        if ($service->isDropoff()) {
+            return response()->json([
+                'booking_mode' => 'dropoff',
+                'dropoff' => $slotService->getDropoffAvailability($business, $service, $validated['date']),
+                'slots' => [],
+            ]);
+        }
+
         $slots = $slotService->getAvailableSlots(
             $business,
             $service,
@@ -154,7 +165,11 @@ class PublicBookingController extends Controller
         $validated = $request->validate([
             'service_id' => ['required', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
-            'time' => ['required', 'date_format:H:i'],
+            'time' => ['nullable', 'date_format:H:i'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'fulfillment_type' => ['nullable', 'in:dropoff,pickup'],
+            'pickup_session' => ['nullable', 'in:morning,afternoon,evening,anytime'],
+            'pickup_address' => ['nullable', 'string', 'max:500'],
             'staff_id' => ['nullable', 'integer'],
             'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:30'],
@@ -165,21 +180,55 @@ class PublicBookingController extends Controller
 
         $service = $business->services()->where('id', $validated['service_id'])->where('is_active', true)->firstOrFail();
 
-        try {
-            $booking = $slotService->reserveSlot(
-                $business,
-                $service,
-                $validated['date'],
-                $validated['time'],
-                isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
-                $validated['customer_name'],
-                $validated['customer_phone'],
-                $validated['customer_email'] ?? null,
-                $validated['customer_notes'] ?? null,
-                $request->file('dp_proof')
-            );
-        } catch (RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+        if ($service->isDropoff()) {
+            $fulfillmentType = $validated['fulfillment_type'] ?? 'dropoff';
+            if ($service->supports_pickup && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
+                return back()
+                    ->withErrors(['pickup_address' => 'Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.'])
+                    ->withInput();
+            }
+
+            try {
+                $booking = $slotService->reserveDropoff(
+                    $business,
+                    $service,
+                    $validated['date'],
+                    (int) ($validated['quantity'] ?? 1),
+                    $fulfillmentType,
+                    $validated['pickup_session'] ?? 'anytime',
+                    $validated['pickup_address'] ?? null,
+                    $validated['customer_name'],
+                    $validated['customer_phone'],
+                    $validated['customer_email'] ?? null,
+                    $validated['customer_notes'] ?? null,
+                    $request->file('dp_proof')
+                );
+            } catch (RuntimeException $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        } else {
+            if (empty($validated['time'])) {
+                return back()
+                    ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                    ->withInput();
+            }
+
+            try {
+                $booking = $slotService->reserveSlot(
+                    $business,
+                    $service,
+                    $validated['date'],
+                    $validated['time'],
+                    isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+                    $validated['customer_name'],
+                    $validated['customer_phone'],
+                    $validated['customer_email'] ?? null,
+                    $validated['customer_notes'] ?? null,
+                    $request->file('dp_proof')
+                );
+            } catch (RuntimeException $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
 
         $notificationService->notifyNewPublicBooking($booking);
@@ -367,6 +416,12 @@ class PublicBookingController extends Controller
                 'staff_name' => $b->staff?->name,
                 'booking_date' => $b->booking_date->toDateString(),
                 'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
+                'booking_mode' => $b->booking_mode ?? 'time_slot',
+                'quantity' => (int) ($b->quantity ?? 1),
+                'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
+                'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
+                'work_status' => $b->work_status,
+                'schedule_label' => $b->scheduleDisplayLabel($tz),
                 'total_price' => $b->total_price,
                 'dp_amount' => $b->dp_amount,
                 'reservation_status' => $b->reservation_status,
@@ -414,6 +469,14 @@ class PublicBookingController extends Controller
                 'booking_date' => $booking->booking_date->toDateString(),
                 'start_time_local' => $booking->start_at->setTimezone($tz)->format('H:i'),
                 'end_time_local' => $booking->end_at->setTimezone($tz)->format('H:i'),
+                'booking_mode' => $booking->booking_mode ?? 'time_slot',
+                'quantity' => (int) ($booking->quantity ?? 1),
+                'fulfillment_type' => $booking->fulfillment_type ?? 'dropoff',
+                'pickup_session' => $booking->pickup_session,
+                'pickup_address' => $booking->pickup_address,
+                'estimated_ready_date' => $booking->estimated_ready_date?->toDateString(),
+                'work_status' => $booking->work_status,
+                'schedule_label' => $booking->scheduleDisplayLabel($tz),
                 'start_at_utc' => $booking->start_at->utc()->format('Ymd\THis\Z'),
                 'end_at_utc' => $booking->end_at->utc()->format('Ymd\THis\Z'),
                 'calendar_ics_url' => $booking->invoice_token

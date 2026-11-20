@@ -83,6 +83,7 @@ class SettingsController extends Controller
             'whatsapp_templates.reminder' => ['nullable', 'string', 'max:1500'],
             'whatsapp_templates.dp_verified' => ['nullable', 'string', 'max:1500'],
             'whatsapp_templates.confirmed' => ['nullable', 'string', 'max:1500'],
+            'whatsapp_templates.ready_for_pickup' => ['nullable', 'string', 'max:1500'],
             'whatsapp_templates.follow_up' => ['nullable', 'string', 'max:1500'],
             'telegram_notifications_enabled' => ['sometimes', 'boolean'],
             'telegram_bot_token' => ['nullable', 'string', 'max:200', 'regex:/^\d+:[A-Za-z0-9_-]{20,}$/'],

@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD): Janjiyan
 
-> **Version:** 2.0.0  
-> **Date:** 2026-11-19  
+> **Version:** 2.1.0  
+> **Date:** 2026-11-20  
 > **Status:** Active — Synchronized with Implemented Codebase  
 > **Tech Stack:** Laravel 13 (PHP 8.5) + Inertia.js v3 + React 19 (TypeScript) + Tailwind CSS v4 + shadcn/ui + SQLite (WAL) / PostgreSQL-ready  
 > **Design System:** Mobbin-inspired Gallery-White Minimal ([design.md](../design.md))
@@ -62,7 +62,7 @@ Indonesian service-based businesses (barbershops, salons, clinics, studios, spor
   - **Acceptance Criteria:**
     - Per-day business operating hours (Monday–Sunday open/close + break time + active toggle), specific holiday/blocked dates, `min_booking_lead_minutes`, and `max_booking_advance_days`.
     - Per-staff custom operating hours (`StaffOperatingHour`) and scheduled leave/time-off ranges (`StaffTimeOff`) that override default availability.
-    - Service configuration supports: name, description, optional image, price, duration (minutes), buffer time (minutes), max capacity per slot (`>= 1`), DP requirement (`none` / `fixed` / `percentage`), and assignment mode (`staff` or `capacity`).
+    - Service configuration supports: name, description, optional image, price, scheduling mode (`time_slot` for hourly appointments or `dropoff` for turnaround/daily-quota services such as shoe cleaning, laundry, or repair), turnaround estimate (`turnaround_days`), optional Pick-up & Delivery toggle (`supports_pickup`), duration/buffer (for `time_slot`), max capacity per slot or per day (`>= 1`), DP requirement (`none` / `fixed` / `percentage`), and assignment mode (`staff` or `capacity`).
     - Business Portfolio Gallery (`BusinessGallery`, up to 12 photos with captions) displayed on `/b/{slug}`.
     - Enforces plan limits on max services per business (Basic 5, Pro 10, Enterprise Unlimited).
 
@@ -70,8 +70,8 @@ Indonesian service-based businesses (barbershops, salons, clinics, studios, spor
 - **Story 4.1:** As an end customer, I want to browse services and portfolio photos, pick a staff member or "Siapa saja yang tersedia", select an available date/time slot, and submit my booking without registering.
   - **Acceptance Criteria:**
     - Mobile-first UI following `design.md` strictly, with rate-limited endpoints (`public-slots`, `public-booking`, `public-dp-proof`, `public-invoice-lookup`).
-    - Real-time slot engine excludes past times, lead-time/max-advance violations, holidays, break times, staff shifts/time-offs, and fully booked slots (accounting for `duration + buffer_time` and `capacity`).
-    - Prevents double-booking via `DB::transaction()` + pessimistic row locking (`lockForUpdate()`).
+    - Real-time availability engine supports both hourly `time_slot` services (excluding past times, lead-time/max-advance violations, holidays, break times, staff shifts/time-offs, and overlapping capacity/staff bookings) and `dropoff` services (checking daily item quota `SUM(quantity)` against service `capacity`, computing `estimated_ready_date` across open operating days, supporting multi-item `quantity` 1–50, and optional `pickup` session + address).
+    - Prevents double-booking and daily quota overbooking via `DB::transaction()` + pessimistic row locking (`lockForUpdate()`).
     - Enforces **No-Show Protection**: blocked customers (`is_blocked = true`) are politely rejected from public booking; customers meeting the business's `no_show_dp_threshold` automatically require **100% DP** when `no_show_require_full_dp` is enabled.
 - **Story 4.2:** As an end customer, I want a secure invoice page to upload DP proof (immediately or before expiry), look up my past invoices, and add the booking to my calendar.
   - **Acceptance Criteria:**
@@ -88,8 +88,8 @@ Indonesian service-based businesses (barbershops, salons, clinics, studios, spor
   - **Acceptance Criteria:**
     - Supports **List View** (with search, status/payment/staff/service/date filters) and **7-day / per-staff Calendar View** (`BookingCalendarView`).
     - Supports manual **Walk-in Booking** creation and atomic **Rescheduling** (`rescheduled_count` tracking + automatic reminder reset).
-    - Reservation statuses (`pending`, `confirmed`, `completed`, `no_show`, `cancelled`) tracked independently from Payment statuses (`unpaid`, `waiting_verification`, `dp_verified`, `settled`).
-    - **1-Click WhatsApp Templates:** Customizable per-business templates (`reminder`, `dp_verified`, `confirmed`, `follow_up`) with variable placeholders and live preview in Settings, accessible via a 1-click dropdown on every booking row.
+    - Reservation statuses (`pending`, `confirmed`, `completed`, `no_show`, `cancelled`) tracked independently from Payment statuses (`unpaid`, `waiting_verification`, `dp_verified`, `settled`), plus Drop-off Work Progress stages (`awaiting_dropoff`, `in_progress`, `ready_for_pickup`, `picked_up`) with 1-click progression and public invoice progress tracking.
+    - **1-Click WhatsApp Templates:** Customizable per-business templates (`reminder`, `dp_verified`, `confirmed`, `ready_for_pickup`, `follow_up`) with variable placeholders (including `{quantity}` and `{estimated_ready_date}`) and live preview in Settings, accessible via a 1-click dropdown on every booking row.
     - Enforces monthly booking quota per plan (Basic 100/mo, Pro 500/mo, Enterprise Unlimited).
 - **Story 5.2:** As a merchant, I want automated customer email reminders and instant merchant alerts via Email and Telegram Bot.
   - **Acceptance Criteria:**
@@ -150,10 +150,10 @@ Indonesian service-based businesses (barbershops, salons, clinics, studios, spor
   - `Business` (Multi-tenant root, `slug`, `timezone`, `dp_expiry_minutes`, `min_booking_lead_minutes`, `max_booking_advance_days`, reminder flags, `whatsapp_templates`, encrypted `telegram_bot_token`, `telegram_chat_id`, `no_show_require_full_dp`, `no_show_dp_threshold`, bank/QRIS settings, suspension state)
   - `BusinessUser` (Pivot with `role` and JSON `permissions`)
   - `BusinessGallery`, `OperatingHour`, `BusinessHoliday`
-  - `Service` (Image, duration, buffer, capacity, DP rules, assignment mode)
+  - `Service` (Image, `booking_mode` `time_slot|dropoff`, `turnaround_days`, `supports_pickup`, duration, buffer, capacity, DP rules, assignment mode)
   - `Staff` (Optional `user_id`, service assignments, `commission_type`, `commission_value`), `StaffOperatingHour`, `StaffTimeOff`
   - `Customer` (Scoped to `business_id`, normalized phone, `notes`, `tags` JSON, `is_blocked`)
-  - `Booking` (`booking_code`, `invoice_number`, `invoice_token`, `start_at`, `end_at`, `buffer_end_at`, `total_price`, `dp_amount`, `commission_amount`, `reservation_status`, `payment_status`, `dp_proof_path`, `dp_expires_at`, `rescheduled_count`, `reminder_h1_sent_at`, `reminder_h2_sent_at`)
+  - `Booking` (`booking_code`, `invoice_number`, `invoice_token`, `booking_mode`, `quantity`, `fulfillment_type`, `pickup_session`, `pickup_address`, `start_at`, `end_at`, `buffer_end_at`, `estimated_ready_date`, `total_price`, `dp_amount`, `commission_amount`, `reservation_status`, `work_status`, `payment_status`, `dp_proof_path`, `dp_expires_at`, `rescheduled_count`, `reminder_h1_sent_at`, `reminder_h2_sent_at`)
 
 ### Integration Points
 - **Authentication:** Email/Password + Email Verification + Password Reset + **Laravel Socialite** (Google OAuth).

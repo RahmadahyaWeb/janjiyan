@@ -53,15 +53,21 @@ class SendTelegramBookingAlertJob implements ShouldQueue
 
         $tz = $business->timezone ?: 'Asia/Jakarta';
         $dateLabel = $booking->start_at->setTimezone($tz)->format('d M Y');
-        $timeLabel = $booking->start_at->setTimezone($tz)->format('H:i')
-            .'–'
-            .$booking->end_at->setTimezone($tz)->format('H:i');
+        $timeLabel = $booking->isDropoff()
+            ? $booking->scheduleDisplayLabel($tz)
+            : $booking->start_at->setTimezone($tz)->format('H:i')
+                .'–'
+                .$booking->end_at->setTimezone($tz)->format('H:i');
 
         $header = $this->eventType === 'dp_uploaded'
             ? '🧾 <b>Bukti DP Baru Diunggah</b>'
-            : '📅 <b>Reservasi Baru Masuk</b>';
+            : ($booking->isDropoff() ? '👟 <b>Order Drop-off Baru Masuk</b>' : '📅 <b>Reservasi Baru Masuk</b>');
 
         $esc = static fn (?string $val): string => htmlspecialchars((string) ($val ?? '-'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        $serviceLabel = $booking->isDropoff()
+            ? $esc($booking->service?->name).' ('.$booking->quantity.' item)'
+            : $esc($booking->service?->name);
 
         $lines = [
             $header,
@@ -69,11 +75,20 @@ class SendTelegramBookingAlertJob implements ShouldQueue
             '<b>Bisnis:</b> '.$esc($business->name),
             '<b>Kode:</b> <code>'.$esc($booking->booking_code).'</code>',
             '<b>Pelanggan:</b> '.$esc($booking->customer?->name).' (+'.$esc($booking->customer?->phone).')',
-            '<b>Layanan:</b> '.$esc($booking->service?->name),
-            '<b>Staff:</b> '.$esc($booking->staff?->name ?? 'Siapa saja'),
+            '<b>Layanan:</b> '.$serviceLabel,
+            '<b>Staff:</b> '.$esc($booking->staff?->name ?? ($booking->isDropoff() ? 'Tim Operasional' : 'Siapa saja')),
             '<b>Jadwal:</b> '.$esc($dateLabel).' · '.$esc($timeLabel),
-            '<b>Total:</b> Rp '.number_format((int) $booking->total_price, 0, ',', '.'),
         ];
+
+        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+            $lines[] = '<b>Est. Selesai:</b> '.$esc($booking->estimated_ready_date->format('d M Y'));
+        }
+
+        if ($booking->isDropoff() && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
+            $lines[] = '<b>Alamat Jemput:</b> '.$esc($booking->pickup_address);
+        }
+
+        $lines[] = '<b>Total:</b> Rp '.number_format((int) $booking->total_price, 0, ',', '.');
 
         if ((int) $booking->dp_amount > 0) {
             $lines[] = '<b>DP:</b> Rp '.number_format((int) $booking->dp_amount, 0, ',', '.');

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
+import { formatDateIndo } from '@/lib/format';
 
 export interface ReschedulableBooking {
     id: number;
@@ -20,6 +21,8 @@ export interface ReschedulableBooking {
     service_id: number;
     service_name: string;
     service_assignment_mode: 'staff' | 'capacity';
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
     staff_id: number | null;
     booking_date: string;
     start_time_local: string;
@@ -73,20 +76,29 @@ export function BookingRescheduleDialog({
         return `${route('dashboard.bookings.slots')}?${params.toString()}`;
     }, [booking?.id, booking?.service_id, form.data.date, form.data.staff_id]);
 
-    const { slots, hasLoaded, showInitialLoading, showRefreshing } = useSlotFetcher({
+    const { slots, dropoff, hasLoaded, showInitialLoading, showRefreshing } = useSlotFetcher({
         url: slotUrl,
         enabled: booking !== null && slotUrl !== null,
         onResolved: (nextSlots: SlotItem[]) => {
+            if (booking?.booking_mode === 'dropoff') return;
             if (!nextSlots.some((s) => s.time === form.data.time)) {
                 form.setData('time', nextSlots[0]?.time ?? '');
             }
         },
     });
 
+    const isDropoff = booking?.booking_mode === 'dropoff';
+    const requiredQty = Math.max(1, booking?.quantity ?? 1);
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (!booking) return;
-        if (!form.data.time) {
+        if (isDropoff) {
+            if (!dropoff || !dropoff.available || dropoff.remaining_capacity < requiredQty) {
+                setTimeError(dropoff?.reason ?? `Sisa kuota harian tidak mencukupi untuk ${requiredQty} item.`);
+                return;
+            }
+        } else if (!form.data.time) {
             setTimeError('Pilih jam baru yang tersedia terlebih dahulu.');
             return;
         }
@@ -132,7 +144,7 @@ export function BookingRescheduleDialog({
                             />
                         </div>
 
-                        {booking.service_assignment_mode === 'staff' && staffOptions.length > 0 && (
+                        {!isDropoff && booking.service_assignment_mode === 'staff' && staffOptions.length > 0 && (
                             <div className="space-y-1.5">
                                 <Label htmlFor="reschedule-staff">Staff (Opsional)</Label>
                                 <NativeSelect
@@ -151,7 +163,36 @@ export function BookingRescheduleDialog({
                             </div>
                         )}
 
-                        <div className="min-h-[108px] space-y-2">
+                        {isDropoff ? (
+                            <div className="space-y-2 rounded-[16px] bg-bone p-4 text-xs" aria-live="polite">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="font-semibold text-ink">Ketersediaan Kuota Drop-off</span>
+                                    {showRefreshing && <span className="text-mute">Memperbarui…</span>}
+                                </div>
+                                {showInitialLoading || !hasLoaded ? (
+                                    <p className="text-mute">Memeriksa kuota harian…</p>
+                                ) : dropoff?.available && dropoff.remaining_capacity >= requiredQty ? (
+                                    <div className="space-y-1 text-mute">
+                                        <p className="font-medium text-ink tabular-nums">
+                                            Tersedia {dropoff.remaining_capacity} dari {dropoff.total_capacity} kuota (butuh {requiredQty} item)
+                                        </p>
+                                        {dropoff.estimated_ready_date && (
+                                            <p>Estimasi selesai baru: {formatDateIndo(dropoff.estimated_ready_date)}</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-destructive">
+                                        {dropoff?.reason ?? `Sisa kuota (${dropoff?.remaining_capacity ?? 0}) tidak mencukupi untuk ${requiredQty} item.`}
+                                    </p>
+                                )}
+                                {(timeError || form.errors.date) && (
+                                    <p role="alert" className="font-medium text-destructive">
+                                        {timeError || form.errors.date}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="min-h-[108px] space-y-2">
                             <div className="flex items-center justify-between gap-2">
                                 <Label>Slot Waktu Tersedia</Label>
                                 {showRefreshing && (
@@ -198,14 +239,27 @@ export function BookingRescheduleDialog({
                                     })}
                                 </div>
                             )}
-                            {timeError && <p className="text-xs text-destructive">{timeError}</p>}
+                            {(timeError || form.errors.time || form.errors.date) && (
+                                <p role="alert" className="text-xs font-medium text-destructive">
+                                    {timeError || form.errors.time || form.errors.date}
+                                </p>
+                            )}
                         </div>
+                        )}
 
                         <div className="flex justify-end gap-2 pt-2">
                             <Button type="button" variant="outline" onClick={onClose}>
                                 Batal
                             </Button>
-                            <Button type="submit" disabled={form.processing || !form.data.time}>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    form.processing ||
+                                    (isDropoff
+                                        ? !(dropoff?.available && dropoff.remaining_capacity >= requiredQty)
+                                        : !form.data.time)
+                                }
+                            >
                                 {form.processing ? 'Menyimpan…' : 'Simpan Jadwal Baru'}
                             </Button>
                         </div>

@@ -45,6 +45,9 @@ interface CustomerBookingRow {
     invoice_url: string | null;
     service_name: string;
     staff_name: string | null;
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
+    fulfillment_type?: 'dropoff' | 'pickup';
     booking_date: string;
     start_time_local: string;
     end_time_local: string;
@@ -364,7 +367,12 @@ export default function CustomerShow({
                                                         )}
                                                     </div>
                                                     <p className="mt-0.5 text-xs text-mute">
-                                                        {formatDateIndo(b.booking_date)} · {b.start_time_local}–{b.end_time_local}
+                                                        {formatDateIndo(b.booking_date)} ·{' '}
+                                                        {b.booking_mode === 'dropoff'
+                                                            ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
+                                                                  (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
+                                                              }`
+                                                            : `${b.start_time_local}–${b.end_time_local}`}
                                                     </p>
                                                 </td>
                                                 <td className="px-5 py-3.5">

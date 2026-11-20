@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\Business;
 use App\Models\Customer;
+use App\Models\OperatingHour;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\StaffOperatingHour;
@@ -12,6 +13,7 @@ use App\Models\StaffTimeOff;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -91,8 +93,9 @@ class SlotAvailabilityService
                 ->groupBy('staff_id');
         }
 
-        // Fetch active bookings on that date
+        // Fetch active time-slot bookings on that date
         $existingBookings = $business->bookings()
+            ->where('booking_mode', 'time_slot')
             ->whereBookingDate($targetDate->toDateString())
             ->whereIn('reservation_status', ['pending', 'confirmed'])
             ->when($excludeBookingId !== null, fn ($q) => $q->where('id', '!=', $excludeBookingId))
@@ -174,7 +177,102 @@ class SlotAvailabilityService
     }
 
     /**
-     * Atomically reserve a slot inside a DB transaction with pessimistic locking.
+     * Check daily drop-off quota and estimated ready date for a drop-off/turnaround service.
+     *
+     * @return array{
+     *     available: bool,
+     *     reason: string|null,
+     *     remaining_capacity: int,
+     *     total_capacity: int,
+     *     open_time: string|null,
+     *     close_time: string|null,
+     *     estimated_ready_date: string|null,
+     *     turnaround_days: int,
+     *     supports_pickup: bool
+     * }
+     */
+    public function getDropoffAvailability(
+        Business $business,
+        Service $service,
+        string $dateString,
+        bool $allowImmediateToday = false,
+        ?int $excludeBookingId = null
+    ): array {
+        $timezone = $business->timezone ?: 'Asia/Jakarta';
+        $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
+        $now = CarbonImmutable::now($timezone);
+        $totalCapacity = max(1, (int) $service->capacity);
+        $turnaroundDays = max(0, (int) ($service->turnaround_days ?? 1));
+
+        $unavailable = fn (string $reason): array => [
+            'available' => false,
+            'reason' => $reason,
+            'remaining_capacity' => 0,
+            'total_capacity' => $totalCapacity,
+            'open_time' => null,
+            'close_time' => null,
+            'estimated_ready_date' => null,
+            'turnaround_days' => $turnaroundDays,
+            'supports_pickup' => (bool) $service->supports_pickup,
+        ];
+
+        if ($targetDate->isBefore($now->startOfDay())) {
+            return $unavailable('Tanggal yang dipilih sudah berlalu.');
+        }
+
+        if (! $allowImmediateToday) {
+            $maxAdvanceDays = max(1, (int) ($business->max_booking_advance_days ?: 60));
+            if ($targetDate->gt($now->startOfDay()->addDays($maxAdvanceDays))) {
+                return $unavailable("Pemesanan tersedia maksimal {$maxAdvanceDays} hari ke depan.");
+            }
+        }
+
+        $isHoliday = $business->holidays()
+            ->whereDate('date', $targetDate->toDateString())
+            ->exists();
+
+        if ($isHoliday) {
+            return $unavailable('Bisnis sedang libur pada tanggal yang dipilih.');
+        }
+
+        $operatingHour = $business->operatingHours()
+            ->where('day_of_week', $targetDate->dayOfWeek)
+            ->first();
+
+        if (! $operatingHour || ! $operatingHour->is_open) {
+            return $unavailable('Bisnis tutup pada hari ini sesuai jadwal operasional.');
+        }
+
+        $closeAt = $targetDate->setTimeFromTimeString($operatingHour->close_time);
+        if (! $allowImmediateToday && $targetDate->isSameDay($now) && $now->gte($closeAt)) {
+            return $unavailable('Jam operasional hari ini sudah berakhir. Silakan pilih tanggal berikutnya.');
+        }
+
+        $usedCapacity = (int) $business->bookings()
+            ->where('service_id', $service->id)
+            ->whereBookingDate($targetDate->toDateString())
+            ->whereIn('reservation_status', ['pending', 'confirmed'])
+            ->when($excludeBookingId !== null, fn ($q) => $q->where('id', '!=', $excludeBookingId))
+            ->sum('quantity');
+
+        $remainingCapacity = max(0, $totalCapacity - $usedCapacity);
+        $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, $turnaroundDays);
+
+        return [
+            'available' => $remainingCapacity > 0,
+            'reason' => $remainingCapacity > 0 ? null : 'Kuota harian untuk layanan ini sudah penuh pada tanggal tersebut.',
+            'remaining_capacity' => $remainingCapacity,
+            'total_capacity' => $totalCapacity,
+            'open_time' => substr((string) $operatingHour->open_time, 0, 5),
+            'close_time' => substr((string) $operatingHour->close_time, 0, 5),
+            'estimated_ready_date' => $estimatedReadyDate->toDateString(),
+            'turnaround_days' => $turnaroundDays,
+            'supports_pickup' => (bool) $service->supports_pickup,
+        ];
+    }
+
+    /**
+     * Atomically reserve a time slot inside a DB transaction with pessimistic locking.
      */
     public function reserveSlot(
         Business $business,
@@ -216,8 +314,9 @@ class SlotAvailabilityService
             // Lock parent business row first to prevent phantom-read double-bookings on empty slots
             Business::whereKey($business->id)->lockForUpdate()->firstOrFail();
 
-            // Lock overlapping bookings to prevent race conditions
+            // Lock overlapping time-slot bookings to prevent race conditions
             $overlapping = Booking::where('business_id', $business->id)
+                ->where('booking_mode', 'time_slot')
                 ->whereIn('reservation_status', ['pending', 'confirmed'])
                 ->where('start_at', '<', $bufferEndUtc)
                 ->where('buffer_end_at', '>', $startUtc)
@@ -232,88 +331,26 @@ class SlotAvailabilityService
                 $overlapping
             );
 
-            $normalizedPhone = $this->normalizePhone($customerPhone);
-
-            $customer = Customer::where('business_id', $business->id)
-                ->where('phone', $normalizedPhone)
-                ->first();
-
-            if ($customer && ! $allowImmediateToday && $customer->is_blocked) {
-                throw new RuntimeException('Maaf, reservasi online untuk nomor ini sedang dibatasi. Silakan hubungi kami langsung melalui WhatsApp.');
-            }
-
-            if (! $customer) {
-                if (! app(PlanLimitService::class)->canCreateCustomer($business)) {
-                    throw new RuntimeException('Kuota pelanggan bisnis ini telah mencapai batas paket.');
-                }
-
-                try {
-                    $customer = Customer::create([
-                        'business_id' => $business->id,
-                        'phone' => $normalizedPhone,
-                        'name' => $customerName,
-                        'email' => $customerEmail,
-                    ]);
-                } catch (UniqueConstraintViolationException) {
-                    $customer = Customer::where('business_id', $business->id)
-                        ->where('phone', $normalizedPhone)
-                        ->firstOrFail();
-                }
-            } elseif ($customer->name !== $customerName || ($customerEmail && $customer->email !== $customerEmail)) {
-                $customer->update([
-                    'name' => $customerName,
-                    'email' => $customerEmail ?: $customer->email,
-                ]);
-            }
-
-            $dpAmount = $service->calculateDpAmount();
-
-            // Automatic No-Show Protection: require 100% DP for customers meeting the business threshold
-            if (
-                ! $allowImmediateToday
-                && $business->no_show_require_full_dp
-                && (int) ($business->no_show_dp_threshold ?? 0) > 0
-                && $service->price > 0
-            ) {
-                $priorNoShows = $customer->bookings()
-                    ->where('reservation_status', 'no_show')
-                    ->count();
-
-                if ($priorNoShows >= (int) $business->no_show_dp_threshold) {
-                    $dpAmount = (int) $service->price;
-                }
-            }
-
-            $requiresDp = $dpAmount > 0;
-
-            $assignedStaff = $assignedStaffId
-                ? Staff::where('business_id', $business->id)->find($assignedStaffId)
-                : null;
-            $commissionAmount = $assignedStaff
-                ? $assignedStaff->calculateCommission((int) $service->price)
-                : 0;
-
-            $proofPath = null;
-            if ($dpProofFile !== null) {
-                $proofPath = $dpProofFile->store('dp-proofs', 'local');
-            }
-
-            $paymentStatus = 'unpaid';
-            $dpExpiresAt = null;
-            if ($requiresDp) {
-                if ($proofPath) {
-                    $paymentStatus = 'waiting_verification';
-                } else {
-                    $paymentStatus = 'unpaid';
-                    $dpExpiresAt = now()->addMinutes($business->dp_expiry_minutes ?: 120);
-                }
-            }
+            $prepared = $this->upsertCustomerAndComputePricing(
+                business: $business,
+                service: $service,
+                quantity: 1,
+                assignedStaffId: $assignedStaffId,
+                customerName: $customerName,
+                customerPhone: $customerPhone,
+                customerEmail: $customerEmail,
+                dpProofFile: $dpProofFile,
+                allowImmediateToday: $allowImmediateToday
+            );
 
             return Booking::create([
                 'business_id' => $business->id,
                 'service_id' => $service->id,
                 'staff_id' => $assignedStaffId,
-                'customer_id' => $customer->id,
+                'customer_id' => $prepared['customer']->id,
+                'booking_mode' => 'time_slot',
+                'quantity' => 1,
+                'fulfillment_type' => 'dropoff',
                 'booking_code' => $this->generateBookingCode(),
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'invoice_token' => $this->generateInvoiceToken(),
@@ -321,13 +358,131 @@ class SlotAvailabilityService
                 'start_at' => $startUtc,
                 'end_at' => $endUtc,
                 'buffer_end_at' => $bufferEndUtc,
-                'total_price' => $service->price,
-                'dp_amount' => $dpAmount,
-                'commission_amount' => $commissionAmount,
+                'total_price' => $prepared['total_price'],
+                'dp_amount' => $prepared['dp_amount'],
+                'commission_amount' => $prepared['commission_amount'],
                 'reservation_status' => 'pending',
-                'payment_status' => $paymentStatus,
-                'dp_proof_path' => $proofPath,
-                'dp_expires_at' => $dpExpiresAt,
+                'payment_status' => $prepared['payment_status'],
+                'dp_proof_path' => $prepared['proof_path'],
+                'dp_expires_at' => $prepared['dp_expires_at'],
+                'customer_notes' => $customerNotes,
+            ]);
+        });
+    }
+
+    /**
+     * Atomically reserve a drop-off / turnaround order inside a DB transaction using daily capacity.
+     */
+    public function reserveDropoff(
+        Business $business,
+        Service $service,
+        string $dateString,
+        int $quantity,
+        string $fulfillmentType,
+        ?string $pickupSession,
+        ?string $pickupAddress,
+        string $customerName,
+        string $customerPhone,
+        ?string $customerEmail,
+        ?string $customerNotes,
+        ?UploadedFile $dpProofFile = null,
+        bool $allowImmediateToday = false
+    ): Booking {
+        if ($quantity < 1 || $quantity > 50) {
+            throw new RuntimeException('Jumlah item harus antara 1 sampai 50.');
+        }
+
+        return DB::transaction(function () use (
+            $business,
+            $service,
+            $dateString,
+            $quantity,
+            $fulfillmentType,
+            $pickupSession,
+            $pickupAddress,
+            $customerName,
+            $customerPhone,
+            $customerEmail,
+            $customerNotes,
+            $dpProofFile,
+            $allowImmediateToday
+        ): Booking {
+            $timezone = $business->timezone ?: 'Asia/Jakarta';
+            $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
+
+            Business::whereKey($business->id)->lockForUpdate()->firstOrFail();
+
+            $operatingHour = $this->assertDropoffDateOpen($business, $targetDate, $allowImmediateToday);
+
+            $activeBookings = Booking::where('business_id', $business->id)
+                ->where('service_id', $service->id)
+                ->whereBookingDate($targetDate->toDateString())
+                ->whereIn('reservation_status', ['pending', 'confirmed'])
+                ->lockForUpdate()
+                ->get(['id', 'quantity']);
+
+            $usedCapacity = (int) $activeBookings->sum('quantity');
+            $totalCapacity = max(1, (int) $service->capacity);
+            $remaining = max(0, $totalCapacity - $usedCapacity);
+
+            if ($quantity > $remaining) {
+                if ($remaining <= 0) {
+                    throw new RuntimeException('Kuota harian untuk layanan ini sudah penuh pada tanggal yang dipilih.');
+                }
+
+                throw new RuntimeException("Sisa kuota pada tanggal tersebut hanya {$remaining} item.");
+            }
+
+            $resolvedFulfillment = ($service->supports_pickup && $fulfillmentType === 'pickup') ? 'pickup' : 'dropoff';
+            $resolvedSession = $resolvedFulfillment === 'pickup'
+                ? (array_key_exists((string) $pickupSession, Booking::PICKUP_SESSIONS) ? (string) $pickupSession : 'anytime')
+                : null;
+            $resolvedAddress = $resolvedFulfillment === 'pickup' ? trim((string) ($pickupAddress ?? '')) : null;
+
+            [$startLocal, $endLocal] = $this->resolveDropoffWindow($targetDate, $operatingHour->open_time, $operatingHour->close_time, $resolvedFulfillment, $resolvedSession);
+            $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, max(0, (int) ($service->turnaround_days ?? 1)));
+
+            $prepared = $this->upsertCustomerAndComputePricing(
+                business: $business,
+                service: $service,
+                quantity: $quantity,
+                assignedStaffId: null,
+                customerName: $customerName,
+                customerPhone: $customerPhone,
+                customerEmail: $customerEmail,
+                dpProofFile: $dpProofFile,
+                allowImmediateToday: $allowImmediateToday
+            );
+
+            $startUtc = $startLocal->utc();
+            $endUtc = $endLocal->utc();
+
+            return Booking::create([
+                'business_id' => $business->id,
+                'service_id' => $service->id,
+                'staff_id' => null,
+                'customer_id' => $prepared['customer']->id,
+                'booking_mode' => 'dropoff',
+                'quantity' => $quantity,
+                'fulfillment_type' => $resolvedFulfillment,
+                'pickup_session' => $resolvedSession,
+                'pickup_address' => $resolvedAddress !== '' ? $resolvedAddress : null,
+                'booking_code' => $this->generateBookingCode(),
+                'invoice_number' => $this->generateInvoiceNumber(),
+                'invoice_token' => $this->generateInvoiceToken(),
+                'booking_date' => $targetDate->toDateString(),
+                'start_at' => $startUtc,
+                'end_at' => $endUtc,
+                'buffer_end_at' => $endUtc,
+                'estimated_ready_date' => $estimatedReadyDate->toDateString(),
+                'total_price' => $prepared['total_price'],
+                'dp_amount' => $prepared['dp_amount'],
+                'commission_amount' => 0,
+                'reservation_status' => 'pending',
+                'work_status' => 'awaiting_dropoff',
+                'payment_status' => $prepared['payment_status'],
+                'dp_proof_path' => $prepared['proof_path'],
+                'dp_expires_at' => $prepared['dp_expires_at'],
                 'customer_notes' => $customerNotes,
             ]);
         });
@@ -339,7 +494,7 @@ class SlotAvailabilityService
     public function rescheduleBooking(
         Booking $booking,
         string $dateString,
-        string $timeString,
+        ?string $timeString = null,
         ?int $requestedStaffId = null,
         bool $allowImmediateToday = true
     ): Booking {
@@ -360,8 +515,59 @@ class SlotAvailabilityService
 
             $business = Business::whereKey($lockedBooking->business_id)->lockForUpdate()->firstOrFail();
             $service = $lockedBooking->service()->firstOrFail();
-
             $timezone = $business->timezone ?: 'Asia/Jakarta';
+
+            if ($lockedBooking->isDropoff()) {
+                $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
+                $operatingHour = $this->assertDropoffDateOpen($business, $targetDate, $allowImmediateToday);
+
+                $usedCapacity = (int) Booking::where('business_id', $business->id)
+                    ->where('service_id', $service->id)
+                    ->where('id', '!=', $lockedBooking->id)
+                    ->whereBookingDate($targetDate->toDateString())
+                    ->whereIn('reservation_status', ['pending', 'confirmed'])
+                    ->lockForUpdate()
+                    ->sum('quantity');
+
+                $totalCapacity = max(1, (int) $service->capacity);
+                $remaining = max(0, $totalCapacity - $usedCapacity);
+                $qty = max(1, (int) $lockedBooking->quantity);
+
+                if ($qty > $remaining) {
+                    throw new RuntimeException("Sisa kuota harian pada tanggal tersebut ({$remaining}) tidak mencukupi untuk {$qty} item.");
+                }
+
+                [$startLocal, $endLocal] = $this->resolveDropoffWindow(
+                    $targetDate,
+                    $operatingHour->open_time,
+                    $operatingHour->close_time,
+                    $lockedBooking->fulfillment_type ?? 'dropoff',
+                    $lockedBooking->pickup_session
+                );
+                $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, max(0, (int) ($service->turnaround_days ?? 1)));
+
+                $startUtc = $startLocal->utc();
+                $endUtc = $endLocal->utc();
+
+                $lockedBooking->update([
+                    'booking_date' => $targetDate->toDateString(),
+                    'start_at' => $startUtc,
+                    'end_at' => $endUtc,
+                    'buffer_end_at' => $endUtc,
+                    'estimated_ready_date' => $estimatedReadyDate->toDateString(),
+                    'rescheduled_count' => (int) $lockedBooking->rescheduled_count + 1,
+                    'last_rescheduled_at' => now(),
+                    'reminder_h1_sent_at' => null,
+                    'reminder_h2_sent_at' => null,
+                ]);
+
+                return $lockedBooking->fresh(['business', 'service', 'staff', 'customer']);
+            }
+
+            if (! $timeString) {
+                throw new RuntimeException('Jam reservasi wajib dipilih.');
+            }
+
             $startLocal = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$dateString} {$timeString}", $timezone);
             $endLocal = $startLocal->addMinutes($service->duration_minutes);
             $bufferEndLocal = $endLocal->addMinutes($service->buffer_minutes);
@@ -373,6 +579,7 @@ class SlotAvailabilityService
             $bufferEndUtc = $bufferEndLocal->utc();
 
             $overlapping = Booking::where('business_id', $business->id)
+                ->where('booking_mode', 'time_slot')
                 ->where('id', '!=', $lockedBooking->id)
                 ->whereIn('reservation_status', ['pending', 'confirmed'])
                 ->where('start_at', '<', $bufferEndUtc)
@@ -596,6 +803,246 @@ class SlotAvailabilityService
         }
 
         return true;
+    }
+
+    /**
+     * Upsert customer, apply no-show DP protection, compute totals, and store optional DP proof.
+     *
+     * @return array{
+     *     customer: Customer,
+     *     total_price: int,
+     *     dp_amount: int,
+     *     commission_amount: int,
+     *     proof_path: string|null,
+     *     payment_status: string,
+     *     dp_expires_at: Carbon|null
+     * }
+     */
+    private function upsertCustomerAndComputePricing(
+        Business $business,
+        Service $service,
+        int $quantity,
+        ?int $assignedStaffId,
+        string $customerName,
+        string $customerPhone,
+        ?string $customerEmail,
+        ?UploadedFile $dpProofFile,
+        bool $allowImmediateToday
+    ): array {
+        $normalizedPhone = $this->normalizePhone($customerPhone);
+
+        $customer = Customer::where('business_id', $business->id)
+            ->where('phone', $normalizedPhone)
+            ->first();
+
+        if ($customer && ! $allowImmediateToday && $customer->is_blocked) {
+            throw new RuntimeException('Maaf, reservasi online untuk nomor ini sedang dibatasi. Silakan hubungi kami langsung melalui WhatsApp.');
+        }
+
+        if (! $customer) {
+            if (! app(PlanLimitService::class)->canCreateCustomer($business)) {
+                throw new RuntimeException('Kuota pelanggan bisnis ini telah mencapai batas paket.');
+            }
+
+            try {
+                $customer = Customer::create([
+                    'business_id' => $business->id,
+                    'phone' => $normalizedPhone,
+                    'name' => $customerName,
+                    'email' => $customerEmail,
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                $customer = Customer::where('business_id', $business->id)
+                    ->where('phone', $normalizedPhone)
+                    ->firstOrFail();
+            }
+        } elseif ($customer->name !== $customerName || ($customerEmail && $customer->email !== $customerEmail)) {
+            $customer->update([
+                'name' => $customerName,
+                'email' => $customerEmail ?: $customer->email,
+            ]);
+        }
+
+        $totalPrice = (int) $service->price * $quantity;
+        $dpAmount = min($totalPrice, $service->calculateDpAmount() * $quantity);
+
+        if (
+            ! $allowImmediateToday
+            && $business->no_show_require_full_dp
+            && (int) ($business->no_show_dp_threshold ?? 0) > 0
+            && $totalPrice > 0
+        ) {
+            $priorNoShows = $customer->bookings()
+                ->where('reservation_status', 'no_show')
+                ->count();
+
+            if ($priorNoShows >= (int) $business->no_show_dp_threshold) {
+                $dpAmount = $totalPrice;
+            }
+        }
+
+        $requiresDp = $dpAmount > 0;
+
+        $assignedStaff = $assignedStaffId
+            ? Staff::where('business_id', $business->id)->find($assignedStaffId)
+            : null;
+        $commissionAmount = $assignedStaff
+            ? $assignedStaff->calculateCommission($totalPrice)
+            : 0;
+
+        $proofPath = null;
+        if ($dpProofFile !== null) {
+            $proofPath = $dpProofFile->store('dp-proofs', 'local');
+        }
+
+        $paymentStatus = 'unpaid';
+        $dpExpiresAt = null;
+        if ($requiresDp) {
+            if ($proofPath) {
+                $paymentStatus = 'waiting_verification';
+            } else {
+                $paymentStatus = 'unpaid';
+                $dpExpiresAt = now()->addMinutes($business->dp_expiry_minutes ?: 120);
+            }
+        }
+
+        return [
+            'customer' => $customer,
+            'total_price' => $totalPrice,
+            'dp_amount' => $dpAmount,
+            'commission_amount' => $commissionAmount,
+            'proof_path' => $proofPath,
+            'payment_status' => $paymentStatus,
+            'dp_expires_at' => $dpExpiresAt,
+        ];
+    }
+
+    /**
+     * Validate that a target date is valid, non-holiday, and open for drop-off/pickup.
+     */
+    private function assertDropoffDateOpen(
+        Business $business,
+        CarbonImmutable $targetDate,
+        bool $allowImmediateToday
+    ): OperatingHour {
+        $timezone = $business->timezone ?: 'Asia/Jakarta';
+        $now = CarbonImmutable::now($timezone);
+
+        if ($targetDate->isBefore($now->startOfDay())) {
+            throw new RuntimeException('Tidak dapat memesan tanggal yang sudah berlalu.');
+        }
+
+        if (! $allowImmediateToday) {
+            $maxAdvanceDays = max(1, (int) ($business->max_booking_advance_days ?: 60));
+            if ($targetDate->gt($now->startOfDay()->addDays($maxAdvanceDays))) {
+                throw new RuntimeException("Pemesanan hanya tersedia maksimal {$maxAdvanceDays} hari ke depan.");
+            }
+        }
+
+        $isHoliday = $business->holidays()
+            ->whereDate('date', $targetDate->toDateString())
+            ->exists();
+
+        if ($isHoliday) {
+            throw new RuntimeException('Bisnis sedang libur pada tanggal yang dipilih.');
+        }
+
+        $operatingHour = $business->operatingHours()
+            ->where('day_of_week', $targetDate->dayOfWeek)
+            ->first();
+
+        if (! $operatingHour || ! $operatingHour->is_open) {
+            throw new RuntimeException('Bisnis tutup pada hari yang dipilih.');
+        }
+
+        $closeAt = $targetDate->setTimeFromTimeString($operatingHour->close_time);
+        if (! $allowImmediateToday && $targetDate->isSameDay($now) && $now->gte($closeAt)) {
+            throw new RuntimeException('Jam operasional hari ini sudah berakhir. Silakan pilih tanggal berikutnya.');
+        }
+
+        return $operatingHour;
+    }
+
+    /**
+     * Resolve local start/end window for a drop-off or pickup booking based on business hours and optional session.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function resolveDropoffWindow(
+        CarbonImmutable $targetDate,
+        string $openTime,
+        string $closeTime,
+        string $fulfillmentType,
+        ?string $pickupSession
+    ): array {
+        $openAt = $targetDate->setTimeFromTimeString($openTime);
+        $closeAt = $targetDate->setTimeFromTimeString($closeTime);
+
+        if ($fulfillmentType !== 'pickup' || $pickupSession === null || $pickupSession === 'anytime') {
+            return [$openAt, $closeAt];
+        }
+
+        $sessionBounds = match ($pickupSession) {
+            'morning' => ['09:00', '12:00'],
+            'afternoon' => ['13:00', '17:00'],
+            'evening' => ['17:00', '20:00'],
+            default => null,
+        };
+
+        if ($sessionBounds === null) {
+            return [$openAt, $closeAt];
+        }
+
+        $sessionStart = $targetDate->setTimeFromTimeString($sessionBounds[0]);
+        $sessionEnd = $targetDate->setTimeFromTimeString($sessionBounds[1]);
+
+        $clampedStart = $sessionStart->lt($openAt) ? $openAt : $sessionStart;
+        $clampedEnd = $sessionEnd->gt($closeAt) ? $closeAt : $sessionEnd;
+
+        if ($clampedStart->gte($clampedEnd)) {
+            return [$openAt, $closeAt];
+        }
+
+        return [$clampedStart, $clampedEnd];
+    }
+
+    /**
+     * Estimate ready date by advancing turnaroundDays and skipping closed/holiday dates if necessary.
+     */
+    private function calculateEstimatedReadyDate(
+        Business $business,
+        CarbonImmutable $dropoffDate,
+        int $turnaroundDays
+    ): CarbonImmutable {
+        $candidate = $dropoffDate->addDays(max(0, $turnaroundDays));
+
+        $operatingHoursByDay = $business->operatingHours()
+            ->get()
+            ->keyBy('day_of_week');
+
+        if ($operatingHoursByDay->isEmpty()) {
+            return $candidate;
+        }
+
+        $holidayDates = $business->holidays()
+            ->whereDate('date', '>=', $candidate->toDateString())
+            ->whereDate('date', '<=', $candidate->addDays(14)->toDateString())
+            ->pluck('date')
+            ->map(fn ($d) => $d->toDateString())
+            ->all();
+
+        for ($i = 0; $i < 14; $i++) {
+            $check = $candidate->addDays($i);
+            $hour = $operatingHoursByDay->get($check->dayOfWeek);
+            $isOpen = $hour ? (bool) $hour->is_open : true;
+            $isHoliday = in_array($check->toDateString(), $holidayDates, true);
+
+            if ($isOpen && ! $isHoliday) {
+                return $check;
+            }
+        }
+
+        return $candidate;
     }
 
     public function normalizePhone(string $phone): string

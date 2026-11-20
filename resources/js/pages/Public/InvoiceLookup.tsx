@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatDateIndo, formatRupiah, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import { formatDateIndo, formatRupiah, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS, WORK_STATUS_LABELS } from '@/lib/format';
 
 interface HistoryItem {
     invoice_number: string | null;
@@ -16,6 +16,11 @@ interface HistoryItem {
     staff_name: string | null;
     booking_date: string;
     start_time_local: string;
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
+    fulfillment_type?: 'dropoff' | 'pickup';
+    work_status?: string | null;
+    schedule_label?: string;
     total_price: number;
     dp_amount: number;
     reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -148,15 +153,20 @@ export default function InvoiceLookup({
                                                 </span>
                                                 {isMatched && <Badge variant="popular">Dicari</Badge>}
                                                 <Badge variant="secondary">
-                                                    {RESERVATION_STATUS_LABELS[item.reservation_status] ?? item.reservation_status}
+                                                    {item.booking_mode === 'dropoff' && item.work_status
+                                                        ? (WORK_STATUS_LABELS[item.work_status] ?? item.work_status)
+                                                        : (RESERVATION_STATUS_LABELS[item.reservation_status] ?? item.reservation_status)}
                                                 </Badge>
                                                 <Badge variant="outline">
                                                     {PAYMENT_STATUS_LABELS[item.payment_status] ?? item.payment_status}
                                                 </Badge>
                                             </div>
-                                            <p className="text-sm font-semibold text-ink">{item.service_name}</p>
+                                            <p className="text-sm font-semibold text-ink">
+                                                {item.service_name}
+                                                {item.booking_mode === 'dropoff' && (item.quantity ?? 1) > 1 ? ` (${item.quantity} item)` : ''}
+                                            </p>
                                             <p className="text-xs text-mute">
-                                                {formatDateIndo(item.booking_date)} · {item.start_time_local} · {formatRupiah(item.total_price)}
+                                                {formatDateIndo(item.booking_date)} · {item.schedule_label ?? item.start_time_local} · {formatRupiah(item.total_price)}
                                             </p>
                                         </div>
 

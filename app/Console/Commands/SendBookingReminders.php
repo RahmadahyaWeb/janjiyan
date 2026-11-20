@@ -70,9 +70,10 @@ class SendBookingReminders extends Command
                 }
             });
 
-        // H-2 Hour Reminders (105m to 135m before start_at)
+        // H-2 Hour Reminders (105m to 135m before start_at, time-slot bookings only)
         Booking::query()
             ->with(['business.owner.subscription.plan', 'service', 'staff', 'customer'])
+            ->where('booking_mode', 'time_slot')
             ->where('reservation_status', 'confirmed')
             ->whereNull('reminder_h2_sent_at')
             ->whereBetween('start_at', [$now->copy()->addMinutes(105), $now->copy()->addMinutes(135)])

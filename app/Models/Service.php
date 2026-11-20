@@ -19,6 +19,9 @@ class Service extends Model
         'buffer_minutes',
         'capacity',
         'assignment_mode',
+        'booking_mode',
+        'turnaround_days',
+        'supports_pickup',
         'dp_type',
         'dp_value',
         'is_active',
@@ -28,7 +31,14 @@ class Service extends Model
     {
         return [
             'is_active' => 'boolean',
+            'turnaround_days' => 'integer',
+            'supports_pickup' => 'boolean',
         ];
+    }
+
+    public function isDropoff(): bool
+    {
+        return $this->booking_mode === 'dropoff';
     }
 
     public function business(): BelongsTo

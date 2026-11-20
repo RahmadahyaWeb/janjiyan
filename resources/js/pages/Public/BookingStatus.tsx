@@ -1,10 +1,20 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, Printer, Upload, XCircle } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Truck, Upload, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { buildWhatsAppUrl, formatDateIndo, formatRupiah, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import {
+    buildWhatsAppUrl,
+    formatBookingScheduleShort,
+    formatDateIndo,
+    formatRupiah,
+    FULFILLMENT_TYPE_LABELS,
+    PAYMENT_STATUS_LABELS,
+    RESERVATION_STATUS_LABELS,
+    WORK_STATUS_LABELS,
+} from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
 interface BookingStatusProps {
@@ -32,6 +42,14 @@ interface BookingStatusProps {
         booking_date: string;
         start_time_local: string;
         end_time_local: string;
+        booking_mode?: 'time_slot' | 'dropoff';
+        quantity?: number;
+        fulfillment_type?: 'dropoff' | 'pickup';
+        pickup_session?: string | null;
+        pickup_address?: string | null;
+        estimated_ready_date?: string | null;
+        work_status?: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up' | null;
+        schedule_label?: string;
         start_at_utc?: string;
         end_at_utc?: string;
         calendar_ics_url?: string;
@@ -55,6 +73,36 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     const [remainingText, setRemainingText] = useState<string>('');
 
     const invoiceLabel = booking.invoice_number || booking.booking_code;
+    const isDropoff = booking.booking_mode === 'dropoff';
+    const qty = Math.max(1, booking.quantity ?? 1);
+    const scheduleLabel = booking.schedule_label ?? formatBookingScheduleShort(booking);
+
+    const dropoffSteps = [
+        {
+            key: 'awaiting_dropoff',
+            label: booking.fulfillment_type === 'pickup' ? 'Menunggu Jemput' : 'Menunggu Drop-off',
+            icon: Truck,
+        },
+        {
+            key: 'in_progress',
+            label: 'Sedang Dikerjakan',
+            icon: Sparkles,
+        },
+        {
+            key: 'ready_for_pickup',
+            label: booking.fulfillment_type === 'pickup' ? 'Siap Diantar' : 'Siap Diambil',
+            icon: PackageCheck,
+        },
+        {
+            key: 'picked_up',
+            label: 'Selesai',
+            icon: CheckCircle2,
+        },
+    ] as const;
+
+    const currentWorkIndex = isDropoff
+        ? Math.max(0, dropoffSteps.findIndex((s) => s.key === (booking.work_status ?? 'awaiting_dropoff')))
+        : 0;
 
     useEffect(() => {
         if (!booking.dp_expires_at || booking.payment_status !== 'unpaid' || booking.reservation_status === 'cancelled') {
@@ -105,12 +153,15 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     };
 
     const waMessage = [
-        `Halo ${business.name}, saya ingin konfirmasi reservasi:`,
+        `Halo ${business.name}, saya ingin konfirmasi ${isDropoff ? 'pesanan' : 'reservasi'}:`,
         `No. Invoice: ${invoiceLabel}`,
         `Kode Booking: ${booking.booking_code}`,
         `Nama: ${booking.customer_name}`,
-        `Layanan: ${booking.service_name}`,
-        `Tanggal: ${formatDateIndo(booking.booking_date)} (${booking.start_time_local})`,
+        `Layanan: ${booking.service_name}${isDropoff ? ` (${qty} item)` : ''}`,
+        `Jadwal: ${formatDateIndo(booking.booking_date)} (${scheduleLabel})`,
+        isDropoff && booking.estimated_ready_date
+            ? `Estimasi Selesai: ${formatDateIndo(booking.estimated_ready_date)}`
+            : '',
         booking.dp_amount > 0 ? `DP: ${formatRupiah(booking.dp_amount)}` : '',
         `Link Invoice: ${typeof window !== 'undefined' ? window.location.href : ''}`,
     ]
@@ -124,10 +175,14 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
         booking.start_at_utc && booking.end_at_utc
             ? `https://calendar.google.com/calendar/render?${new URLSearchParams({
                   action: 'TEMPLATE',
-                  text: `${booking.service_name} — ${business.name}`,
+                  text: `${isDropoff ? (booking.fulfillment_type === 'pickup' ? 'Jemput ' : 'Drop-off ') : ''}${booking.service_name} — ${business.name}`,
                   dates: `${booking.start_at_utc}/${booking.end_at_utc}`,
                   details: [
                       `Kode Booking: ${booking.booking_code}`,
+                      isDropoff ? `Jumlah: ${qty} item` : '',
+                      isDropoff && booking.estimated_ready_date
+                          ? `Estimasi Selesai: ${formatDateIndo(booking.estimated_ready_date)}`
+                          : '',
                       booking.staff_name ? `Staff: ${booking.staff_name}` : '',
                       `Total: ${formatRupiah(booking.total_price)}`,
                   ]
@@ -189,7 +244,9 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                     <CheckCircle2 className="size-6 shrink-0 text-ink" aria-hidden="true" />
                                 )}
                                 <h1 className="text-2xl font-semibold text-ink">
-                                    {RESERVATION_STATUS_LABELS[booking.reservation_status] ?? booking.reservation_status}
+                                    {isDropoff && booking.work_status && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show'
+                                        ? (WORK_STATUS_LABELS[booking.work_status] ?? RESERVATION_STATUS_LABELS[booking.reservation_status])
+                                        : (RESERVATION_STATUS_LABELS[booking.reservation_status] ?? booking.reservation_status)}
                                 </h1>
                             </div>
                             <p className="mt-1 text-sm text-mute">{business.name}</p>
@@ -197,6 +254,35 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
 
                         <Badge variant="secondary">{PAYMENT_STATUS_LABELS[booking.payment_status] ?? booking.payment_status}</Badge>
                     </div>
+
+                    {isDropoff && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show' && (
+                        <div className="mt-6 rounded-[18px] bg-bone p-4" aria-label="Progres pengerjaan pesanan">
+                            <p className="mb-3 text-xs font-semibold text-mute">Progres Pengerjaan</p>
+                            <ol className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                                {dropoffSteps.map((step, idx) => {
+                                    const Icon = step.icon;
+                                    const isDone = idx <= currentWorkIndex;
+                                    const isCurrent = idx === currentWorkIndex;
+                                    return (
+                                        <li
+                                            key={step.key}
+                                            className={cn(
+                                                'flex items-center gap-2 rounded-[12px] px-3 py-2 text-xs font-semibold',
+                                                isCurrent
+                                                    ? 'bg-ink text-canvas'
+                                                    : isDone
+                                                      ? 'bg-canvas text-ink'
+                                                      : 'bg-canvas/50 text-ash'
+                                            )}
+                                        >
+                                            <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                                            <span className="leading-tight">{step.label}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ol>
+                        </div>
+                    )}
 
                     <div className="mt-6 space-y-3 border-t border-divider pt-6 text-sm">
                         <div className="flex justify-between gap-4">
@@ -215,8 +301,25 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                         </div>
                         <div className="flex justify-between gap-4">
                             <span className="text-mute">Layanan</span>
-                            <span className="text-right font-semibold text-ink">{booking.service_name}</span>
+                            <span className="text-right font-semibold text-ink">
+                                {booking.service_name}
+                                {isDropoff ? ` (${qty} item)` : ''}
+                            </span>
                         </div>
+                        {isDropoff && (
+                            <div className="flex justify-between gap-4">
+                                <span className="text-mute">Metode</span>
+                                <span className="text-right font-semibold text-ink">
+                                    {FULFILLMENT_TYPE_LABELS[booking.fulfillment_type ?? 'dropoff'] ?? 'Antar ke Toko'}
+                                </span>
+                            </div>
+                        )}
+                        {isDropoff && booking.fulfillment_type === 'pickup' && booking.pickup_address && (
+                            <div className="flex justify-between gap-4">
+                                <span className="text-mute">Alamat Jemput</span>
+                                <span className="max-w-xs text-right text-body">{booking.pickup_address}</span>
+                            </div>
+                        )}
                         {booking.staff_name && (
                             <div className="flex justify-between gap-4">
                                 <span className="text-mute">Staff</span>
@@ -224,11 +327,19 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             </div>
                         )}
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">Jadwal</span>
+                            <span className="text-mute">{isDropoff ? 'Jadwal Drop-off / Jemput' : 'Jadwal'}</span>
                             <span className="text-right font-semibold tabular-nums text-ink">
-                                {formatDateIndo(booking.booking_date)} · {booking.start_time_local}–{booking.end_time_local}
+                                {formatDateIndo(booking.booking_date)} · {scheduleLabel}
                             </span>
                         </div>
+                        {isDropoff && booking.estimated_ready_date && (
+                            <div className="flex justify-between gap-4">
+                                <span className="text-mute">Estimasi Selesai</span>
+                                <span className="text-right font-semibold tabular-nums text-ink">
+                                    {formatDateIndo(booking.estimated_ready_date)}
+                                </span>
+                            </div>
+                        )}
                         {booking.created_at_local && (
                             <div className="flex justify-between gap-4">
                                 <span className="text-mute">Dibuat Pada</span>

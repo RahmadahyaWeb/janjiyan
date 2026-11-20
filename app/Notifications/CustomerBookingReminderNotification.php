@@ -52,12 +52,24 @@ class CustomerBookingReminderNotification extends Notification implements Should
             : ($business ? route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]) : url('/'));
 
         $mail = (new MailMessage)
-            ->subject("[{$businessName}] Pengingat Reservasi ({$windowLabel}) — {$booking->booking_code}")
+            ->subject("[{$businessName}] Pengingat ".($booking->isDropoff() ? 'Drop-off / Jemput' : 'Reservasi')." ({$windowLabel}) — {$booking->booking_code}")
             ->greeting("Halo {$booking->customer->name},")
-            ->line("Ini adalah pengingat bahwa jadwal reservasi Anda di {$businessName} akan berlangsung {$windowLabel}.")
+            ->line(
+                $booking->isDropoff()
+                    ? "Ini adalah pengingat bahwa jadwal drop-off / penjemputan pesanan Anda di {$businessName} berlangsung {$windowLabel}."
+                    : "Ini adalah pengingat bahwa jadwal reservasi Anda di {$businessName} akan berlangsung {$windowLabel}."
+            )
             ->line("Kode Booking: {$booking->booking_code}")
-            ->line("Layanan: {$booking->service->name}")
-            ->line("Jadwal: {$dateLabel}, {$timeLabel}");
+            ->line('Layanan: '.$booking->service->name.($booking->isDropoff() ? " ({$booking->quantity} item)" : ''))
+            ->line(
+                $booking->isDropoff()
+                    ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
+                    : "Jadwal: {$dateLabel}, {$timeLabel}"
+            );
+
+        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+            $mail->line('Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y'));
+        }
 
         if ($booking->staff) {
             $mail->line("Staff: {$booking->staff->name}");
@@ -68,7 +80,11 @@ class CustomerBookingReminderNotification extends Notification implements Should
         }
 
         return $mail
-            ->action('Lihat Detail Reservasi', $invoiceUrl)
-            ->line('Mohon hadir 10 menit sebelum jadwal dimulai. Terima kasih!');
+            ->action('Lihat Detail Pesanan', $invoiceUrl)
+            ->line(
+                $booking->isDropoff()
+                    ? 'Silakan antar barang Anda sesuai jam operasional toko atau siapkan barang untuk penjemputan. Terima kasih!'
+                    : 'Mohon hadir 10 menit sebelum jadwal dimulai. Terima kasih!'
+            );
     }
 }

@@ -54,3 +54,46 @@ export const STAFF_ROLE_LABELS: Record<string, string> = {
     admin: 'Admin',
     staff: 'Staff',
 };
+
+export const WORK_STATUS_LABELS: Record<string, string> = {
+    awaiting_dropoff: 'Menunggu Drop-off',
+    in_progress: 'Sedang Dikerjakan',
+    ready_for_pickup: 'Siap Diambil',
+    picked_up: 'Sudah Diambil',
+};
+
+export const FULFILLMENT_TYPE_LABELS: Record<string, string> = {
+    dropoff: 'Antar ke Toko',
+    pickup: 'Jemput & Antar',
+};
+
+export const PICKUP_SESSION_LABELS: Record<string, string> = {
+    morning: 'Pagi (09:00–12:00)',
+    afternoon: 'Siang (13:00–17:00)',
+    evening: 'Sore (17:00–20:00)',
+    anytime: 'Fleksibel (Jam Buka)',
+};
+
+export function formatTurnaroundLabel(days: number): string {
+    if (days <= 0) return 'Selesai hari ini';
+    if (days === 1) return 'Est. 1 hari';
+    return `Est. ${days} hari`;
+}
+
+export function formatBookingScheduleShort(booking: {
+    booking_mode?: 'time_slot' | 'dropoff';
+    fulfillment_type?: 'dropoff' | 'pickup';
+    pickup_session?: string | null;
+    start_time_local: string;
+    end_time_local?: string;
+}): string {
+    if (booking.booking_mode === 'dropoff') {
+        if (booking.fulfillment_type === 'pickup') {
+            return `Jemput · ${PICKUP_SESSION_LABELS[booking.pickup_session ?? 'anytime'] ?? 'Fleksibel'}`;
+        }
+        return 'Drop-off (Jam Buka)';
+    }
+    return booking.end_time_local
+        ? `${booking.start_time_local}–${booking.end_time_local}`
+        : booking.start_time_local;
+}

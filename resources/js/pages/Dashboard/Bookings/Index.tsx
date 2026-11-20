@@ -40,11 +40,16 @@ import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import {
     buildWhatsAppUrl,
+    formatBookingScheduleShort,
     formatDateIndo,
     formatDateShortIndo,
     formatRupiah,
+    formatTurnaroundLabel,
+    FULFILLMENT_TYPE_LABELS,
     PAYMENT_STATUS_LABELS,
+    PICKUP_SESSION_LABELS,
     RESERVATION_STATUS_LABELS,
+    WORK_STATUS_LABELS,
 } from '@/lib/format';
 import {
     buildWhatsappTemplateUrl,
@@ -70,6 +75,14 @@ interface BookingRow {
     service_id: number;
     service_name: string;
     service_assignment_mode: 'staff' | 'capacity';
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
+    fulfillment_type?: 'dropoff' | 'pickup';
+    pickup_session?: string | null;
+    pickup_address?: string | null;
+    estimated_ready_date?: string | null;
+    work_status?: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up' | null;
+    schedule_label?: string;
     staff_id: number | null;
     staff_name: string | null;
     booking_date: string;
@@ -91,7 +104,11 @@ interface ServiceOption {
     name: string;
     price: number;
     duration_minutes: number;
+    capacity: number;
     assignment_mode: 'staff' | 'capacity';
+    booking_mode?: 'time_slot' | 'dropoff';
+    turnaround_days?: number;
+    supports_pickup?: boolean;
     dp_amount: number;
     staff: Array<{
         id: number;
@@ -177,6 +194,10 @@ export default function BookingsIndex({
         service_id: services[0]?.id ? String(services[0].id) : '',
         date: todayString,
         time: '',
+        quantity: 1,
+        fulfillment_type: 'dropoff' as 'dropoff' | 'pickup',
+        pickup_session: 'anytime' as 'morning' | 'afternoon' | 'evening' | 'anytime',
+        pickup_address: '',
         staff_id: '',
         customer_name: '',
         customer_phone: '',
@@ -186,6 +207,7 @@ export default function BookingsIndex({
     });
 
     const selectedService = services.find((s) => String(s.id) === manualForm.data.service_id) ?? null;
+    const isManualDropoff = selectedService?.booking_mode === 'dropoff';
 
     const manualSlotUrl = useMemo(() => {
         if (!createOpen || !manualForm.data.service_id || !manualForm.data.date) {
@@ -195,14 +217,15 @@ export default function BookingsIndex({
             service_id: manualForm.data.service_id,
             date: manualForm.data.date,
         });
-        if (manualForm.data.staff_id) {
+        if (!isManualDropoff && manualForm.data.staff_id) {
             params.set('staff_id', manualForm.data.staff_id);
         }
         return `${route('dashboard.bookings.slots')}?${params.toString()}`;
-    }, [createOpen, manualForm.data.service_id, manualForm.data.date, manualForm.data.staff_id]);
+    }, [createOpen, manualForm.data.service_id, manualForm.data.date, manualForm.data.staff_id, isManualDropoff]);
 
     const {
         slots,
+        dropoff: manualDropoff,
         hasLoaded: manualSlotsLoaded,
         showInitialLoading: manualInitialLoading,
         showRefreshing: manualRefreshing,
@@ -210,6 +233,7 @@ export default function BookingsIndex({
         url: manualSlotUrl,
         enabled: createOpen && manualSlotUrl !== null,
         onResolved: (nextSlots: SlotItem[]) => {
+            if (isManualDropoff) return;
             if (!nextSlots.some((s) => s.time === manualForm.data.time)) {
                 manualForm.setData('time', nextSlots[0]?.time ?? '');
             }
@@ -223,6 +247,10 @@ export default function BookingsIndex({
             service_id: services[0]?.id ? String(services[0].id) : '',
             date: todayString,
             time: '',
+            quantity: 1,
+            fulfillment_type: 'dropoff',
+            pickup_session: 'anytime',
+            pickup_address: '',
             staff_id: '',
             customer_name: '',
             customer_phone: '',
@@ -235,7 +263,18 @@ export default function BookingsIndex({
 
     const handleManualSubmit = (e: FormEvent) => {
         e.preventDefault();
-        if (!manualForm.data.time) {
+        if (isManualDropoff) {
+            if (!manualDropoff?.available || manualDropoff.remaining_capacity < manualForm.data.quantity) {
+                setTimeError(manualDropoff?.reason ?? 'Kuota harian tidak mencukupi pada tanggal yang dipilih.');
+                document.getElementById('manual-date')?.focus();
+                return;
+            }
+            if (selectedService?.supports_pickup && manualForm.data.fulfillment_type === 'pickup' && manualForm.data.pickup_address.trim() === '') {
+                setTimeError('Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.');
+                document.getElementById('manual-pickup-address')?.focus();
+                return;
+            }
+        } else if (!manualForm.data.time) {
             setTimeError('Pilih jam reservasi yang tersedia terlebih dahulu.');
             document.getElementById('manual-date')?.focus();
             return;
@@ -288,15 +327,40 @@ export default function BookingsIndex({
         return qs ? `${route('dashboard.bookings.export')}?${qs}` : route('dashboard.bookings.export');
     })();
 
-    const buildQuickWaUrl = (b: Pick<BookingRow, 'customer_name' | 'customer_phone' | 'booking_code' | 'service_name' | 'booking_date' | 'start_time_local' | 'payment_status' | 'reservation_status' | 'invoice_url'>) => {
+    const buildQuickWaUrl = (
+        b: Pick<
+            BookingRow,
+            | 'customer_name'
+            | 'customer_phone'
+            | 'booking_code'
+            | 'service_name'
+            | 'booking_date'
+            | 'start_time_local'
+            | 'booking_mode'
+            | 'quantity'
+            | 'fulfillment_type'
+            | 'pickup_session'
+            | 'work_status'
+            | 'schedule_label'
+            | 'payment_status'
+            | 'reservation_status'
+            | 'invoice_url'
+        >
+    ) => {
         const dateLabel = formatDateIndo(b.booking_date);
+        const isDropoff = b.booking_mode === 'dropoff';
+        const timeOrMode = b.schedule_label ?? formatBookingScheduleShort(b);
         let msg = `Halo ${b.customer_name}, kami dari ${businessName}.`;
         if (b.payment_status === 'unpaid' && b.reservation_status === 'pending') {
-            msg += ` Mengingatkan untuk menyelesaikan pembayaran DP reservasi ${b.booking_code} (${b.service_name}, ${dateLabel} pukul ${b.start_time_local}).`;
+            msg += ` Mengingatkan untuk menyelesaikan pembayaran DP pesanan ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+        } else if (isDropoff && b.work_status === 'ready_for_pickup') {
+            msg += ` Pesanan ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} item) sudah selesai dan siap diambil/diantar!`;
         } else if (b.reservation_status === 'confirmed') {
-            msg += ` Reservasi ${b.booking_code} untuk ${b.service_name} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya!`;
+            msg += isDropoff
+                ? ` Pesanan drop-off ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} item) pada ${dateLabel} telah dikonfirmasi.`
+                : ` Reservasi ${b.booking_code} untuk ${b.service_name} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya!`;
         } else {
-            msg += ` Terkait reservasi ${b.booking_code} (${b.service_name}, ${dateLabel} pukul ${b.start_time_local}).`;
+            msg += ` Terkait pesanan ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
         }
         if (b.invoice_url) {
             msg += ` Detail invoice: ${b.invoice_url}`;
@@ -313,6 +377,12 @@ export default function BookingsIndex({
             | 'staff_name'
             | 'booking_date'
             | 'start_time_local'
+            | 'booking_mode'
+            | 'quantity'
+            | 'fulfillment_type'
+            | 'pickup_session'
+            | 'estimated_ready_date'
+            | 'schedule_label'
             | 'booking_code'
             | 'dp_amount'
             | 'total_price'
@@ -329,9 +399,11 @@ export default function BookingsIndex({
             customer_name: b.customer_name,
             business_name: businessName,
             service_name: b.service_name,
+            quantity: b.quantity ?? 1,
             staff_name: b.staff_name,
             date: formatDateIndo(b.booking_date),
-            time: b.start_time_local,
+            time: b.booking_mode === 'dropoff' ? (b.schedule_label ?? formatBookingScheduleShort(b)) : b.start_time_local,
+            estimated_ready_date: b.estimated_ready_date ? formatDateIndo(b.estimated_ready_date) : '-',
             booking_code: b.booking_code,
             dp_amount: b.dp_amount,
             total_price: b.total_price,
@@ -350,6 +422,10 @@ export default function BookingsIndex({
             cancellation_reason ? { reservation_status, cancellation_reason } : { reservation_status },
             { preserveScroll: true }
         );
+    };
+
+    const updateWorkStatus = (id: number, work_status: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up') => {
+        router.patch(route('dashboard.bookings.status', id), { work_status }, { preserveScroll: true });
     };
 
     const settlePayment = (id: number) => {
@@ -841,10 +917,10 @@ export default function BookingsIndex({
                                                     {b.customer_name}
                                                 </Link>
                                             </p>
-                                            <p className="mt-0.5 text-sm font-medium text-ink">
+                                             <p className="mt-0.5 text-sm font-medium text-ink">
                                                 {formatDateShortIndo(b.booking_date)}{' '}
                                                 <span className="whitespace-nowrap tabular-nums text-mute">
-                                                    · {b.start_time_local}–{b.end_time_local}
+                                                    · {b.schedule_label ?? formatBookingScheduleShort(b)}
                                                 </span>
                                             </p>
                                         </div>
@@ -863,11 +939,20 @@ export default function BookingsIndex({
 
                                     <p className="text-xs text-mute">
                                         <span className="font-medium text-body">{b.service_name}</span>
+                                        {b.booking_mode === 'dropoff' ? ` · ${b.quantity ?? 1} item` : ''}
+                                        {b.booking_mode === 'dropoff' && b.estimated_ready_date
+                                            ? ` · Est. selesai ${formatDateShortIndo(b.estimated_ready_date)}`
+                                            : ''}
                                         {b.staff_name ? ` · ${b.staff_name}` : ''}
                                     </p>
 
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         {reservationBadge(b.reservation_status)}
+                                        {b.booking_mode === 'dropoff' && b.work_status && (
+                                            <Badge variant="outline">
+                                                {WORK_STATUS_LABELS[b.work_status] ?? b.work_status}
+                                            </Badge>
+                                        )}
                                         {paymentBadge(b.payment_status)}
                                         {(b.rescheduled_count ?? 0) > 0 && (
                                             <Badge variant="outline" className="tabular-nums">
@@ -896,6 +981,12 @@ export default function BookingsIndex({
                                         {b.invoice_number && <span>· {b.invoice_number}</span>}
                                         <span className="tabular-nums">· +{b.customer_phone}</span>
                                     </p>
+
+                                    {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
+                                        <p className="rounded-[12px] bg-bone px-3 py-2 text-xs text-body">
+                                            Alamat Jemput ({FULFILLMENT_TYPE_LABELS[b.fulfillment_type] ?? 'Jemput'}): {b.pickup_address}
+                                        </p>
+                                    )}
 
                                     {b.customer_notes && (
                                         <p className="rounded-[12px] bg-bone px-3 py-2 text-xs text-body">
@@ -926,6 +1017,23 @@ export default function BookingsIndex({
                                                 <Check className="size-3.5" aria-hidden="true" />
                                                 Verifikasi DP
                                             </Button>
+                                        ) : b.booking_mode === 'dropoff' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
+                                            b.work_status === 'awaiting_dropoff' || !b.work_status ? (
+                                                <Button type="button" size="sm" className="flex-1 md:flex-initial" onClick={() => updateWorkStatus(b.id, 'in_progress')}>
+                                                    <Check className="size-3.5" aria-hidden="true" />
+                                                    Terima &amp; Proses
+                                                </Button>
+                                            ) : b.work_status === 'in_progress' ? (
+                                                <Button type="button" size="sm" className="flex-1 md:flex-initial" onClick={() => updateWorkStatus(b.id, 'ready_for_pickup')}>
+                                                    <Check className="size-3.5" aria-hidden="true" />
+                                                    Siap Diambil
+                                                </Button>
+                                            ) : (
+                                                <Button type="button" variant="outline" size="sm" className="flex-1 md:flex-initial" onClick={() => updateWorkStatus(b.id, 'picked_up')}>
+                                                    <Check className="size-3.5" aria-hidden="true" />
+                                                    Tandai Selesai
+                                                </Button>
+                                            )
                                         ) : b.reservation_status === 'pending' ? (
                                             <Button type="button" size="sm" className="flex-1 md:flex-initial" onClick={() => updateStatus(b.id, 'confirmed')}>
                                                 <Check className="size-3.5" aria-hidden="true" />
@@ -1109,7 +1217,11 @@ export default function BookingsIndex({
                             >
                                 {services.map((s) => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} ({formatRupiah(s.price)} · {s.duration_minutes} mnt)
+                                        {s.name} ({formatRupiah(s.price)} ·{' '}
+                                        {s.booking_mode === 'dropoff'
+                                            ? formatTurnaroundLabel(s.turnaround_days ?? 1)
+                                            : `${s.duration_minutes} mnt`}
+                                        )
                                     </option>
                                 ))}
                             </NativeSelect>
@@ -1117,7 +1229,7 @@ export default function BookingsIndex({
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="manual-date">Tanggal *</Label>
+                                <Label htmlFor="manual-date">{isManualDropoff ? 'Tanggal Drop-off *' : 'Tanggal *'}</Label>
                                 <Input
                                     id="manual-date"
                                     type="date"
@@ -1128,25 +1240,120 @@ export default function BookingsIndex({
                                 />
                             </div>
 
-                            {selectedService?.assignment_mode === 'staff' && (
+                            {isManualDropoff ? (
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="manual-staff">Staff</Label>
-                                    <NativeSelect
-                                        id="manual-staff"
-                                        value={manualForm.data.staff_id}
-                                        onChange={(e) => manualForm.setData('staff_id', e.target.value)}
-                                    >
-                                        <option value="">Siapa saja yang tersedia</option>
-                                        {selectedService.staff.map((st) => (
-                                            <option key={st.id} value={st.id}>
-                                                {st.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                    <Label htmlFor="manual-quantity">Jumlah Item *</Label>
+                                    <Input
+                                        id="manual-quantity"
+                                        type="number"
+                                        min={1}
+                                        max={50}
+                                        value={manualForm.data.quantity}
+                                        onChange={(e) => manualForm.setData('quantity', Math.max(1, Number(e.target.value) || 1))}
+                                        required
+                                    />
                                 </div>
+                            ) : (
+                                selectedService?.assignment_mode === 'staff' && (
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="manual-staff">Staff</Label>
+                                        <NativeSelect
+                                            id="manual-staff"
+                                            value={manualForm.data.staff_id}
+                                            onChange={(e) => manualForm.setData('staff_id', e.target.value)}
+                                        >
+                                            <option value="">Siapa saja yang tersedia</option>
+                                            {selectedService.staff.map((st) => (
+                                                <option key={st.id} value={st.id}>
+                                                    {st.name}
+                                                </option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+                                )
                             )}
                         </div>
 
+                        {isManualDropoff ? (
+                            <div className="space-y-3">
+                                <div className="rounded-[16px] bg-bone px-4 py-3 text-xs" aria-live="polite">
+                                    {manualInitialLoading || !manualSlotsLoaded ? (
+                                        <p className="text-mute">Memeriksa kuota harian…</p>
+                                    ) : manualDropoff?.available ? (
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-semibold text-ink tabular-nums">
+                                                Sisa kuota: {manualDropoff.remaining_capacity} / {manualDropoff.total_capacity} item
+                                            </span>
+                                            {manualDropoff.estimated_ready_date && (
+                                                <span className="text-mute">
+                                                    Est. selesai: {formatDateShortIndo(manualDropoff.estimated_ready_date)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-destructive">
+                                            {manualDropoff?.reason ?? 'Kuota harian tidak tersedia pada tanggal ini.'}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {selectedService?.supports_pickup && (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="manual-fulfillment">Metode Penyerahan</Label>
+                                            <NativeSelect
+                                                id="manual-fulfillment"
+                                                value={manualForm.data.fulfillment_type}
+                                                onChange={(e) => manualForm.setData('fulfillment_type', e.target.value as 'dropoff' | 'pickup')}
+                                            >
+                                                <option value="dropoff">Antar ke Toko (Drop-off)</option>
+                                                <option value="pickup">Jemput &amp; Antar</option>
+                                            </NativeSelect>
+                                        </div>
+                                        {manualForm.data.fulfillment_type === 'pickup' && (
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="manual-pickup-session">Sesi Jemput</Label>
+                                                <NativeSelect
+                                                    id="manual-pickup-session"
+                                                    value={manualForm.data.pickup_session}
+                                                    onChange={(e) =>
+                                                        manualForm.setData(
+                                                            'pickup_session',
+                                                            e.target.value as 'morning' | 'afternoon' | 'evening' | 'anytime'
+                                                        )
+                                                    }
+                                                >
+                                                    {(['morning', 'afternoon', 'evening', 'anytime'] as const).map((sess) => (
+                                                        <option key={sess} value={sess}>
+                                                            {PICKUP_SESSION_LABELS[sess]}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {selectedService?.supports_pickup && manualForm.data.fulfillment_type === 'pickup' && (
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="manual-pickup-address">Alamat Penjemputan *</Label>
+                                        <Textarea
+                                            id="manual-pickup-address"
+                                            rows={2}
+                                            placeholder="Alamat lengkap penjemputan"
+                                            value={manualForm.data.pickup_address}
+                                            onChange={(e) => manualForm.setData('pickup_address', e.target.value)}
+                                        />
+                                    </div>
+                                )}
+
+                                {(timeError || manualForm.errors.date || manualForm.errors.pickup_address) && (
+                                    <p role="alert" className="text-xs text-destructive">
+                                        {timeError || manualForm.errors.date || manualForm.errors.pickup_address}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
                         <div className="min-h-[88px] space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
                                 <Label>Pilih Jam Tersedia *</Label>
@@ -1201,6 +1408,7 @@ export default function BookingsIndex({
                                 </p>
                             )}
                         </div>
+                        )}
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
@@ -1347,7 +1555,7 @@ export default function BookingsIndex({
                                 </p>
                                 <p className="text-mute">
                                     {formatDateIndo(selectedCalendarBooking.booking_date)} ·{' '}
-                                    {selectedCalendarBooking.start_time_local}–{selectedCalendarBooking.end_time_local}
+                                    {formatBookingScheduleShort(selectedCalendarBooking)}
                                 </p>
                                 <p className="font-semibold tabular-nums text-ink">
                                     {formatRupiah(selectedCalendarBooking.total_price)}

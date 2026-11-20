@@ -1,4 +1,4 @@
-export type WhatsappTemplateKey = 'reminder' | 'dp_verified' | 'confirmed' | 'follow_up';
+export type WhatsappTemplateKey = 'reminder' | 'dp_verified' | 'confirmed' | 'ready_for_pickup' | 'follow_up';
 
 export type WhatsappTemplatesMap = Record<WhatsappTemplateKey, string>;
 
@@ -14,6 +14,8 @@ export interface WhatsappTemplateContext {
     total_price?: number;
     invoice_url?: string | null;
     business_address?: string | null;
+    quantity?: number;
+    estimated_ready_date?: string | null;
 }
 
 export const WHATSAPP_TEMPLATE_META: Array<{
@@ -26,7 +28,7 @@ export const WHATSAPP_TEMPLATE_META: Array<{
         key: 'reminder',
         label: 'Reminder Jadwal (H-1)',
         shortLabel: 'Reminder H-1',
-        description: 'Mengingatkan pelanggan sebelum waktu kedatangan.',
+        description: 'Mengingatkan pelanggan sebelum waktu kedatangan atau drop-off.',
     },
     {
         key: 'dp_verified',
@@ -36,15 +38,21 @@ export const WHATSAPP_TEMPLATE_META: Array<{
     },
     {
         key: 'confirmed',
-        label: 'Konfirmasi Reservasi',
+        label: 'Konfirmasi Pesanan',
         shortLabel: 'Konfirmasi Jadwal',
         description: 'Mengirim ringkasan jadwal dan link invoice resmi.',
     },
     {
+        key: 'ready_for_pickup',
+        label: 'Pesanan Siap Diambil',
+        shortLabel: 'Siap Diambil',
+        description: 'Memberitahu pelanggan bahwa barang/pesanan drop-off sudah selesai.',
+    },
+    {
         key: 'follow_up',
-        label: 'Follow-up Pasca Kunjungan',
+        label: 'Follow-up Pasca Layanan',
         shortLabel: 'Follow-up',
-        description: 'Ucapan terima kasih dan ajakan kunjungan berikutnya.',
+        description: 'Ucapan terima kasih dan ajakan order berikutnya.',
     },
 ];
 
@@ -52,9 +60,11 @@ export const WHATSAPP_PLACEHOLDERS: Array<{ token: string; label: string }> = [
     { token: '{customer_name}', label: 'Nama Pelanggan' },
     { token: '{business_name}', label: 'Nama Bisnis' },
     { token: '{service_name}', label: 'Layanan' },
+    { token: '{quantity}', label: 'Jumlah Item' },
     { token: '{staff_name}', label: 'Staff' },
     { token: '{date}', label: 'Tanggal' },
-    { token: '{time}', label: 'Jam' },
+    { token: '{time}', label: 'Jam / Mode' },
+    { token: '{estimated_ready_date}', label: 'Est. Selesai' },
     { token: '{booking_code}', label: 'Kode Booking' },
     { token: '{dp_amount}', label: 'Nominal DP' },
     { token: '{total_price}', label: 'Total Harga' },
@@ -75,9 +85,11 @@ export function interpolateWhatsappTemplate(template: string, ctx: WhatsappTempl
         '{customer_name}': ctx.customer_name || 'Pelanggan',
         '{business_name}': ctx.business_name || 'Janjiyan',
         '{service_name}': ctx.service_name || '-',
+        '{quantity}': String(ctx.quantity ?? 1),
         '{staff_name}': ctx.staff_name || 'Tim kami',
         '{date}': ctx.date || '-',
         '{time}': ctx.time || '-',
+        '{estimated_ready_date}': ctx.estimated_ready_date || '-',
         '{booking_code}': ctx.booking_code || '-',
         '{dp_amount}': formatRupiah(ctx.dp_amount ?? 0),
         '{total_price}': formatRupiah(ctx.total_price ?? 0),

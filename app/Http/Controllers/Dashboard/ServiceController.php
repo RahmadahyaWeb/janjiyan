@@ -28,6 +28,9 @@ class ServiceController extends Controller
                 'buffer_minutes' => $s->buffer_minutes,
                 'capacity' => $s->capacity,
                 'assignment_mode' => $s->assignment_mode,
+                'booking_mode' => $s->booking_mode ?? 'time_slot',
+                'turnaround_days' => (int) ($s->turnaround_days ?? 1),
+                'supports_pickup' => (bool) ($s->supports_pickup ?? false),
                 'dp_type' => $s->dp_type,
                 'dp_value' => $s->dp_value,
                 'is_active' => $s->is_active,
@@ -60,15 +63,21 @@ class ServiceController extends Controller
             'description' => ['nullable', 'string', 'max:500'],
             'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'price' => ['required', 'integer', 'min:0'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:480'],
-            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:120'],
-            'capacity' => ['required', 'integer', 'min:1', 'max:100'],
-            'assignment_mode' => ['required', 'in:staff,capacity'],
+            'booking_mode' => ['sometimes', 'in:time_slot,dropoff'],
+            'turnaround_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'supports_pickup' => ['nullable', 'boolean'],
+            'duration_minutes' => ['required_unless:booking_mode,dropoff', 'nullable', 'integer', 'min:15', 'max:480'],
+            'buffer_minutes' => ['required_unless:booking_mode,dropoff', 'nullable', 'integer', 'min:0', 'max:120'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:500'],
+            'assignment_mode' => ['required_unless:booking_mode,dropoff', 'nullable', 'in:staff,capacity'],
             'dp_type' => ['required', 'in:none,fixed,percentage'],
             'dp_value' => ['required', 'integer', 'min:0'],
             'staff_ids' => ['array'],
             'staff_ids.*' => ['integer'],
         ]);
+
+        $bookingMode = $validated['booking_mode'] ?? 'time_slot';
+        $isDropoff = $bookingMode === 'dropoff';
 
         $imagePath = $request->hasFile('image')
             ? $request->file('image')->store('services', 'public')
@@ -79,16 +88,19 @@ class ServiceController extends Controller
             'description' => $validated['description'] ?? null,
             'image_path' => $imagePath,
             'price' => $validated['price'],
-            'duration_minutes' => $validated['duration_minutes'],
-            'buffer_minutes' => $validated['buffer_minutes'],
+            'duration_minutes' => $isDropoff ? 60 : (int) $validated['duration_minutes'],
+            'buffer_minutes' => $isDropoff ? 0 : (int) $validated['buffer_minutes'],
             'capacity' => $validated['capacity'],
-            'assignment_mode' => $validated['assignment_mode'],
+            'assignment_mode' => $isDropoff ? 'capacity' : ($validated['assignment_mode'] ?? 'staff'),
+            'booking_mode' => $bookingMode,
+            'turnaround_days' => $isDropoff ? (int) ($validated['turnaround_days'] ?? 1) : 1,
+            'supports_pickup' => $isDropoff ? (bool) ($validated['supports_pickup'] ?? false) : false,
             'dp_type' => $validated['dp_type'],
             'dp_value' => $validated['dp_type'] === 'none' ? 0 : $validated['dp_value'],
             'is_active' => true,
         ]);
 
-        if ($validated['assignment_mode'] === 'staff' && ! empty($validated['staff_ids'])) {
+        if (! $isDropoff && $service->assignment_mode === 'staff' && ! empty($validated['staff_ids'])) {
             $validIds = $business->staff()->whereIn('id', $validated['staff_ids'])->pluck('id');
             $service->staff()->sync($validIds);
         }
@@ -108,16 +120,22 @@ class ServiceController extends Controller
             'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_image' => ['nullable', 'boolean'],
             'price' => ['required', 'integer', 'min:0'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:480'],
-            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:120'],
-            'capacity' => ['required', 'integer', 'min:1', 'max:100'],
-            'assignment_mode' => ['required', 'in:staff,capacity'],
+            'booking_mode' => ['sometimes', 'in:time_slot,dropoff'],
+            'turnaround_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'supports_pickup' => ['nullable', 'boolean'],
+            'duration_minutes' => ['required_unless:booking_mode,dropoff', 'nullable', 'integer', 'min:15', 'max:480'],
+            'buffer_minutes' => ['required_unless:booking_mode,dropoff', 'nullable', 'integer', 'min:0', 'max:120'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:500'],
+            'assignment_mode' => ['required_unless:booking_mode,dropoff', 'nullable', 'in:staff,capacity'],
             'dp_type' => ['required', 'in:none,fixed,percentage'],
             'dp_value' => ['required', 'integer', 'min:0'],
             'is_active' => ['boolean'],
             'staff_ids' => ['array'],
             'staff_ids.*' => ['integer'],
         ]);
+
+        $bookingMode = $validated['booking_mode'] ?? ($service->booking_mode ?? 'time_slot');
+        $isDropoff = $bookingMode === 'dropoff';
 
         $imagePath = $service->image_path;
         if ($request->boolean('remove_image') && $imagePath) {
@@ -136,16 +154,19 @@ class ServiceController extends Controller
             'description' => $validated['description'] ?? null,
             'image_path' => $imagePath,
             'price' => $validated['price'],
-            'duration_minutes' => $validated['duration_minutes'],
-            'buffer_minutes' => $validated['buffer_minutes'],
+            'duration_minutes' => $isDropoff ? ($service->duration_minutes ?: 60) : (int) $validated['duration_minutes'],
+            'buffer_minutes' => $isDropoff ? 0 : (int) $validated['buffer_minutes'],
             'capacity' => $validated['capacity'],
-            'assignment_mode' => $validated['assignment_mode'],
+            'assignment_mode' => $isDropoff ? 'capacity' : ($validated['assignment_mode'] ?? 'staff'),
+            'booking_mode' => $bookingMode,
+            'turnaround_days' => $isDropoff ? (int) ($validated['turnaround_days'] ?? 1) : 1,
+            'supports_pickup' => $isDropoff ? (bool) ($validated['supports_pickup'] ?? false) : false,
             'dp_type' => $validated['dp_type'],
             'dp_value' => $validated['dp_type'] === 'none' ? 0 : $validated['dp_value'],
             'is_active' => $validated['is_active'] ?? $service->is_active,
         ]);
 
-        if ($validated['assignment_mode'] === 'staff') {
+        if (! $isDropoff && $service->assignment_mode === 'staff') {
             $validIds = $business->staff()->whereIn('id', $validated['staff_ids'] ?? [])->pluck('id');
             $service->staff()->sync($validIds);
         } else {

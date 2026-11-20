@@ -38,6 +38,9 @@ interface DashboardIndexProps {
         customer_phone: string;
         service_name: string;
         staff_name: string | null;
+        booking_mode?: 'time_slot' | 'dropoff';
+        quantity?: number;
+        fulfillment_type?: 'dropoff' | 'pickup';
         booking_date: string;
         start_time_local: string;
         total_price: number;
@@ -469,7 +472,15 @@ export default function DashboardIndex({
                                             </span>
                                         </p>
                                         <p className="truncate text-xs text-mute">
-                                            {b.service_name} · {formatDateIndo(b.booking_date)} ({b.start_time_local})
+                                            {b.service_name}
+                                            {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''} ·{' '}
+                                            {formatDateIndo(b.booking_date)} (
+                                            {b.booking_mode === 'dropoff'
+                                                ? b.fulfillment_type === 'pickup'
+                                                    ? 'Jemput-Antar'
+                                                    : 'Drop-off'
+                                                : b.start_time_local}
+                                            )
                                         </p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2">

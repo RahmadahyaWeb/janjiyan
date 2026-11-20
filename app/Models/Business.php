@@ -65,10 +65,11 @@ class Business extends Model
     public static function defaultWhatsappTemplates(): array
     {
         return [
-            'reminder' => "Halo {customer_name}, kami dari {business_name} mengingatkan jadwal reservasi Anda:\n\n• Layanan: {service_name}\n• Tanggal: {date}\n• Jam: {time}\n• Staff: {staff_name}\n• Kode: {booking_code}\n\nMohon hadir 10 menit sebelum jadwal. Terima kasih!",
-            'dp_verified' => "Halo {customer_name}, pembayaran DP sebesar {dp_amount} untuk reservasi {booking_code} ({service_name}, {date} pukul {time}) telah kami verifikasi.\n\nJadwal Anda sudah dikonfirmasi. Sampai jumpa di {business_name}!",
-            'confirmed' => "Halo {customer_name}, reservasi Anda di {business_name} telah dikonfirmasi:\n\n• Layanan: {service_name}\n• Tanggal: {date} pukul {time}\n• Staff: {staff_name}\n• Detail Invoice: {invoice_url}\n\nTerima kasih!",
-            'follow_up' => 'Halo {customer_name}, terima kasih sudah berkunjung ke {business_name} untuk layanan {service_name}! Semoga Anda puas dengan pelayanan kami. Jika ada masukan atau ingin jadwalkan kunjungan berikutnya, silakan balas pesan ini ya.',
+            'reminder' => "Halo {customer_name}, kami dari {business_name} mengingatkan jadwal Anda:\n\n• Layanan: {service_name}\n• Tanggal: {date}\n• Jadwal/Jam: {time}\n• Staff: {staff_name}\n• Kode: {booking_code}\n\nTerima kasih!",
+            'dp_verified' => "Halo {customer_name}, pembayaran DP sebesar {dp_amount} untuk pesanan {booking_code} ({service_name}, {date} · {time}) telah kami verifikasi.\n\nPesanan Anda sudah dikonfirmasi. Terima kasih telah memilih {business_name}!",
+            'confirmed' => "Halo {customer_name}, pesanan Anda di {business_name} telah dikonfirmasi:\n\n• Layanan: {service_name}\n• Tanggal: {date} · {time}\n• Staff: {staff_name}\n• Detail Invoice: {invoice_url}\n\nTerima kasih!",
+            'ready_for_pickup' => "Halo {customer_name}, pesanan {service_name} ({booking_code}) di {business_name} sudah selesai dan siap diambil/diantar!\n\n• Total: {total_price}\n• Detail Invoice: {invoice_url}\n\nTerima kasih sudah mempercayakan perawatan Anda kepada kami!",
+            'follow_up' => 'Halo {customer_name}, terima kasih sudah mempercayakan layanan {service_name} kepada {business_name}! Semoga Anda puas dengan hasilnya. Jika ada masukan atau ingin order berikutnya, silakan balas pesan ini ya.',
         ];
     }
 

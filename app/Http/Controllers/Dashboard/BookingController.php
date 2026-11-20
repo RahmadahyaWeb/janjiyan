@@ -68,6 +68,14 @@ class BookingController extends Controller
             'service_id' => $b->service_id,
             'service_name' => $b->service->name,
             'service_assignment_mode' => $b->service->assignment_mode,
+            'booking_mode' => $b->booking_mode ?? 'time_slot',
+            'quantity' => (int) ($b->quantity ?? 1),
+            'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
+            'pickup_session' => $b->pickup_session,
+            'pickup_address' => $b->pickup_address,
+            'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
+            'work_status' => $b->work_status,
+            'schedule_label' => $b->scheduleDisplayLabel($tz),
             'staff_id' => $b->staff_id,
             'staff_name' => $b->staff?->name,
             'booking_date' => $b->booking_date->toDateString(),
@@ -188,7 +196,11 @@ class BookingController extends Controller
                     'name' => $s->name,
                     'price' => $s->price,
                     'duration_minutes' => $s->duration_minutes,
+                    'capacity' => $s->capacity,
                     'assignment_mode' => $s->assignment_mode,
+                    'booking_mode' => $s->booking_mode ?? 'time_slot',
+                    'turnaround_days' => (int) ($s->turnaround_days ?? 1),
+                    'supports_pickup' => (bool) ($s->supports_pickup ?? false),
                     'dp_amount' => $s->calculateDpAmount(),
                     'staff' => $s->staff->map(fn ($st) => [
                         'id' => $st->id,
@@ -265,6 +277,14 @@ class BookingController extends Controller
             $excludeBookingId = $ownedBooking?->id;
         }
 
+        if ($service->isDropoff()) {
+            return response()->json([
+                'booking_mode' => 'dropoff',
+                'dropoff' => $slotService->getDropoffAvailability($business, $service, $validated['date'], true, $excludeBookingId),
+                'slots' => [],
+            ]);
+        }
+
         $slots = $slotService->getAvailableSlots(
             $business,
             $service,
@@ -296,7 +316,11 @@ class BookingController extends Controller
         $validated = $request->validate([
             'service_id' => ['required', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
-            'time' => ['required', 'date_format:H:i'],
+            'time' => ['nullable', 'date_format:H:i'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'fulfillment_type' => ['nullable', 'in:dropoff,pickup'],
+            'pickup_session' => ['nullable', 'in:morning,afternoon,evening,anytime'],
+            'pickup_address' => ['nullable', 'string', 'max:500'],
             'staff_id' => ['nullable', 'integer'],
             'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:30'],
@@ -314,22 +338,57 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        try {
-            $booking = $slotService->reserveSlot(
-                $business,
-                $service,
-                $validated['date'],
-                $validated['time'],
-                isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
-                $validated['customer_name'],
-                $validated['customer_phone'],
-                $validated['customer_email'] ?? null,
-                $validated['customer_notes'] ?? null,
-                null,
-                true
-            );
-        } catch (RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+        if ($service->isDropoff()) {
+            $fulfillmentType = $validated['fulfillment_type'] ?? 'dropoff';
+            if ($service->supports_pickup && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
+                return back()
+                    ->withErrors(['pickup_address' => 'Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.'])
+                    ->withInput();
+            }
+
+            try {
+                $booking = $slotService->reserveDropoff(
+                    $business,
+                    $service,
+                    $validated['date'],
+                    (int) ($validated['quantity'] ?? 1),
+                    $fulfillmentType,
+                    $validated['pickup_session'] ?? 'anytime',
+                    $validated['pickup_address'] ?? null,
+                    $validated['customer_name'],
+                    $validated['customer_phone'],
+                    $validated['customer_email'] ?? null,
+                    $validated['customer_notes'] ?? null,
+                    null,
+                    true
+                );
+            } catch (RuntimeException $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        } else {
+            if (empty($validated['time'])) {
+                return back()
+                    ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                    ->withInput();
+            }
+
+            try {
+                $booking = $slotService->reserveSlot(
+                    $business,
+                    $service,
+                    $validated['date'],
+                    $validated['time'],
+                    isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+                    $validated['customer_name'],
+                    $validated['customer_phone'],
+                    $validated['customer_email'] ?? null,
+                    $validated['customer_notes'] ?? null,
+                    null,
+                    true
+                );
+            } catch (RuntimeException $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
 
         if ($validated['initial_payment_status'] !== 'unpaid') {
@@ -361,15 +420,21 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
-            'time' => ['required', 'date_format:H:i'],
+            'time' => ['nullable', 'date_format:H:i'],
             'staff_id' => ['nullable', 'integer'],
         ]);
+
+        if (! $booking->isDropoff() && empty($validated['time'])) {
+            return back()
+                ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                ->withInput();
+        }
 
         try {
             $updated = $slotService->rescheduleBooking(
                 $booking,
                 $validated['date'],
-                $validated['time'],
+                $validated['time'] ?? null,
                 isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
                 true
             );
@@ -379,7 +444,11 @@ class BookingController extends Controller
 
         $notificationService->notifyCustomerStatusChanged($updated, 'rescheduled');
 
-        return back()->with('success', "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.");
+        $message = $updated->isDropoff()
+            ? "Tanggal drop-off {$updated->booking_code} berhasil diubah ke {$validated['date']}."
+            : "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.";
+
+        return back()->with('success', $message);
     }
 
     public function updateStatus(
@@ -394,12 +463,29 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'reservation_status' => ['sometimes', 'in:pending,confirmed,completed,cancelled,no_show'],
+            'work_status' => ['sometimes', 'in:awaiting_dropoff,in_progress,ready_for_pickup,picked_up'],
             'payment_status' => ['sometimes', 'in:unpaid,waiting_verification,dp_verified,settled'],
             'cancellation_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (isset($validated['payment_status']) && in_array($validated['payment_status'], ['dp_verified', 'settled'], true)) {
             abort_unless($user->hasBusinessPermission($business, 'verify_payments'), 403);
+        }
+
+        if ($booking->isDropoff()) {
+            if (isset($validated['work_status'])) {
+                if ($validated['work_status'] === 'picked_up' && ! isset($validated['reservation_status'])) {
+                    $validated['reservation_status'] = 'completed';
+                } elseif (
+                    in_array($validated['work_status'], ['in_progress', 'ready_for_pickup'], true)
+                    && $booking->reservation_status === 'pending'
+                    && ! isset($validated['reservation_status'])
+                ) {
+                    $validated['reservation_status'] = 'confirmed';
+                }
+            } elseif (isset($validated['reservation_status']) && $validated['reservation_status'] === 'completed') {
+                $validated['work_status'] = 'picked_up';
+            }
         }
 
         $previousStatus = $booking->reservation_status;
@@ -503,13 +589,14 @@ class BookingController extends Controller
 
         return response()->streamDownload(function () use ($bookingsQuery, $tz) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jam', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'DP', 'Status Reservasi', 'Status Pembayaran']);
+            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jadwal / Jam', 'Jumlah', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'DP', 'Status Reservasi', 'Status Pembayaran']);
             foreach ($bookingsQuery->lazy(500) as $b) {
                 fputcsv($handle, CsvHelper::sanitizeRow([
                     $b->invoice_number ?? '-',
                     $b->booking_code,
                     $b->booking_date->toDateString(),
-                    $b->start_at->setTimezone($tz)->format('H:i'),
+                    $b->scheduleDisplayLabel($tz),
+                    (int) ($b->quantity ?? 1),
                     $b->customer->name,
                     $b->customer->phone,
                     $b->service->name,

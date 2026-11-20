@@ -6,8 +6,21 @@ export interface SlotItem {
     available_staff_ids: number[];
 }
 
+export interface DropoffAvailability {
+    available: boolean;
+    reason: string | null;
+    remaining_capacity: number;
+    total_capacity: number;
+    open_time: string | null;
+    close_time: string | null;
+    estimated_ready_date: string | null;
+    turnaround_days: number;
+    supports_pickup: boolean;
+}
+
 interface CacheEntry {
     slots: SlotItem[];
+    dropoff: DropoffAvailability | null;
     fetchedAt: number;
 }
 
@@ -18,11 +31,12 @@ const slotCache = new Map<string, CacheEntry>();
 interface UseSlotFetcherOptions {
     url: string | null;
     enabled: boolean;
-    onResolved?: (slots: SlotItem[]) => void;
+    onResolved?: (slots: SlotItem[], dropoff: DropoffAvailability | null) => void;
 }
 
 interface UseSlotFetcherResult {
     slots: SlotItem[];
+    dropoff: DropoffAvailability | null;
     hasLoaded: boolean;
     showInitialLoading: boolean;
     showRefreshing: boolean;
@@ -34,6 +48,7 @@ export function useSlotFetcher({
     onResolved,
 }: UseSlotFetcherOptions): UseSlotFetcherResult {
     const [slots, setSlots] = useState<SlotItem[]>([]);
+    const [dropoff, setDropoff] = useState<DropoffAvailability | null>(null);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [showInitialLoading, setShowInitialLoading] = useState(false);
     const [showRefreshing, setShowRefreshing] = useState(false);
@@ -48,6 +63,7 @@ export function useSlotFetcher({
             setShowRefreshing(false);
             if (!enabled) {
                 setSlots([]);
+                setDropoff(null);
                 setHasLoaded(false);
                 hasLoadedRef.current = false;
             }
@@ -59,9 +75,10 @@ export function useSlotFetcher({
 
         if (cached && hasFreshCache) {
             setSlots(cached.slots);
+            setDropoff(cached.dropoff);
             setHasLoaded(true);
             hasLoadedRef.current = true;
-            onResolvedRef.current?.(cached.slots);
+            onResolvedRef.current?.(cached.slots, cached.dropoff);
         }
 
         const controller = new AbortController();
@@ -80,20 +97,23 @@ export function useSlotFetcher({
             headers: { Accept: 'application/json' },
             signal: controller.signal,
         })
-            .then((res) => (res.ok ? res.json() : { slots: [] }))
-            .then((data: { slots?: SlotItem[] }) => {
+            .then((res) => (res.ok ? res.json() : { slots: [], dropoff: null }))
+            .then((data: { slots?: SlotItem[]; dropoff?: DropoffAvailability | null }) => {
                 if (controller.signal.aborted) return;
                 const nextSlots = Array.isArray(data.slots) ? data.slots : [];
-                slotCache.set(url, { slots: nextSlots, fetchedAt: Date.now() });
+                const nextDropoff = data.dropoff ?? null;
+                slotCache.set(url, { slots: nextSlots, dropoff: nextDropoff, fetchedAt: Date.now() });
                 setSlots(nextSlots);
+                setDropoff(nextDropoff);
                 setHasLoaded(true);
                 hasLoadedRef.current = true;
-                onResolvedRef.current?.(nextSlots);
+                onResolvedRef.current?.(nextSlots, nextDropoff);
             })
             .catch(() => {
                 if (controller.signal.aborted) return;
                 if (!hasLoadedRef.current) {
                     setSlots([]);
+                    setDropoff(null);
                     setHasLoaded(true);
                     hasLoadedRef.current = true;
                 }
@@ -114,6 +134,7 @@ export function useSlotFetcher({
 
     return {
         slots,
+        dropoff,
         hasLoaded,
         showInitialLoading,
         showRefreshing,

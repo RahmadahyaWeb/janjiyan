@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDateIndo, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import { formatBookingScheduleShort, formatDateIndo, RESERVATION_STATUS_LABELS } from '@/lib/format';
 
 export interface CalendarBookingItem {
     id: number;
@@ -12,6 +12,10 @@ export interface CalendarBookingItem {
     service_id: number;
     service_name: string;
     service_assignment_mode: 'staff' | 'capacity';
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
+    fulfillment_type?: 'dropoff' | 'pickup';
+    pickup_session?: string | null;
     staff_id: number | null;
     staff_name: string | null;
     booking_date: string;
@@ -216,14 +220,17 @@ export function BookingCalendarView({
                                             >
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="font-mono text-xs font-semibold tabular-nums">
-                                                        {b.start_time_local} – {b.end_time_local}
+                                                        {formatBookingScheduleShort(b)}
                                                     </span>
                                                     <span className="text-xs font-medium">
                                                         {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
                                                     </span>
                                                 </div>
                                                 <p className="mt-1 text-sm font-semibold">{b.customer_name}</p>
-                                                <p className="text-xs">{b.service_name}</p>
+                                                <p className="text-xs">
+                                                    {b.service_name}
+                                                    {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1 ? ` · ${b.quantity} item` : ''}
+                                                </p>
                                             </button>
                                         ))
                                     )}
