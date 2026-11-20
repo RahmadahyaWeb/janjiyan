@@ -213,7 +213,7 @@ export function QrPosterDialog({
 <title>Poster QR Booking — ${escapeHtml(businessName)}</title>
 <style>
   @page { size: A5 portrait; margin: 12mm; }
-  body { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; color: #141414; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
+  body { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; color: #141414; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100dvh; background: #fff; }
   .card { width: 100%; max-width: 440px; border: 1.5px solid #e5e5e5; border-radius: 28px; padding: 36px 28px; text-align: center; box-sizing: border-box; }
   .pill { display: inline-block; background: #f3f3f3; color: #525252; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; }
   h1 { font-size: 26px; font-weight: 700; margin: 14px 0 6px; letter-spacing: -0.02em; }
@@ -243,10 +243,10 @@ export function QrPosterDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md rounded-[24px] border-hairline-soft bg-canvas p-6">
+            <DialogContent className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-[24px] border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-md sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-ink">
-                        <QrCode className="size-5 text-ink" aria-hidden="true" />
+                        <QrCode className="size-5 shrink-0 text-ink" aria-hidden="true" />
                         Poster QR Booking Siap Cetak
                     </DialogTitle>
                     <DialogDescription className="text-sm text-mute">
@@ -254,33 +254,33 @@ export function QrPosterDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="mt-2 rounded-[20px] border border-hairline-soft bg-canvas p-6 text-center">
+                <div className="mt-2 rounded-[20px] border border-hairline-soft bg-canvas p-4 text-center sm:p-6">
                     <span className="inline-block rounded-full bg-bone px-3 py-1 text-[11px] font-semibold tracking-wider text-mute uppercase">
                         {businessCategory}
                     </span>
-                    <h3 className="mt-2.5 text-xl font-semibold tracking-tight text-ink">
+                    <h3 className="mt-2.5 break-words text-xl font-semibold tracking-tight text-ink">
                         {businessName}
                     </h3>
                     <p className="mt-1 text-xs text-mute">
                         Scan QR untuk Booking Online Tanpa Antre
                     </p>
 
-                    <div className="mx-auto mt-4 inline-flex items-center justify-center rounded-[18px] border border-hairline-soft bg-bone/50 p-4">
+                    <div className="mx-auto mt-4 inline-flex items-center justify-center rounded-[18px] border border-hairline-soft bg-bone/50 p-3 sm:p-4">
                         {qrDataUrl ? (
                             <img
                                 src={qrDataUrl}
                                 alt={`QR Code portal booking ${businessName}`}
-                                className="size-48 rounded-lg bg-white object-contain"
+                                className="size-40 rounded-lg bg-white object-contain sm:size-48"
                             />
                         ) : (
-                            <div className="flex size-48 items-center justify-center text-xs text-mute">
+                            <div className="flex size-40 items-center justify-center text-xs text-mute sm:size-48">
                                 Membuat QR Code...
                             </div>
                         )}
                     </div>
 
                     <div className="mt-4">
-                        <span className="inline-block max-w-full truncate rounded-full bg-ink px-4 py-1.5 font-mono text-xs text-canvas">
+                        <span className="inline-block max-w-full break-all rounded-full bg-ink px-4 py-1.5 font-mono text-xs text-canvas">
                             {publicUrl.replace(/^https?:\/\//, '')}
                         </span>
                     </div>

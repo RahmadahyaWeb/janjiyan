@@ -129,9 +129,9 @@ export default function CommissionsIndex({
                 {/* Header & Export */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-                            Laporan Komisi & Performa Staff
-                        </h1>
+                        <h2 className="text-xl font-semibold tracking-tight text-ink">
+                            Laporan Komisi &amp; Performa Staff
+                        </h2>
                         <p className="mt-1 text-sm text-mute">
                             Rekap otomatis jumlah layanan, omzet, dan komisi yang harus dibayarkan per staff.
                         </p>

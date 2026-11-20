@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 
 class AuthController extends Controller
@@ -26,7 +27,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(Request $request): RedirectResponse|SymfonyResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -40,8 +41,13 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
+        $target = redirect()->intended(route('dashboard'))->getTargetUrl();
 
-        return redirect()->intended(route('dashboard'));
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($target);
+        }
+
+        return redirect()->to($target);
     }
 
     public function showRegister(): Response
@@ -145,11 +151,15 @@ class AuthController extends Controller
         return redirect()->intended(route('dashboard'));
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request): RedirectResponse|SymfonyResponse
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($request->header('X-Inertia')) {
+            return Inertia::location(route('home'));
+        }
 
         return redirect()->route('home');
     }
