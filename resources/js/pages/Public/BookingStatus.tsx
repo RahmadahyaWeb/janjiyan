@@ -2,7 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Truck, Upload, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
-import { BusinessHeader } from '@/components/BusinessHeader';
+import { BusinessHeader, headerActionClass } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -208,19 +208,15 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                 Lewati ke detail invoice
             </a>
 
-            <BusinessHeader business={business} />
+            <BusinessHeader business={business} label="Invoice" widthClassName="box-content max-w-xl">
+                <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
+                    <FileText className="size-4" aria-hidden="true" />
+                    <span className="hidden sm:inline">Riwayat invoice</span>
+                    <span className="sr-only sm:hidden">Riwayat invoice</span>
+                </Link>
+            </BusinessHeader>
 
             <main id="main-content" tabIndex={-1} className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 outline-none sm:px-6 print:py-0">
-                <div className="flex justify-end print:hidden">
-                    <Link
-                        href={route('public.booking.invoices', business.slug)}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-sm px-1 text-xs font-semibold text-ink underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                    >
-                        <FileText className="size-3.5" aria-hidden="true" />
-                        Cek Riwayat Invoice
-                    </Link>
-                </div>
-
                 {flash.success && (
                     <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink print:hidden">
                         {flash.success}

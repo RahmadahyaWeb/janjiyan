@@ -62,7 +62,7 @@ export default function InvoiceLookup({
         <div className="min-h-screen bg-canvas text-ink">
             <Head title={`Cek Invoice & Riwayat — ${business.name}`} />
 
-            <BusinessHeader business={business} />
+            <BusinessHeader business={business} label="Cek pesanan" widthClassName="box-content max-w-xl" />
 
             <main className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 sm:px-6">
                 <div className="rounded-md border border-hairline-soft bg-canvas p-6 sm:p-8">

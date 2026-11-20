@@ -137,9 +137,9 @@ export default function BookingPortal({
         if (selectedServiceId) document.getElementById(`service-${selectedServiceId}`)?.scrollIntoView({ block: 'center' });
     }, [selectedServiceId]);
 
-    // Keep focused fields and scroll targets clear of the sticky header and the mobile bottom bar (WCAG 2.4.11).
+    // Keep focused fields and scroll targets clear of the mobile bottom bar (WCAG 2.4.11).
     useEffect(() => {
-        const padding = ['scroll-pt-20', 'scroll-pb-28', 'lg:scroll-pb-0'];
+        const padding = ['scroll-pt-4', 'scroll-pb-28', 'lg:scroll-pb-0'];
         document.documentElement.classList.add(...padding);
         return () => document.documentElement.classList.remove(...padding);
     }, []);
@@ -299,7 +299,7 @@ export default function BookingPortal({
                 Lewati ke daftar layanan
             </a>
 
-            <BusinessHeader business={business}>
+            <BusinessHeader business={business} label="Pesan layanan">
                 <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
                     <FileText className="size-4" aria-hidden="true" />
                     <span className="hidden sm:inline">Cek invoice</span>
@@ -336,7 +336,7 @@ export default function BookingPortal({
                         {/* Left Column: Booking Steps */}
                         <div className="min-w-0 space-y-10">
                             {/* Step 1: Pilih Layanan */}
-                            <section aria-labelledby="step-services-heading" id="layanan" className="scroll-mt-24">
+                            <section aria-labelledby="step-services-heading" id="layanan" className="scroll-mt-4">
                                 <div className="mb-4 flex items-center gap-2">
                                     <span className="font-mono text-xs font-semibold text-mute">01</span>
                                     <h2 id="step-services-heading" className="text-xl font-semibold text-ink">
@@ -496,7 +496,7 @@ export default function BookingPortal({
                             )}
 
                             {/* Step 3: Tanggal & Slot Waktu atau Drop-off Harian */}
-                            <section aria-labelledby="step-schedule-heading" id="step-schedule" className="scroll-mt-24">
+                            <section aria-labelledby="step-schedule-heading" id="step-schedule" className="scroll-mt-4">
                                 <div className="mb-4 flex items-center gap-2">
                                     <span className="font-mono text-xs font-semibold text-mute">
                                         {!isDropoffService && selectedService?.assignment_mode === 'staff' && selectedService.staff.length > 0 ? '03' : '02'}
@@ -1087,7 +1087,7 @@ export default function BookingPortal({
                         </div>
 
                         {/* Right Column: Sticky Booking Summary (Storefront Checkout Card) */}
-                        <aside aria-label="Ringkasan reservasi" className="hidden lg:sticky lg:top-24 lg:block">
+                        <aside aria-label="Ringkasan reservasi" className="hidden lg:sticky lg:top-6 lg:block">
                             <div className="space-y-5 rounded-md bg-bone p-4 sm:p-6">
                                 <div className="flex items-center gap-3">
                                     {selectedService?.image_url && (
