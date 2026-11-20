@@ -217,40 +217,44 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                             </div>
 
                                             {row.is_working ? (
-                                                <div className="flex flex-wrap items-center gap-2 text-xs">
-                                                    <Input
-                                                        type="time"
-                                                        aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                        className="h-9 w-28 rounded-[10px] px-2.5 text-xs"
-                                                        value={row.start_time}
-                                                        onChange={(e) => updateDay(idx, { start_time: e.target.value })}
-                                                        required
-                                                    />
-                                                    <span className="text-mute">–</span>
-                                                    <Input
-                                                        type="time"
-                                                        aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                        className="h-9 w-28 rounded-[10px] px-2.5 text-xs"
-                                                        value={row.end_time}
-                                                        onChange={(e) => updateDay(idx, { end_time: e.target.value })}
-                                                        required
-                                                    />
-                                                    <span className="ml-1 text-mute">Istirahat:</span>
-                                                    <Input
-                                                        type="time"
-                                                        aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                        className="h-9 w-28 rounded-[10px] px-2.5 text-xs"
-                                                        value={row.break_start}
-                                                        onChange={(e) => updateDay(idx, { break_start: e.target.value })}
-                                                    />
-                                                    <span className="text-mute">–</span>
-                                                    <Input
-                                                        type="time"
-                                                        aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                        className="h-9 w-28 rounded-[10px] px-2.5 text-xs"
-                                                        value={row.break_end}
-                                                        onChange={(e) => updateDay(idx, { break_end: e.target.value })}
-                                                    />
+                                                <div className="flex w-full flex-col gap-2 text-xs sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                                                    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
+                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            value={row.start_time}
+                                                            onChange={(e) => updateDay(idx, { start_time: e.target.value })}
+                                                            required
+                                                        />
+                                                        <span className="text-mute">–</span>
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
+                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            value={row.end_time}
+                                                            onChange={(e) => updateDay(idx, { end_time: e.target.value })}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="grid w-full grid-cols-[auto_1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
+                                                        <span className="text-mute sm:ml-1">Istirahat:</span>
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
+                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            value={row.break_start}
+                                                            onChange={(e) => updateDay(idx, { break_start: e.target.value })}
+                                                        />
+                                                        <span className="text-mute">–</span>
+                                                        <Input
+                                                            type="time"
+                                                            aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
+                                                            className="h-9 w-full rounded-[10px] px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            value={row.break_end}
+                                                            onChange={(e) => updateDay(idx, { break_end: e.target.value })}
+                                                        />
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <span className="text-xs text-mute">Libur / Off</span>

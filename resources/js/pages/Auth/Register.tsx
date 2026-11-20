@@ -3,6 +3,7 @@ import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 import AuthLayout from '@/layouts/AuthLayout';
 
 interface RegisterProps {
@@ -95,11 +96,11 @@ export default function Register({ googleEnabled }: RegisterProps) {
 
                 <div className="space-y-1.5">
                     <Label htmlFor="business_category">Kategori Bisnis</Label>
-                    <select
+                    <NativeSelect
                         id="business_category"
                         value={data.business_category}
                         onChange={(e) => setData('business_category', e.target.value)}
-                        className="h-12 w-full rounded-[16px] border border-control-border bg-field px-4 text-base text-ink outline-none focus-visible:ring-2 focus-visible:ring-ink md:text-sm"
+                        className="font-normal"
                     >
                         <option value="Barbershop & Salon">Barbershop & Salon</option>
                         <option value="Klinik & Kesehatan">Klinik & Kesehatan</option>
@@ -107,7 +108,7 @@ export default function Register({ googleEnabled }: RegisterProps) {
                         <option value="Studio Foto & Kreatif">Studio Foto & Kreatif</option>
                         <option value="Otomotif & Bengkel">Otomotif & Bengkel</option>
                         <option value="Jasa & Layanan">Jasa & Layanan Lainnya</option>
-                    </select>
+                    </NativeSelect>
                 </div>
 
                 <div className="space-y-1.5">

@@ -213,7 +213,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                     </Link>
                     <Link
                         href={route('public.booking.invoices', business.slug)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink underline-offset-4 hover:underline"
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-sm px-1 text-xs font-semibold text-ink underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
                         <FileText className="size-3.5" aria-hidden="true" />
                         Cek Riwayat Invoice
@@ -462,7 +462,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             </p>
                             <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
                                 {googleCalendarUrl && (
-                                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-full bg-canvas">
+                                    <Button asChild variant="outline" size="sm" className="w-full rounded-full bg-canvas sm:w-auto sm:flex-1">
                                         <a href={googleCalendarUrl} target="_blank" rel="noreferrer">
                                             <CalendarPlus className="mr-1.5 size-4" aria-hidden="true" />
                                             Google Calendar
@@ -470,7 +470,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                     </Button>
                                 )}
                                 {booking.calendar_ics_url && (
-                                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-full bg-canvas">
+                                    <Button asChild variant="outline" size="sm" className="w-full rounded-full bg-canvas sm:w-auto sm:flex-1">
                                         <a href={booking.calendar_ics_url}>
                                             <Download className="mr-1.5 size-4" aria-hidden="true" />
                                             Apple / Outlook (.ics)

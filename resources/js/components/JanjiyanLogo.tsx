@@ -11,7 +11,6 @@ export function JanjiyanLogo({ dark = false, size = 'md', compactMobile = false,
     const boxSize = size === 'sm' ? 'size-7' : size === 'lg' ? 'size-10' : 'size-8';
     const iconSize = size === 'sm' ? 'size-5' : size === 'lg' ? 'size-7' : 'size-6';
     const textSize = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-lg';
-    const accentColor = dark ? '#005ce6' : '#2b7fff';
 
     return (
         <span className={cn('inline-flex items-center gap-2.5 select-none', className)}>
@@ -35,7 +34,7 @@ export function JanjiyanLogo({ dark = false, size = 'md', compactMobile = false,
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
-                    <circle cx="9.9" cy="9.0" r="1.8" fill={accentColor} />
+                    <circle cx="9.9" cy="9.0" r="1.8" className="fill-electric" />
                 </svg>
             </span>
             <span

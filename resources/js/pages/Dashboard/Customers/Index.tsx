@@ -141,9 +141,15 @@ export default function CustomersIndex({
                                 </a>
                             </Button>
                         ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                <Download className="size-4" aria-hidden="true" />
-                                Export CSV (Pro)
+                            <Button asChild variant="outline" size="sm" className="text-mute">
+                                <Link
+                                    href={route('dashboard.billing')}
+                                    aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                    title="Export CSV tersedia pada paket Professional & Enterprise"
+                                >
+                                    <Download className="size-4" aria-hidden="true" />
+                                    Export CSV (Pro)
+                                </Link>
                             </Button>
                         )}
                     </div>
@@ -170,7 +176,79 @@ export default function CustomersIndex({
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="overflow-x-auto rounded-[24px] border border-hairline-soft bg-canvas">
+                    {/* Mobile Cards (< md) */}
+                    <div className="space-y-3 md:hidden">
+                        {customers.map((c) => (
+                            <div
+                                key={c.id}
+                                className="space-y-3 rounded-[24px] border border-hairline-soft bg-canvas p-4"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                        <Link
+                                            href={route('dashboard.customers.show', c.id)}
+                                            className="block truncate text-base font-semibold text-ink hover:underline"
+                                        >
+                                            {c.name}
+                                        </Link>
+                                        <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">+{c.phone}</p>
+                                        {c.email && <p className="truncate text-xs text-mute">{c.email}</p>}
+                                    </div>
+                                    <p className="shrink-0 text-right text-sm font-semibold tabular-nums text-ink">
+                                        {formatRupiah(Number(c.total_spent ?? 0))}
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <Badge variant="secondary" className="tabular-nums">
+                                        {c.bookings_count}x reservasi
+                                    </Badge>
+                                    {c.no_show_count > 0 && (
+                                        <Badge variant="destructive" className="tabular-nums">
+                                            {c.no_show_count}x no-show
+                                        </Badge>
+                                    )}
+                                    {c.is_blocked && <Badge variant="destructive">Diblokir</Badge>}
+                                    {(c.tags ?? []).map((tag) => (
+                                        <Badge key={tag} variant={tag === 'VIP' ? 'popular' : 'secondary'}>
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                    {c.notes && (
+                                        <Link
+                                            href={route('dashboard.customers.show', c.id)}
+                                            className="inline-flex min-h-7 items-center gap-1 rounded-full bg-bone px-2.5 py-0.5 text-xs font-medium text-mute transition-colors hover:bg-hairline-soft hover:text-ink"
+                                        >
+                                            <StickyNote className="size-3" aria-hidden="true" />
+                                            Catatan
+                                        </Link>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 border-t border-divider pt-3">
+                                    <Button asChild variant="outline" size="sm" className="flex-1">
+                                        <a
+                                            href={buildWhatsAppUrl(c.phone, `Halo ${c.name},`)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <MessageCircle className="size-3.5" aria-hidden="true" />
+                                            WhatsApp
+                                        </a>
+                                    </Button>
+                                    <Button asChild variant="secondary" size="sm" className="flex-1">
+                                        <Link href={route('dashboard.customers.show', c.id)}>
+                                            Profil
+                                            <ChevronRight className="size-4" aria-hidden="true" />
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Table (md+) */}
+                    <div className="hidden overflow-x-auto rounded-[24px] border border-hairline-soft bg-canvas md:block">
                         <table className="w-full min-w-[680px] text-left text-sm">
                             <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
                                 <tr>
@@ -188,12 +266,12 @@ export default function CustomersIndex({
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Link
                                                     href={route('dashboard.customers.show', c.id)}
-                                                    className="font-semibold text-ink hover:underline"
+                                                    className="inline-flex min-h-7 items-center font-semibold text-ink hover:underline"
                                                 >
                                                     {c.name}
                                                 </Link>
                                                 {c.is_blocked && (
-                                                    <Badge variant="destructive" className="text-[10px]">
+                                                    <Badge variant="destructive">
                                                         Diblokir
                                                     </Badge>
                                                 )}
@@ -201,7 +279,6 @@ export default function CustomersIndex({
                                                     <Badge
                                                         key={tag}
                                                         variant={tag === 'VIP' ? 'popular' : 'secondary'}
-                                                        className="text-[10px]"
                                                     >
                                                         {tag}
                                                     </Badge>
@@ -209,7 +286,7 @@ export default function CustomersIndex({
                                                 {c.notes && (
                                                     <Link
                                                         href={route('dashboard.customers.show', c.id)}
-                                                        className="inline-flex items-center gap-1 rounded-full bg-bone px-2.5 py-0.5 text-xs font-medium text-mute transition-colors hover:bg-hairline-soft hover:text-ink"
+                                                        className="inline-flex min-h-7 items-center gap-1 rounded-full bg-bone px-2.5 py-0.5 text-xs font-medium text-mute transition-colors hover:bg-hairline-soft hover:text-ink"
                                                     >
                                                         <StickyNote className="size-3" aria-hidden="true" />
                                                         Catatan

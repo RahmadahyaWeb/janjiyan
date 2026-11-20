@@ -361,7 +361,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* Cost of no-show */}
-                <section className="mx-auto max-w-4xl px-6 py-16 sm:py-24">
+                <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto max-w-2xl text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Satu orang tidak jadi datang, satu jadwal ikut terbuang.
@@ -371,10 +371,10 @@ export default function Landing({ plans }: LandingProps) {
                         </p>
                     </div>
 
-                    <div className="mt-10 rounded-[24px] border border-hairline-soft bg-canvas p-6 sm:p-8">
+                    <div className="mt-10 rounded-[24px] border border-hairline-soft bg-canvas p-4 sm:p-8">
                         <div className="grid gap-6 sm:grid-cols-2">
-                            <div>
-                                <div className="flex items-baseline justify-between gap-2">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-baseline justify-between gap-2">
                                     <label htmlFor="calc-service-price" className="text-sm font-medium text-body">
                                         Tarif rata-rata layanan
                                     </label>
@@ -382,24 +382,27 @@ export default function Landing({ plans }: LandingProps) {
                                         {formatRupiah(servicePrice)}
                                     </span>
                                 </div>
-                                <input
-                                    id="calc-service-price"
-                                    type="range"
-                                    min={25000}
-                                    max={500000}
-                                    step={5000}
-                                    value={servicePrice}
-                                    onChange={(e) => setServicePrice(Number(e.target.value))}
-                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-bone accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                                />
-                                <div className="mt-1.5 flex justify-between text-xs tabular-nums text-mute">
+                                <div className="relative mt-1 flex h-11 items-center">
+                                    <div aria-hidden="true" className="pointer-events-none h-2 w-full rounded-full bg-bone" />
+                                    <input
+                                        id="calc-service-price"
+                                        type="range"
+                                        min={25000}
+                                        max={500000}
+                                        step={5000}
+                                        value={servicePrice}
+                                        onChange={(e) => setServicePrice(Number(e.target.value))}
+                                        className="absolute inset-0 h-11 w-full cursor-pointer rounded-full bg-transparent accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    />
+                                </div>
+                                <div className="flex justify-between text-xs tabular-nums text-mute">
                                     <span>Rp25.000</span>
                                     <span>Rp500.000</span>
                                 </div>
                             </div>
 
-                            <div>
-                                <div className="flex items-baseline justify-between gap-2">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-baseline justify-between gap-2">
                                     <label htmlFor="calc-no-shows" className="text-sm font-medium text-body">
                                         Batal tanpa kabar per bulan
                                     </label>
@@ -407,17 +410,20 @@ export default function Landing({ plans }: LandingProps) {
                                         {noShowsPerMonth} kali
                                     </span>
                                 </div>
-                                <input
-                                    id="calc-no-shows"
-                                    type="range"
-                                    min={2}
-                                    max={40}
-                                    step={1}
-                                    value={noShowsPerMonth}
-                                    onChange={(e) => setNoShowsPerMonth(Number(e.target.value))}
-                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-bone accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                                />
-                                <div className="mt-1.5 flex justify-between text-xs tabular-nums text-mute">
+                                <div className="relative mt-1 flex h-11 items-center">
+                                    <div aria-hidden="true" className="pointer-events-none h-2 w-full rounded-full bg-bone" />
+                                    <input
+                                        id="calc-no-shows"
+                                        type="range"
+                                        min={2}
+                                        max={40}
+                                        step={1}
+                                        value={noShowsPerMonth}
+                                        onChange={(e) => setNoShowsPerMonth(Number(e.target.value))}
+                                        className="absolute inset-0 h-11 w-full cursor-pointer rounded-full bg-transparent accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    />
+                                </div>
+                                <div className="flex justify-between text-xs tabular-nums text-mute">
                                     <span>2 kali</span>
                                     <span>40 kali</span>
                                 </div>
@@ -425,13 +431,13 @@ export default function Landing({ plans }: LandingProps) {
                         </div>
 
                         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                            <div className="flex flex-col justify-between rounded-[16px] bg-bone p-5 sm:p-6">
+                            <div className="flex min-w-0 flex-col justify-between rounded-[16px] bg-bone p-4 sm:p-6">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-mute">
                                         Potensi pendapatan hilang
                                     </p>
-                                    <div className="mt-2 flex items-baseline gap-1.5">
-                                        <span className="text-3xl font-semibold tabular-nums text-ink sm:text-4xl">
+                                    <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                        <span className="text-2xl font-semibold tabular-nums text-ink sm:text-4xl">
                                             {formatRupiah(monthlyLoss)}
                                         </span>
                                         <span className="text-sm text-mute">/ bulan</span>
@@ -442,7 +448,7 @@ export default function Landing({ plans }: LandingProps) {
                                 </p>
                             </div>
 
-                            <div className="flex flex-col justify-between rounded-[16px] bg-dark p-5 text-on-dark sm:p-6">
+                            <div className="flex min-w-0 flex-col justify-between rounded-[16px] bg-dark p-4 text-on-dark sm:p-6">
                                 <div>
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
@@ -452,8 +458,8 @@ export default function Landing({ plans }: LandingProps) {
                                             Balik modal dari {breakEvenBookings} booking
                                         </span>
                                     </div>
-                                    <div className="mt-2 flex items-baseline gap-1.5">
-                                        <span className="text-3xl font-semibold tabular-nums text-on-dark sm:text-4xl">
+                                    <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                        <span className="text-2xl font-semibold tabular-nums text-on-dark sm:text-4xl">
                                             Rp49.000
                                         </span>
                                         <span className="text-sm text-on-dark-mute">/ bulan</span>
@@ -472,7 +478,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* 4 Outcome Cards (Grid 2x2) */}
-                <section id="fitur" className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
+                <section id="fitur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Yang beres otomatis pakai Janjiyan
@@ -489,7 +495,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <div
                                     key={item.title}
                                     data-outcome-card
-                                    className="flex flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline sm:p-8"
+                                    className="flex min-w-0 flex-col justify-between rounded-[24px] border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-8"
                                 >
                                     <div>
                                         <div className="flex size-10 items-center justify-center rounded-[30%] bg-bone text-ink">
@@ -520,7 +526,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* How to start */}
-                <section id="cara-mulai" className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
+                <section id="cara-mulai" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
                     <h2 className="text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                         Tiga langkah, langsung jalan
                     </h2>
@@ -542,7 +548,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* Pricing Section */}
-                <section id="harga" className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
+                <section id="harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
                     <div className="text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Pilih paket yang pas buat bisnismu
@@ -589,12 +595,12 @@ export default function Landing({ plans }: LandingProps) {
                                     key={plan.id}
                                     data-pricing-card
                                     className={cn(
-                                        'flex flex-col justify-between rounded-[24px] p-6 transition-colors',
+                                        'flex min-w-0 flex-col justify-between rounded-[24px] p-5 transition-colors sm:p-6',
                                         isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas hover:border-hairline'
                                     )}
                                 >
                                     <div>
-                                        <div className="flex items-center justify-between gap-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
                                             <h3 className="text-2xl font-semibold text-charcoal">{plan.name}</h3>
                                             {isPopular && <Badge variant="popular">Rekomendasi</Badge>}
                                         </div>
@@ -602,8 +608,8 @@ export default function Landing({ plans }: LandingProps) {
                                             <p className="mt-2 text-sm leading-relaxed text-mute text-pretty">{PLAN_TAGLINES[plan.slug]}</p>
                                         )}
 
-                                        <div className="mt-5 flex items-baseline gap-1.5">
-                                            <span className="text-4xl font-semibold tabular-nums text-ink">{formatRupiah(price)}</span>
+                                        <div className="mt-5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                            <span className="text-3xl font-semibold tabular-nums text-ink sm:text-4xl">{formatRupiah(price)}</span>
                                             <span className="text-sm text-mute">/ bulan</span>
                                         </div>
                                         {billingCycle === 'yearly' && (
@@ -682,7 +688,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* Testimonials */}
-                <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
+                <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-12 text-center">
                         <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Kata mereka yang sudah pakai Janjiyan
@@ -694,7 +700,7 @@ export default function Landing({ plans }: LandingProps) {
                             <div
                                 key={t.name}
                                 data-testimonial-card
-                                className="flex flex-col justify-between rounded-[16px] border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline"
+                                className="flex min-w-0 flex-col justify-between rounded-[16px] border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
                             >
                                 <p className="text-sm leading-relaxed text-ink text-pretty">“{t.quote}”</p>
                                 <div className="mt-6 flex items-center gap-3">
@@ -712,7 +718,7 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* FAQ */}
-                <section id="faq" className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
+                <section id="faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
                     <h2 className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                         Yang sering ditanyakan
                     </h2>

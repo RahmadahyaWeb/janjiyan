@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { formatRupiah } from '@/lib/format';
+import { formatRupiah, INVOICE_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PageProps, SubscriptionPlan } from '@/types';
 
@@ -35,13 +35,6 @@ interface BillingIndexProps {
     isOwner?: boolean;
     invoices?: SubscriptionInvoiceRow[];
 }
-
-const INVOICE_STATUS_LABELS: Record<string, string> = {
-    pending: 'Menunggu Pembayaran',
-    paid: 'Lunas',
-    expired: 'Kedaluwarsa',
-    failed: 'Gagal',
-};
 
 export default function BillingIndex({
     plans,
@@ -121,7 +114,7 @@ export default function BillingIndex({
 
                     {/* Billing Cycle Toggle */}
                     <div
-                        className="inline-flex h-11 items-center rounded-full bg-canvas p-1"
+                        className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 rounded-[20px] bg-canvas p-1 sm:rounded-full"
                         role="group"
                         aria-label="Siklus penagihan"
                     >
@@ -130,7 +123,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'monthly'}
                             onClick={() => setBillingCycle('monthly')}
                             className={cn(
-                                'h-9 cursor-pointer rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                'min-h-9 cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                 billingCycle === 'monthly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -141,7 +134,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'yearly'}
                             onClick={() => setBillingCycle('yearly')}
                             className={cn(
-                                'h-9 cursor-pointer rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                'min-h-9 cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                 billingCycle === 'yearly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -190,9 +183,9 @@ export default function BillingIndex({
                             )}
                         >
                             <div>
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <h3 className="text-xl font-semibold text-ink">{plan.name}</h3>
-                                    {isPopular && <Badge variant="popular">Popular</Badge>}
+                                    {isPopular && <Badge variant="popular">Rekomendasi</Badge>}
                                 </div>
                                 <p className="mt-3 text-3xl font-semibold tabular-nums text-ink">
                                     {formatRupiah(displayPrice)}

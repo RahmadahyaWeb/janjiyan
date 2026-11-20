@@ -277,7 +277,7 @@ export default function CustomerShow({
                                     }}
                                     placeholder="Tambah tag khusus…"
                                     maxLength={30}
-                                    className="h-9 text-xs"
+                                    className="h-9 text-base md:text-sm"
                                 />
                                 <Button
                                     type="button"
@@ -301,7 +301,7 @@ export default function CustomerShow({
                                 <ShieldBan className="size-3.5 text-destructive" aria-hidden="true" />
                                 Batasi Booking Online
                             </Label>
-                            <p className="text-[11px] leading-relaxed text-mute">
+                            <p className="text-xs leading-relaxed text-mute">
                                 Jika aktif, nomor ini tidak bisa membuat reservasi baru lewat link publik, namun staff tetap bisa input manual.
                             </p>
                         </div>
@@ -336,20 +336,13 @@ export default function CustomerShow({
                                 Belum ada riwayat reservasi untuk pelanggan ini.
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[560px] text-left text-sm">
-                                    <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
-                                        <tr>
-                                            <th scope="col" className="px-5 py-3">Kode & Jadwal</th>
-                                            <th scope="col" className="px-5 py-3">Layanan</th>
-                                            <th scope="col" className="px-5 py-3">Status</th>
-                                            <th scope="col" className="px-5 py-3 text-right">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-divider">
-                                        {bookings.map((b) => (
-                                            <tr key={b.id}>
-                                                <td className="px-5 py-3.5">
+                            <>
+                                {/* Mobile Booking History Cards */}
+                                <div className="divide-y divide-divider md:hidden">
+                                    {bookings.map((b) => (
+                                        <div key={b.id} className="space-y-2 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-mono text-xs font-semibold text-ink">
                                                             {b.booking_code}
@@ -359,44 +352,103 @@ export default function CustomerShow({
                                                                 href={b.invoice_url}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-mute hover:text-ink"
+                                                                className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-sm text-mute hover:text-ink"
                                                                 aria-label={`Buka invoice ${b.booking_code}`}
                                                             >
                                                                 <ExternalLink className="size-3.5" aria-hidden="true" />
                                                             </a>
                                                         )}
                                                     </div>
-                                                    <p className="mt-0.5 text-xs text-mute">
-                                                        {formatDateIndo(b.booking_date)} ·{' '}
-                                                        {b.booking_mode === 'dropoff'
-                                                            ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
-                                                                  (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
-                                                              }`
-                                                            : `${b.start_time_local}–${b.end_time_local}`}
-                                                    </p>
-                                                </td>
-                                                <td className="px-5 py-3.5">
-                                                    <p className="font-medium text-ink">{b.service_name}</p>
+                                                    <p className="text-sm font-medium text-ink">{b.service_name}</p>
                                                     {b.staff_name && <p className="text-xs text-mute">{b.staff_name}</p>}
-                                                </td>
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex flex-col gap-1">
-                                                        <Badge variant={reservationBadgeVariant(b.reservation_status)}>
-                                                            {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
-                                                        </Badge>
-                                                        <span className="text-xs text-mute">
-                                                            {PAYMENT_STATUS_LABELS[b.payment_status] ?? b.payment_status}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-3.5 text-right font-semibold tabular-nums text-ink">
+                                                </div>
+                                                <span className="shrink-0 font-semibold tabular-nums text-ink">
                                                     {formatRupiah(b.total_price)}
-                                                </td>
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-mute">
+                                                {formatDateIndo(b.booking_date)} ·{' '}
+                                                {b.booking_mode === 'dropoff'
+                                                    ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
+                                                          (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
+                                                      }`
+                                                    : `${b.start_time_local}–${b.end_time_local}`}
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant={reservationBadgeVariant(b.reservation_status)}>
+                                                    {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
+                                                </Badge>
+                                                <span className="text-xs text-mute">
+                                                    {PAYMENT_STATUS_LABELS[b.payment_status] ?? b.payment_status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Desktop Booking History Table */}
+                                <div className="hidden overflow-x-auto md:block">
+                                    <table className="w-full min-w-[560px] text-left text-sm">
+                                        <thead className="border-b border-divider bg-bone text-xs font-semibold text-mute">
+                                            <tr>
+                                                <th scope="col" className="px-5 py-3">Kode & Jadwal</th>
+                                                <th scope="col" className="px-5 py-3">Layanan</th>
+                                                <th scope="col" className="px-5 py-3">Status</th>
+                                                <th scope="col" className="px-5 py-3 text-right">Total</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-divider">
+                                            {bookings.map((b) => (
+                                                <tr key={b.id}>
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-mono text-xs font-semibold text-ink">
+                                                                {b.booking_code}
+                                                            </span>
+                                                            {b.invoice_url && (
+                                                                <a
+                                                                    href={b.invoice_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-mute hover:text-ink"
+                                                                    aria-label={`Buka invoice ${b.booking_code}`}
+                                                                >
+                                                                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        <p className="mt-0.5 text-xs text-mute">
+                                                            {formatDateIndo(b.booking_date)} ·{' '}
+                                                            {b.booking_mode === 'dropoff'
+                                                                ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
+                                                                      (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
+                                                                  }`
+                                                                : `${b.start_time_local}–${b.end_time_local}`}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-5 py-3.5">
+                                                        <p className="font-medium text-ink">{b.service_name}</p>
+                                                        {b.staff_name && <p className="text-xs text-mute">{b.staff_name}</p>}
+                                                    </td>
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex flex-col gap-1">
+                                                            <Badge variant={reservationBadgeVariant(b.reservation_status)}>
+                                                                {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
+                                                            </Badge>
+                                                            <span className="text-xs text-mute">
+                                                                {PAYMENT_STATUS_LABELS[b.payment_status] ?? b.payment_status}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-right font-semibold tabular-nums text-ink">
+                                                        {formatRupiah(b.total_price)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
                         )}
                     </div>
 

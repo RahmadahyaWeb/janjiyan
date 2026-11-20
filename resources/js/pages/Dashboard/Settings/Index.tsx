@@ -5,13 +5,6 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -75,7 +68,7 @@ interface SettingsIndexProps {
 
 export default function SettingsIndex({ business, galleries }: SettingsIndexProps) {
     const [deletingGallery, setDeletingGallery] = useState<GalleryItem | null>(null);
-    const [deleteBusinessOpen, setDeleteBusinessOpen] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [qrPosterOpen, setQrPosterOpen] = useState(false);
     const [activeWaTab, setActiveWaTab] = useState<WhatsappTemplateKey>('reminder');
     const [testingTelegram, setTestingTelegram] = useState(false);
@@ -218,7 +211,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         e.preventDefault();
         deleteForm.delete(route('dashboard.businesses.destroy', business.id), {
             onSuccess: () => {
-                setDeleteBusinessOpen(false);
+                setShowDeleteConfirm(false);
                 deleteForm.reset();
             },
         });
@@ -586,16 +579,16 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 rows={5}
                                 value={form.data.whatsapp_templates[activeWaTab] ?? ''}
                                 onChange={(e) => updateWhatsappTemplate(activeWaTab, e.target.value)}
-                                className="font-sans text-sm"
+                                className="font-sans text-base md:text-sm"
                             />
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                <span className="text-[11px] font-medium text-mute">Sisipkan variabel:</span>
+                                <span className="text-xs font-medium text-mute">Sisipkan variabel:</span>
                                 {WHATSAPP_PLACEHOLDERS.map((p) => (
                                     <button
                                         key={p.token}
                                         type="button"
                                         onClick={() => insertPlaceholder(p.token)}
-                                        className="cursor-pointer rounded-full border border-hairline-soft bg-bone px-2.5 py-0.5 font-mono text-[11px] text-ink transition-colors hover:bg-hairline-soft"
+                                        className="min-h-8 cursor-pointer rounded-full border border-hairline-soft bg-bone px-3 py-1.5 font-mono text-xs text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                         title={p.label}
                                     >
                                         {p.token}
@@ -605,7 +598,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         <div className="rounded-[16px] bg-bone p-4">
-                            <p className="text-[11px] font-semibold tracking-wider text-mute uppercase">
+                            <p className="text-xs font-semibold tracking-wider text-mute uppercase">
                                 Pratinjau Pesan
                             </p>
                             <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-ink">
@@ -653,7 +646,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="settings-telegram-token">Bot Token (dari @BotFather)</Label>
                                     {business.has_telegram_bot_token && !form.data.clear_telegram_token && (
-                                        <Badge variant="success" className="font-mono text-[10px]">
+                                        <Badge variant="success" className="font-mono">
                                             Tersimpan ({business.telegram_bot_token_hint})
                                         </Badge>
                                     )}
@@ -950,68 +943,64 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 Menghapus bisnis akan menghapus permanen seluruh layanan, staff, jadwal, pelanggan, dan riwayat reservasi yang terhubung. Tindakan ini tidak dapat dibatalkan.
                             </p>
                         </div>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => {
-                                deleteForm.reset();
-                                setDeleteBusinessOpen(true);
-                            }}
-                        >
-                            <Trash2 className="size-4" aria-hidden="true" />
-                            Hapus Bisnis Permanen
-                        </Button>
+
+                        {!showDeleteConfirm ? (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={() => {
+                                    deleteForm.reset();
+                                    deleteForm.clearErrors();
+                                    setShowDeleteConfirm(true);
+                                }}
+                            >
+                                <Trash2 className="size-4" aria-hidden="true" />
+                                Hapus Bisnis Permanen
+                            </Button>
+                        ) : (
+                            <form
+                                onSubmit={handleDeleteBusiness}
+                                className="space-y-4 rounded-[18px] border border-destructive/30 bg-canvas p-4"
+                            >
+                                <p className="text-sm leading-relaxed text-mute">
+                                    Ketik{' '}
+                                    <strong className="font-semibold text-ink">{business.name}</strong> untuk mengonfirmasi penghapusan permanen.
+                                </p>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="delete-business-confirm">Konfirmasi Nama Bisnis</Label>
+                                    <Input
+                                        id="delete-business-confirm"
+                                        autoComplete="off"
+                                        placeholder={business.name}
+                                        value={deleteForm.data.confirm_name}
+                                        onChange={(e) => deleteForm.setData('confirm_name', e.target.value)}
+                                        aria-invalid={Boolean(deleteForm.errors.confirm_name)}
+                                        aria-describedby={deleteForm.errors.confirm_name ? 'delete-business-error' : undefined}
+                                        required
+                                    />
+                                    {deleteForm.errors.confirm_name && (
+                                        <p id="delete-business-error" className="text-xs text-destructive">
+                                            {deleteForm.errors.confirm_name}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                    <Button type="button" variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                                        Batal
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        disabled={deleteForm.processing || deleteForm.data.confirm_name.trim() !== business.name}
+                                    >
+                                        {deleteForm.processing ? 'Menghapus…' : 'Hapus Bisnis Permanen'}
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
                     </section>
                 )}
             </div>
-
-            <Dialog open={deleteBusinessOpen} onOpenChange={setDeleteBusinessOpen}>
-                <DialogContent className="rounded-[24px] border-hairline-soft bg-canvas p-6 shadow-none sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-ink">
-                            Hapus bisnis &ldquo;{business.name}&rdquo;?
-                        </DialogTitle>
-                        <DialogDescription className="text-sm leading-relaxed text-mute">
-                            Semua data reservasi, layanan, staff, dan pelanggan akan hilang permanen. Ketik{' '}
-                            <strong className="font-semibold text-ink">{business.name}</strong> untuk melanjutkan.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleDeleteBusiness} className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="delete-business-confirm">Konfirmasi Nama Bisnis</Label>
-                            <Input
-                                id="delete-business-confirm"
-                                autoComplete="off"
-                                placeholder={business.name}
-                                value={deleteForm.data.confirm_name}
-                                onChange={(e) => deleteForm.setData('confirm_name', e.target.value)}
-                                aria-invalid={Boolean(deleteForm.errors.confirm_name)}
-                                aria-describedby={deleteForm.errors.confirm_name ? 'delete-business-error' : undefined}
-                                required
-                            />
-                            {deleteForm.errors.confirm_name && (
-                                <p id="delete-business-error" className="text-xs text-destructive">
-                                    {deleteForm.errors.confirm_name}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button type="button" variant="outline" onClick={() => setDeleteBusinessOpen(false)}>
-                                Batal
-                            </Button>
-                            <Button
-                                type="submit"
-                                variant="destructive"
-                                disabled={deleteForm.processing || deleteForm.data.confirm_name.trim() !== business.name}
-                            >
-                                {deleteForm.processing ? 'Menghapus…' : 'Hapus Bisnis Permanen'}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
 
             <ConfirmDialog
                 open={deletingGallery !== null}

@@ -29,7 +29,7 @@ export default function PublicLegalLayout({ title, description, children }: Publ
             <header className="sticky top-4 z-50 px-3 sm:px-4">
                 <nav
                     aria-label="Navigasi legal"
-                    className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-2 rounded-full bg-bone px-3 sm:px-6"
+                    className="mx-auto flex min-h-14 max-w-4xl flex-wrap items-center justify-between gap-2 rounded-[24px] bg-bone px-3 py-2 sm:h-14 sm:flex-nowrap sm:rounded-full sm:px-6 sm:py-0"
                 >
                     <Link
                         href={route('home')}
@@ -39,11 +39,11 @@ export default function PublicLegalLayout({ title, description, children }: Publ
                         <JanjiyanLogo size="sm" compactMobile />
                     </Link>
 
-                    <div className="flex items-center gap-1.5 text-sm font-semibold">
+                    <div className="flex items-center gap-1 text-xs font-semibold sm:gap-1.5 sm:text-sm">
                         <Link
                             href={route('legal.terms')}
                             aria-current={route().current('legal.terms') ? 'page' : undefined}
-                            className={`inline-flex min-h-8 items-center rounded-full px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                            className={`inline-flex min-h-9 items-center rounded-full px-2.5 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-3 ${
                                 route().current('legal.terms') ? 'bg-ink text-canvas' : 'text-ink hover:bg-canvas'
                             }`}
                         >
@@ -52,7 +52,7 @@ export default function PublicLegalLayout({ title, description, children }: Publ
                         <Link
                             href={route('legal.privacy')}
                             aria-current={route().current('legal.privacy') ? 'page' : undefined}
-                            className={`inline-flex min-h-8 items-center rounded-full px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                            className={`inline-flex min-h-9 items-center rounded-full px-2.5 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-3 ${
                                 route().current('legal.privacy') ? 'bg-ink text-canvas' : 'text-ink hover:bg-canvas'
                             }`}
                         >
@@ -60,13 +60,13 @@ export default function PublicLegalLayout({ title, description, children }: Publ
                         </Link>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5">
                         {auth.user ? (
-                            <Button asChild size="sm">
+                            <Button asChild size="sm" className="px-3 text-xs sm:px-4 sm:text-sm">
                                 <Link href={route('dashboard')}>Dashboard</Link>
                             </Button>
                         ) : (
-                            <Button asChild size="sm">
+                            <Button asChild size="sm" className="px-3 text-xs sm:px-4 sm:text-sm">
                                 <Link href={route('register')}>Mulai Gratis</Link>
                             </Button>
                         )}

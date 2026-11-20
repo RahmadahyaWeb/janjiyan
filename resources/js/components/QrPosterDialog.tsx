@@ -392,7 +392,7 @@ export function QrPosterDialog({
                         placeholder={DEFAULT_SUBTITLE}
                         value={subtitle}
                         onChange={(e) => setSubtitle(e.target.value)}
-                        className="h-10 bg-canvas text-sm"
+                        className="h-10 bg-canvas text-base md:text-sm"
                     />
                     <div className="flex flex-wrap gap-1.5">
                         {SUBTITLE_PRESETS.map((preset) => (
@@ -400,7 +400,7 @@ export function QrPosterDialog({
                                 key={preset}
                                 type="button"
                                 onClick={() => setSubtitle(preset)}
-                                className={`cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                className={`min-h-8 cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                     resolvedSubtitle === preset
                                         ? 'bg-ink text-canvas'
                                         : 'bg-canvas text-mute hover:text-ink'
@@ -413,7 +413,7 @@ export function QrPosterDialog({
                 </div>
 
                 <div className="rounded-[20px] border border-hairline-soft bg-canvas p-4 text-center sm:p-5">
-                    <span className="inline-block rounded-full bg-bone px-3 py-1 text-[11px] font-semibold tracking-wider text-mute uppercase">
+                    <span className="inline-block rounded-full bg-bone px-3 py-1 text-xs font-semibold tracking-wider text-mute uppercase">
                         {businessCategory}
                     </span>
                     <h3 className="mt-2.5 break-words text-xl font-semibold tracking-tight text-ink">
@@ -438,7 +438,7 @@ export function QrPosterDialog({
                     </div>
 
                     <div className="mt-4">
-                        <span className="inline-block max-w-full break-words rounded-full bg-ink px-4 py-1.5 font-mono text-[11px] text-canvas sm:text-xs">
+                        <span className="inline-block max-w-full break-words rounded-full bg-ink px-4 py-1.5 font-mono text-xs text-canvas">
                             {publicUrl.replace(/^https?:\/\//, '')}
                         </span>
                     </div>

@@ -155,15 +155,19 @@ export default function CommissionsIndex({
                                 </Button>
                             ) : (
                                 <Button
-                                    type="button"
+                                    asChild
                                     size="sm"
                                     variant="outline"
-                                    disabled
-                                    title="Export CSV tersedia pada paket Professional & Enterprise"
-                                    className="rounded-full"
+                                    className="rounded-full text-mute"
                                 >
-                                    <Download className="mr-1.5 size-4" aria-hidden="true" />
-                                    Export CSV (Pro)
+                                    <Link
+                                        href={route('dashboard.billing')}
+                                        title="Export CSV tersedia pada paket Professional & Enterprise"
+                                        aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                    >
+                                        <Download className="mr-1.5 size-4" aria-hidden="true" />
+                                        Export CSV (Pro)
+                                    </Link>
                                 </Button>
                             )
                         )}
@@ -175,7 +179,7 @@ export default function CommissionsIndex({
                     <CardContent className="p-4 sm:p-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="flex flex-wrap items-end gap-3">
-                                <div>
+                                <div className="min-w-0 flex-1 sm:flex-initial">
                                     <Label htmlFor="comm-date-from" className="text-xs text-mute">
                                         Dari Tanggal
                                     </Label>
@@ -184,10 +188,10 @@ export default function CommissionsIndex({
                                         type="date"
                                         value={dateFrom}
                                         onChange={(e) => setDateFrom(e.target.value)}
-                                        className="mt-1 h-9 w-40 rounded-full"
+                                        className="mt-1 h-9 w-full rounded-full sm:w-40"
                                     />
                                 </div>
-                                <div>
+                                <div className="min-w-0 flex-1 sm:flex-initial">
                                     <Label htmlFor="comm-date-to" className="text-xs text-mute">
                                         Sampai Tanggal
                                     </Label>
@@ -196,7 +200,7 @@ export default function CommissionsIndex({
                                         type="date"
                                         value={dateTo}
                                         onChange={(e) => setDateTo(e.target.value)}
-                                        className="mt-1 h-9 w-40 rounded-full"
+                                        className="mt-1 h-9 w-full rounded-full sm:w-40"
                                     />
                                 </div>
                                 <Button
@@ -331,70 +335,130 @@ export default function CommissionsIndex({
                                 </p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-divider hover:bg-transparent">
-                                            <TableHead>Staff</TableHead>
-                                            <TableHead>Skema Komisi</TableHead>
-                                            <TableHead className="text-right">Reservasi</TableHead>
-                                            <TableHead className="text-right">Total Omzet</TableHead>
-                                            <TableHead className="text-right">Rata-rata</TableHead>
-                                            <TableHead className="text-right">Total Komisi</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {report.rows.map((row) => (
-                                            <TableRow key={row.staff_id} className="border-divider">
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <div>
-                                                            <div className="font-medium text-ink">
-                                                                {row.staff_name}
-                                                            </div>
-                                                            {row.staff_title && (
-                                                                <div className="text-xs text-mute">
-                                                                    {row.staff_title}
+                            <>
+                                {/* Mobile Commission Cards (< md) */}
+                                <div className="divide-y divide-divider md:hidden">
+                                    {report.rows.map((row) => (
+                                        <div key={row.staff_id} className="space-y-3 p-4">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="font-semibold text-ink">{row.staff_name}</p>
+                                                        {!row.is_active && <Badge variant="secondary">Nonaktif</Badge>}
+                                                    </div>
+                                                    {row.staff_title && (
+                                                        <p className="text-xs text-mute">{row.staff_title}</p>
+                                                    )}
+                                                </div>
+                                                {row.commission_type === 'percentage' ? (
+                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                                                        {row.commission_value}%
+                                                    </Badge>
+                                                ) : row.commission_type === 'fixed' ? (
+                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                                                        {formatRupiah(row.commission_value)} / sesi
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="shrink-0 text-xs text-mute">Belum diatur</span>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 rounded-[14px] bg-bone p-3 text-xs">
+                                                <div>
+                                                    <span className="text-mute">Reservasi</span>
+                                                    <p className="font-mono font-semibold tabular-nums text-ink">
+                                                        {row.bookings_count}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-mute">Total Omzet</span>
+                                                    <p className="font-mono font-semibold tabular-nums text-ink">
+                                                        {formatRupiah(row.gross_revenue)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-mute">Rata-rata</span>
+                                                    <p className="font-mono tabular-nums text-mute">
+                                                        {formatRupiah(row.average_order_value)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-mute">Total Komisi</span>
+                                                    <p className="font-mono font-semibold tabular-nums text-ink">
+                                                        {formatRupiah(row.total_commission)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Desktop Table (md+) */}
+                                <div className="hidden overflow-x-auto md:block">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="border-divider hover:bg-transparent">
+                                                <TableHead>Staff</TableHead>
+                                                <TableHead>Skema Komisi</TableHead>
+                                                <TableHead className="text-right">Reservasi</TableHead>
+                                                <TableHead className="text-right">Total Omzet</TableHead>
+                                                <TableHead className="text-right">Rata-rata</TableHead>
+                                                <TableHead className="text-right">Total Komisi</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {report.rows.map((row) => (
+                                                <TableRow key={row.staff_id} className="border-divider">
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div>
+                                                                <div className="font-medium text-ink">
+                                                                    {row.staff_name}
                                                                 </div>
+                                                                {row.staff_title && (
+                                                                    <div className="text-xs text-mute">
+                                                                        {row.staff_title}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {!row.is_active && (
+                                                                <Badge variant="secondary">
+                                                                    Nonaktif
+                                                                </Badge>
                                                             )}
                                                         </div>
-                                                        {!row.is_active && (
-                                                            <Badge variant="secondary" className="text-[10px]">
-                                                                Nonaktif
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {row.commission_type === 'percentage' ? (
+                                                            <Badge variant="secondary" className="font-mono text-xs">
+                                                                {row.commission_value}%
                                                             </Badge>
+                                                        ) : row.commission_type === 'fixed' ? (
+                                                            <Badge variant="secondary" className="font-mono text-xs">
+                                                                {formatRupiah(row.commission_value)} / sesi
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-xs text-mute">Belum diatur</span>
                                                         )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {row.commission_type === 'percentage' ? (
-                                                        <Badge variant="secondary" className="font-mono text-xs">
-                                                            {row.commission_value}%
-                                                        </Badge>
-                                                    ) : row.commission_type === 'fixed' ? (
-                                                        <Badge variant="secondary" className="font-mono text-xs">
-                                                            {formatRupiah(row.commission_value)} / sesi
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-xs text-mute">Belum diatur</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono text-sm tabular-nums">
-                                                    {row.bookings_count}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono text-sm tabular-nums">
-                                                    {formatRupiah(row.gross_revenue)}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono text-sm text-mute tabular-nums">
-                                                    {formatRupiah(row.average_order_value)}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono text-sm font-semibold text-ink tabular-nums">
-                                                    {formatRupiah(row.total_commission)}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                                                        {row.bookings_count}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                                                        {formatRupiah(row.gross_revenue)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono text-sm text-mute tabular-nums">
+                                                        {formatRupiah(row.average_order_value)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono text-sm font-semibold text-ink tabular-nums">
+                                                        {formatRupiah(row.total_commission)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
                         )}
                     </CardContent>
                 </Card>
