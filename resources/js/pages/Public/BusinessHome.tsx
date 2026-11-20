@@ -100,10 +100,10 @@ function ActionRow({
     primary?: boolean;
 }) {
     const className = cn(
-        'flex min-h-18 items-center gap-3.5 rounded-[18px] p-3.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-(--brand-paper) focus-visible:outline-none',
+        'flex min-h-18 items-center gap-3.5 rounded-[18px] p-3.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none',
         primary
             ? 'bg-(--brand) text-(--on-brand) hover:opacity-95 focus-visible:ring-(--brand-ink)'
-            : 'bg-canvas text-ink hover:bg-canvas/70 focus-visible:ring-ink'
+            : 'bg-bone text-ink hover:bg-hairline-soft focus-visible:ring-ink'
     );
     const body = (
         <>
@@ -167,7 +167,7 @@ export default function BusinessHome({
         : null;
 
     return (
-        <div style={brandVars(business.brand_color)} className="min-h-screen bg-(--brand-paper) text-ink">
+        <div style={brandVars(business.brand_color)} className="min-h-screen bg-canvas text-ink">
             <Head title={business.name}>
                 <meta
                     head-key="description"
@@ -190,7 +190,7 @@ export default function BusinessHome({
                         name={business.name}
                         logoUrl={business.logo_url}
                         branded
-                        className="absolute bottom-0 left-1/2 size-24 -translate-x-1/2 translate-y-1/2 border-4 border-(--brand-paper) text-3xl font-bold"
+                        className="absolute bottom-0 left-1/2 size-24 -translate-x-1/2 translate-y-1/2 border-4 border-canvas text-3xl font-bold"
                     />
                 </div>
 
@@ -212,7 +212,7 @@ export default function BusinessHome({
                                 aria-expanded={hoursExpanded}
                                 aria-controls="business-operating-hours"
                                 onClick={() => setHoursExpanded((v) => !v)}
-                                className="mt-3 inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full bg-canvas px-3.5 py-1.5 text-[13px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                className="mt-3 inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full bg-bone px-3.5 py-1.5 text-[13px] font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                             >
                                 <span
                                     aria-hidden="true"
@@ -232,10 +232,10 @@ export default function BusinessHome({
                     </section>
 
                     {hoursExpanded && operatingHours.length > 0 && (
-                        <div id="business-operating-hours" className="mt-4 space-y-4 rounded-[18px] bg-canvas p-4">
+                        <div id="business-operating-hours" className="mt-4 space-y-4 rounded-[18px] bg-bone p-4">
                             <div>
                                 <h2 className="mb-2 text-sm font-semibold">Jadwal mingguan ({tz})</h2>
-                                <ul className="divide-y divide-divider text-sm">
+                                <ul className="divide-y divide-hairline text-sm">
                                     {DAY_NAMES_ORDERED.map(({ day, label }) => {
                                         const item = hoursByDay.get(day);
                                         const isToday = day === todayDayOfWeek;
@@ -264,7 +264,7 @@ export default function BusinessHome({
                                         {holidays.slice(0, 6).map((hDate) => (
                                             <span
                                                 key={hDate}
-                                                className="rounded-full bg-bone px-3 py-1 font-mono text-xs font-semibold tabular-nums"
+                                                className="rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold tabular-nums"
                                             >
                                                 {formatDateIndo(hDate)}
                                             </span>
@@ -320,9 +320,9 @@ export default function BusinessHome({
                         <section aria-labelledby="services-heading" className="mt-6">
                             <h2 id="services-heading" className="mx-1 mb-2.5 flex items-center gap-1.5 text-[15px] font-semibold">
                                 Layanan
-                                <span className="rounded-full bg-canvas px-2 text-xs text-mute tabular-nums">{services.length}</span>
+                                <span className="rounded-full bg-bone px-2 text-xs text-mute tabular-nums">{services.length}</span>
                             </h2>
-                            <ul className="divide-y divide-divider overflow-hidden rounded-[18px] bg-canvas">
+                            <ul className="divide-y divide-hairline overflow-hidden rounded-[18px] bg-bone">
                                 {services.slice(0, MAX_SERVICES).map((service) => {
                                     const meta = [
                                         service.booking_mode === 'dropoff'
@@ -335,7 +335,7 @@ export default function BusinessHome({
                                         <li key={service.id}>
                                             <Link
                                                 href={`${bookingUrl}?layanan=${service.id}`}
-                                                className="flex items-center gap-3 py-3 pr-3 pl-3.5 transition-colors hover:bg-bone/60 focus-visible:bg-bone focus-visible:outline-none"
+                                                className="flex items-center gap-3 py-3 pr-3 pl-3.5 transition-colors hover:bg-hairline-soft focus-visible:bg-hairline-soft focus-visible:outline-none"
                                             >
                                                 {anyServiceImage &&
                                                     (service.image_url ? (
@@ -372,7 +372,7 @@ export default function BusinessHome({
                                     <li>
                                         <Link
                                             href={`${bookingUrl}#layanan`}
-                                            className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) hover:bg-bone/60 focus-visible:bg-bone focus-visible:outline-none"
+                                            className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) hover:bg-hairline-soft focus-visible:bg-hairline-soft focus-visible:outline-none"
                                         >
                                             Lihat semua layanan ({services.length})
                                             <ChevronRight className="size-4" aria-hidden="true" />

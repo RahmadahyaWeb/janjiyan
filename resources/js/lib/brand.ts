@@ -2,10 +2,8 @@ import type { CSSProperties } from 'react';
 
 const INK = '#141414';
 const WHITE = '#ffffff';
-// Warm paper behind the hub; brand tints are mixed into it.
-const PAPER = '#f7f5f0';
-// Header pill and cover band for shops without a color: light neutral like Janjiyan's own nav, not a black slab.
-const NEUTRAL_BAND = '#ecebe7';
+// Card surface on the white public pages (bone, as on the Janjiyan landing); brand icons sit on it.
+const SURFACE = '#f3f3f3';
 
 /** Shop color choices in Settings. Each one reaches ≥ 4.5:1 with its auto text color (see tests/js/brand.check.mjs). */
 export const BRAND_PRESETS = [
@@ -41,21 +39,20 @@ const BLACK = '#000000';
 export const onBrand = (hex: string): string => (contrast(hex, WHITE) >= contrast(hex, BLACK) ? WHITE : BLACK);
 
 /**
- * CSS variables for a shop's color. `--brand-ink` is for icons/marks sitting on paper: a light brand
+ * CSS variables for a shop's color. `--brand-ink` is for icons/marks sitting on light cards: a light brand
  * (yellow, mint) would vanish there, so it is darkened toward ink while keeping its hue.
  * `--band`/`--on-band` paint the header and cover band: the shop color, or a light neutral when unset
  * (buttons keep `--brand`, which falls back to ink).
  */
 export function brandVars(color: string | null | undefined): CSSProperties {
     const hex = isHex(color) ? color.toLowerCase() : INK;
-    const brandInk = contrast(hex, PAPER) >= 3 ? hex : `color-mix(in oklab, ${hex} 40%, ${INK})`;
+    const brandInk = contrast(hex, SURFACE) >= 3 ? hex : `color-mix(in oklab, ${hex} 40%, ${INK})`;
     return {
         '--brand': hex,
         '--on-brand': onBrand(hex),
         '--brand-ink': brandInk,
         '--brand-soft': `color-mix(in oklab, ${hex} 14%, white)`,
-        '--brand-paper': isHex(color) ? `color-mix(in oklab, ${hex} 6%, ${PAPER})` : PAPER,
-        '--band': isHex(color) ? hex : NEUTRAL_BAND,
+        '--band': isHex(color) ? hex : SURFACE,
         '--on-band': isHex(color) ? onBrand(hex) : INK,
     } as CSSProperties;
 }

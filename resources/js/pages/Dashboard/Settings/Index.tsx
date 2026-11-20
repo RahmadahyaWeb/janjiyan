@@ -559,7 +559,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             <div
                                 aria-hidden="true"
                                 style={brandVars(isHex(form.data.brand_color) ? form.data.brand_color : null)}
-                                className="overflow-hidden rounded-md bg-(--brand-paper) outline-1 -outline-offset-1 outline-black/10"
+                                className="overflow-hidden rounded-md bg-canvas outline-1 -outline-offset-1 outline-black/10"
                             >
                                 <div className="relative">
                                     <div className="h-20 overflow-hidden bg-(--band)">
@@ -569,7 +569,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         name={form.data.name || 'Toko'}
                                         logoUrl={form.data.remove_logo ? null : business.logo_url}
                                         branded
-                                        className="absolute bottom-0 left-1/2 size-14 -translate-x-1/2 translate-y-1/2 border-[3px] border-(--brand-paper) text-lg font-bold"
+                                        className="absolute bottom-0 left-1/2 size-14 -translate-x-1/2 translate-y-1/2 border-[3px] border-canvas text-lg font-bold"
                                     />
                                 </div>
                                 <div className="px-3 pt-9 pb-3 text-center">
@@ -577,7 +577,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     <div className="mt-2.5 rounded-xl bg-(--brand) px-3 py-2.5 text-left text-xs font-semibold text-(--on-brand)">
                                         Pesan layanan
                                     </div>
-                                    <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2 text-left text-xs font-semibold text-ink">
+                                    <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-bone px-3 py-2 text-left text-xs font-semibold text-ink">
                                         <span className="flex size-6 items-center justify-center rounded-md bg-(--brand-soft) text-(--brand-ink)">
                                             <Tag className="size-3.5" />
                                         </span>
