@@ -37,6 +37,13 @@
     --color-warning: #92400e;
     --color-warning-soft: #fffbeb;
     --color-warning-border: #fde68a;
+    /* Shop monogram (no logo): hues kept ≥15° OKLCH from accent, success and destructive; every pair ≥ 7:1. */
+    --color-monogram-1-surface: #f3e3f7;
+    --color-monogram-1-text: #6b21a8;
+    --color-monogram-2-surface: #e0f2f1;
+    --color-monogram-2-text: #134e4a;
+    --color-monogram-3-surface: #fef3c7;
+    --color-monogram-3-text: #78350f;
 
     /* shadcn/ui Semantic Mappings aligned to design.md */
     --color-background: var(--background);

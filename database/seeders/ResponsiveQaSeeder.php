@@ -50,6 +50,20 @@ class ResponsiveQaSeeder extends Seeder
             'title' => 'Kepala Teknisi Perawatan Sepatu & Tas Kulit', 'phone' => '081234567899999', 'is_active' => true,
         ]);
 
+        // Bare profile (no logo, description, phone, address, gallery): how most new merchants look.
+        $bare = Business::updateOrCreate(['slug' => 'toko-polos'], [
+            'owner_id' => $biz->owner_id, 'name' => 'Soklenn Cuci Sepatu Banjarbaru', 'category' => 'Jasa & Layanan',
+            'timezone' => 'Asia/Jakarta', 'dp_expiry_minutes' => 120, 'is_active' => true,
+        ]);
+        $bare->seedDefaultOperatingHours();
+        foreach ([['Regular Clean', 30000, 5, 3], ['Deep Clean', 40000, 2, 4]] as [$name, $price, $capacity, $days]) {
+            Service::updateOrCreate(['business_id' => $bare->id, 'name' => $name], [
+                'description' => $long, 'price' => $price, 'duration_minutes' => 60, 'buffer_minutes' => 0,
+                'capacity' => $capacity, 'assignment_mode' => 'capacity', 'booking_mode' => 'dropoff',
+                'turnaround_days' => $days, 'supports_pickup' => true, 'dp_type' => 'none', 'dp_value' => 0, 'is_active' => true,
+            ]);
+        }
+
         Customer::updateOrCreate(['business_id' => $biz->id, 'phone' => '6281299998888777'], [
             'name' => 'Raden Ayu Kusumawardhani Prameswari Setyaningrum',
             'email' => 'raden.ayu.kusumawardhani.prameswari@contoh-domain-panjang.test',

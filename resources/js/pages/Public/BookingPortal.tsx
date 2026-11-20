@@ -17,13 +17,11 @@ import {
     Phone,
     Plus,
     ShieldCheck,
-    Sparkles,
     Truck,
     Upload,
     UserCheck,
-    Users,
 } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
@@ -42,6 +40,7 @@ import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import {
     buildWhatsAppUrl,
     formatDateIndo,
+    formatDateShortIndo,
     formatRupiah,
     formatTurnaroundLabel,
     PICKUP_SESSION_LABELS,
@@ -142,6 +141,43 @@ function getLocalDayOfWeek(dateString: string): number {
     return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+// Full class strings so Tailwind keeps them; tokens live in app.css.
+const MONOGRAM_CLASSES = [
+    'bg-monogram-1-surface text-monogram-1-text',
+    'bg-monogram-2-surface text-monogram-2-text',
+    'bg-monogram-3-surface text-monogram-3-text',
+];
+
+function BusinessMark({ name, logoUrl, className }: { name: string; logoUrl: string | null; className?: string }) {
+    if (logoUrl) {
+        return (
+            <img
+                src={logoUrl}
+                alt={`Logo ${name}`}
+                className={cn('shrink-0 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10', className)}
+            />
+        );
+    }
+
+    let hash = 0;
+    for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+    const words = name.trim().split(/\s+/);
+    const initials = (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
+
+    return (
+        <div
+            aria-hidden="true"
+            className={cn(
+                'flex shrink-0 items-center justify-center rounded-[30%] font-semibold',
+                MONOGRAM_CLASSES[hash % MONOGRAM_CLASSES.length],
+                className
+            )}
+        >
+            {initials}
+        </div>
+    );
+}
+
 export default function BookingPortal({
     business,
     services,
@@ -173,6 +209,26 @@ export default function BookingPortal({
     const [pickupAddressError, setPickupAddressError] = useState('');
     const [hoursExpanded, setHoursExpanded] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+    const [heroInView, setHeroInView] = useState(true);
+    const heroNameRef = useRef<HTMLHeadingElement>(null);
+
+    useEffect(() => {
+        const el = heroNameRef.current;
+        if (!el || typeof IntersectionObserver === 'undefined') return;
+        // -64px = sticky header height, so the brand appears as soon as the name slides under it.
+        const observer = new IntersectionObserver(([entry]) => setHeroInView(entry.isIntersecting), {
+            rootMargin: '-64px 0px 0px 0px',
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    // Keep focused fields and scroll targets clear of the sticky header and the mobile bottom bar (WCAG 2.4.11).
+    useEffect(() => {
+        const padding = ['scroll-pt-20', 'scroll-pb-28', 'lg:scroll-pb-0'];
+        document.documentElement.classList.add(...padding);
+        return () => document.documentElement.classList.remove(...padding);
+    }, []);
 
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -213,22 +269,13 @@ export default function BookingPortal({
         return days;
     }, [todayLocal, maxDateLocal, hoursByDay, holidays]);
 
-    const uniqueStaff = useMemo(() => {
-        const seen = new Map<number, StaffOption>();
-        for (const srv of services) {
-            for (const st of srv.staff) {
-                if (!seen.has(st.id)) seen.set(st.id, st);
-            }
-        }
-        return Array.from(seen.values());
-    }, [services]);
-
     const selectedStaffObj = useMemo(() => {
         if (!selectedService || selectedStaffId === null) return null;
         return selectedService.staff.find((s) => s.id === selectedStaffId) ?? null;
     }, [selectedService, selectedStaffId]);
 
     const isSelectedHoliday = holidays.includes(selectedDate);
+    const isCustomDate = !quickDates.some((q) => q.date === selectedDate);
 
     const slotUrl = useMemo(() => {
         if (!selectedService || !selectedDate || isSelectedHoliday || isSelectedDateClosed) {
@@ -288,14 +335,14 @@ export default function BookingPortal({
         if (isDropoffService && !isDropoffReady) return;
 
         if (isDropoffService && selectedService.supports_pickup && fulfillmentType === 'pickup' && pickupAddress.trim() === '') {
-            setPickupAddressError('Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.');
+            setPickupAddressError('Alamat penjemputan wajib diisi untuk layanan jemput & antar.');
             document.getElementById('pickup-address')?.focus();
             return;
         }
         setPickupAddressError('');
 
         if (requiresDp && dpMode === 'now' && !dpProof) {
-            setDpProofError('Unggah bukti transfer DP terlebih dahulu, atau pilih opsi Bayar DP Nanti.');
+            setDpProofError('Unggah bukti transfer DP terlebih dahulu, atau pilih opsi Bayar DP nanti.');
             document.getElementById('dp-proof-upload')?.focus();
             return;
         }
@@ -335,10 +382,8 @@ export default function BookingPortal({
         ? buildWhatsAppUrl(business.phone, `Halo ${business.name}, saya ingin bertanya tentang layanan dan jadwal reservasi.`)
         : null;
 
-    const hasPaymentInfo = business.bank_accounts.length > 0 || Boolean(business.qris_url);
-
     return (
-        <div className="min-h-screen bg-canvas text-ink">
+        <div className={cn('min-h-screen bg-canvas text-ink', services.length > 0 && 'pb-24 lg:pb-0')}>
             <Head title={`${business.name} — Reservasi Online`}>
                 <meta
                     head-key="description"
@@ -357,48 +402,25 @@ export default function BookingPortal({
                 Lewati ke daftar layanan
             </a>
 
-            {/* Top Storefront Bar */}
+            {/* Top Storefront Bar: brand fades in once the hero name scrolls away */}
             <header className="sticky top-0 z-40 border-b border-divider bg-canvas">
                 <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-                    <div className="flex min-w-0 items-center gap-3">
-                        {business.logo_url ? (
-                            <img
-                                src={business.logo_url}
-                                alt={`Logo ${business.name}`}
-                                className="size-9 shrink-0 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10"
-                            />
-                        ) : (
-                            <div
-                                aria-hidden="true"
-                                className="flex size-9 shrink-0 items-center justify-center rounded-[30%] bg-ink text-xs font-semibold text-canvas"
-                            >
-                                {business.name.slice(0, 2).toUpperCase()}
-                            </div>
+                    <div
+                        aria-hidden={heroInView}
+                        className={cn(
+                            'flex min-w-0 items-center gap-3 motion-safe:transition-opacity motion-safe:duration-200',
+                            heroInView && 'pointer-events-none opacity-0'
                         )}
+                    >
+                        <BusinessMark name={business.name} logoUrl={business.logo_url} className="size-9 text-xs" />
                         <span className="truncate text-sm font-semibold text-ink sm:text-base">{business.name}</span>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                        {operatingHours.length > 0 && (
-                            <Badge variant="secondary" className="hidden gap-1.5 tabular-nums sm:inline-flex">
-                                <span
-                                    aria-hidden="true"
-                                    className={cn(
-                                        'size-1.5 rounded-full',
-                                        isOpenToday ? 'bg-ink' : 'bg-mute'
-                                    )}
-                                />
-                                {isOpenToday && todaySchedule
-                                    ? `Buka hari ini · ${formatShortTime(todaySchedule.open_time)}–${formatShortTime(todaySchedule.close_time)}`
-                                    : isTodayHoliday
-                                      ? 'Libur hari ini'
-                                      : 'Tutup hari ini'}
-                            </Badge>
-                        )}
                         <Button asChild variant="outline" size="sm" className="px-3 sm:px-4">
                             <Link href={route('public.booking.invoices', business.slug)}>
                                 <FileText className="size-4" aria-hidden="true" />
-                                <span className="hidden sm:inline">Cek Invoice</span>
+                                <span className="hidden sm:inline">Cek invoice</span>
                                 <span className="sr-only sm:hidden">Invoice</span>
                             </Link>
                         </Button>
@@ -415,7 +437,7 @@ export default function BookingPortal({
                 </div>
             </header>
 
-            <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 outline-none sm:px-6 sm:py-10">
+            <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 outline-none sm:px-6 sm:py-12">
                 {bookingDisabledReason && (
                     <div role="alert" className="mb-6 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
                         {bookingDisabledReason}
@@ -427,199 +449,102 @@ export default function BookingPortal({
                     </div>
                 )}
 
-                {/* Storefront Hero / Business Profile Card */}
-                <section aria-label="Profil bisnis" className="mb-8 rounded-md bg-bone p-4 sm:mb-10 sm:p-8">
-                    <div className="flex flex-col justify-between gap-5 sm:gap-6 lg:flex-row lg:items-start">
-                        <div className="max-w-2xl space-y-3 sm:space-y-4">
-                            {/* Desktop Badges */}
-                            <div className="hidden flex-wrap items-center gap-2 sm:flex">
-                                <Badge variant="default">{business.category}</Badge>
-                                <Badge variant="secondary" className="bg-canvas text-ink">
-                                    Booking Instan · Tanpa Login
-                                </Badge>
-                            </div>
-
-                            <div className="flex items-start gap-3.5 sm:gap-4">
-                                {business.logo_url ? (
-                                    <img
-                                        src={business.logo_url}
-                                        alt={`Logo ${business.name}`}
-                                        className="size-12 shrink-0 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10 sm:size-16"
-                                    />
-                                ) : (
-                                    <div
-                                        aria-hidden="true"
-                                        className="flex size-12 shrink-0 items-center justify-center rounded-[30%] bg-ink text-sm font-semibold text-canvas sm:size-16 sm:text-xl"
-                                    >
-                                        {business.name.slice(0, 2).toUpperCase()}
-                                    </div>
-                                )}
-
-                                <div className="min-w-0">
-                                    {/* Mobile Compact Category + Status Line */}
-                                    <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-mute sm:hidden">
-                                        <span className="text-ink">{business.category}</span>
-                                        {operatingHours.length > 0 && (
-                                            <span className="inline-flex items-center gap-1 tabular-nums">
-                                                <span aria-hidden="true">·</span>
-                                                <span
-                                                    aria-hidden="true"
-                                                    className={cn(
-                                                        'size-1.5 rounded-full',
-                                                        isOpenToday ? 'bg-ink' : 'bg-mute'
-                                                    )}
-                                                />
-                                                {isOpenToday && todaySchedule
-                                                    ? `Buka ${formatShortTime(todaySchedule.open_time)}–${formatShortTime(todaySchedule.close_time)}`
-                                                    : isTodayHoliday
-                                                      ? 'Libur hari ini'
-                                                      : 'Tutup hari ini'}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <h1 className="text-2xl font-semibold leading-tight text-ink sm:text-4xl">
-                                        {business.name}
-                                    </h1>
-                                    {business.description && (
-                                        <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-mute sm:mt-2 sm:text-base">
-                                            {business.description}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Quick Contact & Location Links */}
-                            <div className="flex flex-col items-start gap-2.5 pt-1 sm:flex-row sm:flex-wrap sm:items-center">
-                                {googleMapsUrl && business.address && (
-                                    <a
-                                        href={googleMapsUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex min-h-10 items-center gap-1.5 rounded-full text-xs font-semibold text-ink transition-colors hover:text-electric focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:min-h-9 sm:bg-canvas sm:px-3.5 sm:py-1.5 sm:hover:bg-hairline-soft sm:hover:text-ink"
-                                    >
-                                        <MapPin className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                        <span className="text-left">{business.address}</span>
-                                        <ExternalLink className="size-3 shrink-0 text-mute" aria-hidden="true" />
-                                    </a>
-                                )}
-
-                                <div className="flex flex-wrap items-center gap-2.5 sm:contents">
-                                    {whatsappChatUrl && business.phone && (
-                                        <a
-                                            href={whatsappChatUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full text-xs font-semibold text-ink transition-colors hover:text-electric focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:min-h-9 sm:bg-canvas sm:px-3.5 sm:py-1.5 sm:hover:bg-hairline-soft sm:hover:text-ink"
-                                        >
-                                            <Phone className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                            <span className="tabular-nums">+{business.phone}</span>
-                                        </a>
-                                    )}
-
-                                    {operatingHours.length > 0 && (
-                                        <button
-                                            type="button"
-                                            aria-expanded={hoursExpanded}
-                                            aria-controls="business-operating-hours"
-                                            onClick={() => setHoursExpanded((v) => !v)}
-                                            className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full bg-canvas px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors duration-150 hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:min-h-9"
-                                        >
-                                            <Clock className="size-3.5 shrink-0 text-mute" aria-hidden="true" />
-                                            <span>Jam Operasional</span>
-                                            <ChevronDown
-                                                aria-hidden="true"
-                                                className={cn(
-                                                    'size-3.5 text-mute motion-safe:transition-transform',
-                                                    hoursExpanded && 'rotate-180'
-                                                )}
-                                            />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Mobile Compact Summary Card */}
-                        <div className="space-y-2.5 rounded-xs bg-canvas p-4 text-xs sm:hidden">
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-semibold text-ink">
-                                <span className="inline-flex items-center gap-1.5 tabular-nums">
-                                    <Sparkles className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                    {services.length} Pilihan Layanan
-                                </span>
-                                {uniqueStaff.length > 0 && (
+                {/* Storefront Hero */}
+                <section aria-labelledby="business-name" className="mb-10 border-b border-divider pb-8 sm:mb-12 sm:pb-10">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <BusinessMark
+                            name={business.name}
+                            logoUrl={business.logo_url}
+                            className="size-16 text-xl sm:size-24 sm:text-3xl"
+                        />
+                        <div className="min-w-0">
+                            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-mute">
+                                <span className="font-semibold text-ink">{business.category}</span>
+                                {operatingHours.length > 0 && (
                                     <span className="inline-flex items-center gap-1.5 tabular-nums">
-                                        <Users className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                        {uniqueStaff.length} Staff Tersedia
+                                        <span
+                                            aria-hidden="true"
+                                            className={cn('size-2 rounded-full', isOpenToday ? 'bg-success' : 'bg-stone')}
+                                        />
+                                        {isOpenToday && todaySchedule
+                                            ? `Buka hari ini, ${formatShortTime(todaySchedule.open_time)}–${formatShortTime(todaySchedule.close_time)}`
+                                            : isTodayHoliday
+                                              ? 'Libur hari ini'
+                                              : 'Tutup hari ini'}
                                     </span>
                                 )}
-                            </div>
-                            {hasPaymentInfo && (
-                                <div className="flex items-start gap-1.5 border-t border-divider pt-2.5 text-mute">
-                                    <CreditCard className="mt-0.5 size-3.5 shrink-0 text-electric" aria-hidden="true" />
-                                    <span>
-                                        Pembayaran DP (0% biaya admin):{' '}
-                                        <strong className="font-semibold text-ink">
-                                            {[
-                                                ...business.bank_accounts.map((b) => b.bank_name),
-                                                ...(business.qris_url ? ['QRIS'] : []),
-                                            ].join(' · ')}
-                                        </strong>
-                                    </span>
-                                </div>
-                            )}
+                            </p>
+                            <h1
+                                ref={heroNameRef}
+                                id="business-name"
+                                className="mt-1 text-3xl leading-[1.1] font-semibold text-balance text-ink sm:text-5xl"
+                            >
+                                {business.name}
+                            </h1>
                         </div>
+                    </div>
 
-                        {/* Desktop & Tablet Storefront Highlights */}
-                        <div className="hidden shrink-0 gap-2.5 sm:grid sm:grid-cols-3 lg:w-72 lg:grid-cols-1">
-                            <div className="rounded-sm bg-canvas p-3.5">
-                                <div className="flex items-center gap-2 text-xs font-semibold text-mute">
-                                    <Sparkles className="size-3.5 text-electric" aria-hidden="true" />
-                                    <span>Layanan Aktif</span>
-                                </div>
-                                <p className="mt-1 text-base font-semibold tabular-nums text-ink">
-                                    {services.length} pilihan layanan
-                                </p>
-                            </div>
+                    <p className="mt-5 max-w-prose text-base leading-relaxed text-mute">
+                        {business.description || 'Pilih layanan, tentukan tanggal, lalu pesan langsung dari halaman ini.'}
+                    </p>
 
-                            {uniqueStaff.length > 0 && (
-                                <div className="rounded-sm bg-canvas p-3.5">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-mute">
-                                        <Users className="size-3.5 text-electric" aria-hidden="true" />
-                                        <span>Tim Profesional</span>
-                                    </div>
-                                    <p className="mt-1 text-sm font-semibold text-ink">
-                                        {uniqueStaff.map((s) => s.name).join(', ')}
-                                    </p>
-                                </div>
-                            )}
+                    {/* Contact & hours */}
+                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                        {googleMapsUrl && business.address && (
+                            <a
+                                href={googleMapsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            >
+                                <MapPin className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
+                                <span className="text-left">{business.address}</span>
+                                <ExternalLink className="size-3 shrink-0 text-mute" aria-hidden="true" />
+                            </a>
+                        )}
 
-                            {hasPaymentInfo && (
-                                <div className="col-span-2 rounded-sm bg-canvas p-3.5 sm:col-span-1">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-mute">
-                                        <CreditCard className="size-3.5 text-electric" aria-hidden="true" />
-                                        <span>Pembayaran DP 0% biaya admin</span>
-                                    </div>
-                                    <p className="mt-1 text-xs font-medium text-ink">
-                                        {[
-                                            ...business.bank_accounts.map((b) => b.bank_name),
-                                            ...(business.qris_url ? ['QRIS'] : []),
-                                        ].join(' · ')}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                        {whatsappChatUrl && business.phone && (
+                            <a
+                                href={whatsappChatUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            >
+                                <Phone className="size-3.5 shrink-0 text-electric" aria-hidden="true" />
+                                <span className="tabular-nums">+{business.phone}</span>
+                            </a>
+                        )}
+
+                        {operatingHours.length > 0 && (
+                            <button
+                                type="button"
+                                aria-expanded={hoursExpanded}
+                                aria-controls="business-operating-hours"
+                                onClick={() => setHoursExpanded((v) => !v)}
+                                className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3.5 py-2 text-xs font-semibold text-ink transition-colors duration-150 hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            >
+                                <Clock className="size-3.5 shrink-0 text-mute" aria-hidden="true" />
+                                <span>Jam operasional</span>
+                                <ChevronDown
+                                    aria-hidden="true"
+                                    className={cn(
+                                        'size-3.5 text-mute motion-safe:transition-transform',
+                                        hoursExpanded && 'rotate-180'
+                                    )}
+                                />
+                            </button>
+                        )}
                     </div>
 
                     {/* Expandable Operating Hours & Upcoming Holidays */}
                     {hoursExpanded && operatingHours.length > 0 && (
                         <div
                             id="business-operating-hours"
-                            className="mt-6 grid gap-4 border-t border-divider pt-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
+                            className="mt-5 grid gap-4 rounded-md bg-bone p-4 sm:p-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
                         >
                             <div>
                                 <h2 className="mb-3 text-sm font-semibold text-ink">
-                                    Jadwal Operasional Mingguan ({tz})
+                                    Jadwal mingguan ({tz})
                                 </h2>
                                 <div className="grid gap-2 sm:grid-cols-2">
                                     {DAY_NAMES_ORDERED.map(({ day, label }) => {
@@ -653,7 +578,7 @@ export default function BookingPortal({
                             </div>
 
                             <div>
-                                <h2 className="mb-3 text-sm font-semibold text-ink">Hari Libur Khusus</h2>
+                                <h2 className="mb-3 text-sm font-semibold text-ink">Hari libur khusus</h2>
                                 {holidays.length === 0 ? (
                                     <p className="rounded-xl bg-canvas px-3.5 py-2.5 text-xs text-mute">
                                         Tidak ada jadwal libur khusus dalam waktu dekat.
@@ -682,7 +607,7 @@ export default function BookingPortal({
                             <div className="flex min-w-0 items-center gap-2">
                                 <Images className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                 <h2 id="portfolio-heading" className="text-lg font-semibold text-ink">
-                                    Portofolio & Suasana
+                                    Portofolio & suasana
                                 </h2>
                             </div>
                             <Badge variant="secondary" className="shrink-0 tabular-nums">
@@ -725,7 +650,7 @@ export default function BookingPortal({
                 {services.length === 0 ? (
                     <div className="rounded-md bg-bone p-10 text-center">
                         <p className="text-lg font-semibold text-ink">Belum ada layanan tersedia.</p>
-                        <p className="mt-1 text-sm text-mute">Merchant sedang menyiapkan daftar layanan.</p>
+                        <p className="mt-1 text-sm text-mute">Toko sedang menyiapkan daftar layanan.</p>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -759,8 +684,8 @@ export default function BookingPortal({
                                                 className={cn(
                                                     'flex cursor-pointer flex-col justify-between rounded-md p-5 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
                                                     active
-                                                        ? 'bg-bone ring-2 ring-ink'
-                                                        : 'border border-hairline-soft bg-canvas hover:bg-bone/60'
+                                                        ? 'bg-canvas ring-2 ring-ink'
+                                                        : 'bg-canvas ring-1 ring-hairline hover:ring-ink/40'
                                                 )}
                                             >
                                                 <div className="flex items-start gap-3.5 sm:block">
@@ -788,39 +713,45 @@ export default function BookingPortal({
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-divider pt-3">
-                                                    <span className="text-base font-semibold tabular-nums text-ink">
+                                                <div className="mt-4 space-y-2 border-t border-divider pt-3">
+                                                    <span className="block text-lg font-semibold tabular-nums text-ink">
                                                         {formatRupiah(service.price)}
                                                     </span>
-                                                    <div className="flex flex-wrap items-center gap-2 text-xs text-mute">
+                                                    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-mute">
                                                         <span className="inline-flex items-center gap-1 tabular-nums">
-                                                            <Clock className="size-3.5" aria-hidden="true" />
+                                                            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
                                                             {service.booking_mode === 'dropoff'
                                                                 ? formatTurnaroundLabel(service.turnaround_days ?? 1)
                                                                 : `${service.duration_minutes} mnt`}
                                                         </span>
                                                         {service.booking_mode === 'dropoff' ? (
                                                             <>
-                                                                <Badge variant="outline" className="tabular-nums">
-                                                                    Drop-off · Kuota {service.capacity}/hr
-                                                                </Badge>
+                                                                <span className="inline-flex items-center gap-1 tabular-nums">
+                                                                    <PackageCheck className="size-3.5 shrink-0" aria-hidden="true" />
+                                                                    Kuota {service.capacity}/hari
+                                                                </span>
                                                                 {service.supports_pickup && (
-                                                                    <Badge variant="secondary">Jemput-Antar</Badge>
+                                                                    <span className="inline-flex items-center gap-1">
+                                                                        <Truck className="size-3.5 shrink-0" aria-hidden="true" />
+                                                                        Bisa jemput-antar
+                                                                    </span>
                                                                 )}
                                                             </>
                                                         ) : (
                                                             service.assignment_mode === 'capacity' && (
-                                                                <Badge variant="outline" className="tabular-nums">
+                                                                <span className="inline-flex items-center gap-1 tabular-nums">
+                                                                    <UserCheck className="size-3.5 shrink-0" aria-hidden="true" />
                                                                     Kapasitas {service.capacity}
-                                                                </Badge>
+                                                                </span>
                                                             )
                                                         )}
                                                         {service.dp_amount > 0 && (
-                                                            <Badge variant="secondary" className="tabular-nums">
+                                                            <span className="inline-flex items-center gap-1 tabular-nums">
+                                                                <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
                                                                 DP {formatRupiah(service.dp_amount)}
-                                                            </Badge>
+                                                            </span>
                                                         )}
-                                                    </div>
+                                                    </span>
                                                 </div>
                                             </button>
                                         );
@@ -885,7 +816,7 @@ export default function BookingPortal({
                             )}
 
                             {/* Step 3: Tanggal & Slot Waktu atau Drop-off Harian */}
-                            <section aria-labelledby="step-schedule-heading">
+                            <section aria-labelledby="step-schedule-heading" id="step-schedule" className="scroll-mt-24">
                                 <div className="mb-4 flex items-center gap-2">
                                     <span className="font-mono text-xs font-semibold text-mute">
                                         {!isDropoffService && selectedService?.assignment_mode === 'staff' && selectedService.staff.length > 0 ? '03' : '02'}
@@ -895,12 +826,14 @@ export default function BookingPortal({
                                     </h2>
                                 </div>
 
-                                <div className="grid gap-6 rounded-md border border-hairline-soft bg-canvas p-4 sm:grid-cols-[240px_1fr] sm:p-6">
+                                <div className="grid grid-cols-[minmax(0,1fr)] gap-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                                    <div className="min-w-0 space-y-3">
+                                    <div className="flex items-stretch gap-2">
                                     <HorizontalScrollContainer
                                         role="group"
-                                        ariaLabel="Pilih tanggal cepat"
-                                        wrapperClassName="-mx-4 sm:col-span-2 sm:mx-0"
-                                        className="flex gap-2 px-4 pb-1 sm:px-0"
+                                        ariaLabel="Pilih tanggal"
+                                        wrapperClassName="-ml-4 flex-1 sm:ml-0"
+                                        className="flex gap-2 pb-1 pl-4 sm:pl-0"
                                     >
                                         {quickDates.map(({ date, closed }) => {
                                             const d = new Date(`${date}T00:00:00Z`);
@@ -922,47 +855,74 @@ export default function BookingPortal({
                                                               : 'border-hairline-soft bg-canvas text-ink hover:border-ink/40'
                                                     )}
                                                 >
-                                                    <span className="text-[11px] font-semibold">
+                                                    <span className="text-xs font-semibold">
                                                         {date === todayLocal
                                                             ? 'Hari ini'
                                                             : new Intl.DateTimeFormat('id-ID', { weekday: 'short', timeZone: 'UTC' }).format(d)}
                                                     </span>
                                                     <span className="text-lg leading-6 font-semibold tabular-nums">{d.getUTCDate()}</span>
-                                                    <span className="text-[11px]">
+                                                    <span className="text-xs">
                                                         {new Intl.DateTimeFormat('id-ID', { month: 'short', timeZone: 'UTC' }).format(d)}
                                                     </span>
                                                 </button>
                                             );
                                         })}
                                     </HorizontalScrollContainer>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="booking-date" className="inline-flex flex-wrap items-center gap-1.5">
+                                        {/* Kept outside the scroll strip so it is always reachable; dates beyond the strip: transparent native date input over the chip */}
+                                        <label
+                                            className={cn(
+                                                'relative mb-1 flex w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border py-2 text-xs font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2',
+                                                isCustomDate
+                                                    ? 'border-ink bg-ink text-canvas'
+                                                    : 'border-dashed border-hairline bg-canvas text-ink hover:border-ink/40'
+                                            )}
+                                        >
                                             <Calendar className="size-4" aria-hidden="true" />
-                                            {isDropoffService
-                                                ? fulfillmentType === 'pickup'
-                                                    ? 'Tanggal Penjemputan'
-                                                    : 'Tanggal Drop-off'
-                                                : 'Tanggal Kunjungan'}
-                                            <span className="font-normal text-mute">(atau pilih tanggal lain)</span>
-                                        </Label>
-                                        <Input
-                                            id="booking-date"
-                                            type="date"
-                                            min={todayLocal}
-                                            max={maxDateLocal}
-                                            value={selectedDate}
-                                            onChange={(e) => setSelectedDate(e.target.value)}
-                                            required
-                                        />
-                                        <p className="text-xs text-mute">{formatDateIndo(selectedDate)}</p>
+                                            <span className="whitespace-nowrap">Tanggal lain</span>
+                                            <input
+                                                id="booking-date"
+                                                type="date"
+                                                min={todayLocal}
+                                                max={maxDateLocal}
+                                                value={selectedDate}
+                                                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                                                onClick={(e) => {
+                                                    try {
+                                                        e.currentTarget.showPicker();
+                                                    } catch {
+                                                        // Older browsers open the picker on tap anyway.
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    // The segments are invisible, so Enter/Space open the picker instead of submitting the form.
+                                                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                                                    e.preventDefault();
+                                                    try {
+                                                        e.currentTarget.showPicker();
+                                                    } catch {
+                                                        // No picker API: arrow keys still change the date.
+                                                    }
+                                                }}
+                                                className="absolute inset-0 size-full cursor-pointer opacity-0"
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <p className="text-sm text-mute">
+                                        {isDropoffService
+                                            ? fulfillmentType === 'pickup'
+                                                ? 'Tanggal penjemputan'
+                                                : 'Tanggal drop-off'
+                                            : 'Tanggal kunjungan'}
+                                        : <strong className="font-semibold text-ink">{formatDateIndo(selectedDate)}</strong>
+                                    </p>
                                     </div>
 
                                     {isDropoffService ? (
                                         <div aria-live="polite" className="space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-4">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-ink">Jumlah Item / Pasang</p>
+                                                    <p className="text-sm font-semibold text-ink">Jumlah item / pasang</p>
                                                     <p className="text-xs text-mute">
                                                         {dropoff?.available
                                                             ? `Sisa kuota hari ini: ${dropoff.remaining_capacity} dari ${dropoff.total_capacity}`
@@ -1007,11 +967,11 @@ export default function BookingPortal({
 
                                             {isSelectedHoliday ? (
                                                 <p className="rounded-sm bg-bone p-4 text-sm text-mute">
-                                                    Bisnis libur pada tanggal yang dipilih. Silakan pilih tanggal lain.
+                                                    Toko libur di tanggal ini. Pilih tanggal lain.
                                                 </p>
                                             ) : isSelectedDateClosed ? (
                                                 <p className="rounded-sm bg-bone p-4 text-sm text-mute">
-                                                    Bisnis tutup pada hari ini sesuai jadwal operasional mingguan. Silakan pilih hari lain.
+                                                    Toko tutup di hari itu. Pilih hari lain.
                                                 </p>
                                             ) : showInitialLoading || !slotsLoaded ? (
                                                 <div className="h-20 rounded-sm bg-bone" aria-label="Memeriksa kuota harian" />
@@ -1021,11 +981,11 @@ export default function BookingPortal({
                                                 </p>
                                             ) : (
                                                 <div className="space-y-4">
-                                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline-soft bg-canvas px-4 py-3 text-xs">
+                                                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4 text-sm">
                                                         <div className="flex items-center gap-2 text-ink">
                                                             <PackageCheck className="size-4 shrink-0 text-electric" aria-hidden="true" />
                                                             <span>
-                                                                Tanpa perlu antre jam — datang kapan saja pukul{' '}
+                                                                Datang kapan saja pukul{' '}
                                                                 <strong className="font-mono tabular-nums">
                                                                     {dropoff.open_time}–{dropoff.close_time}
                                                                 </strong>
@@ -1039,8 +999,8 @@ export default function BookingPortal({
                                                     </div>
 
                                                     {selectedService?.supports_pickup && (
-                                                        <div className="space-y-3 rounded-sm border border-hairline-soft p-4">
-                                                            <p className="text-xs font-semibold text-ink">Metode Penyerahan</p>
+                                                        <div className="space-y-3 border-t border-divider pt-4">
+                                                            <p className="text-sm font-semibold text-ink">Metode penyerahan</p>
                                                             <div
                                                                 className="grid grid-cols-2 rounded-xl bg-bone p-1"
                                                                 role="group"
@@ -1058,26 +1018,26 @@ export default function BookingPortal({
                                                                         fulfillmentType === 'dropoff' ? 'bg-canvas text-ink' : 'text-mute'
                                                                     )}
                                                                 >
-                                                                    Antar ke Toko
+                                                                    Antar ke toko
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     aria-pressed={fulfillmentType === 'pickup'}
                                                                     onClick={() => setFulfillmentType('pickup')}
                                                                     className={cn(
-                                                                        'inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xs px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                                        'inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-xs px-2 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                                                         fulfillmentType === 'pickup' ? 'bg-canvas text-ink' : 'text-mute'
                                                                     )}
                                                                 >
-                                                                    <Truck className="size-3.5" aria-hidden="true" />
-                                                                    Jemput &amp; Antar
+                                                                    <Truck className="size-3.5 max-[359px]:hidden" aria-hidden="true" />
+                                                                    Jemput &amp; antar
                                                                 </button>
                                                             </div>
 
                                                             {fulfillmentType === 'pickup' && (
                                                                 <div className="space-y-3 pt-1">
                                                                     <div className="space-y-1.5">
-                                                                        <p className="text-xs font-semibold text-mute">Sesi Penjemputan</p>
+                                                                        <p className="text-xs font-semibold text-mute">Sesi penjemputan</p>
                                                                         <div className="grid grid-cols-2 gap-2">
                                                                             {(['morning', 'afternoon', 'evening', 'anytime'] as const).map((sess) => (
                                                                                 <button
@@ -1100,7 +1060,7 @@ export default function BookingPortal({
 
                                                                     <div className="space-y-1.5">
                                                                         <Label htmlFor="pickup-address" className="text-xs">
-                                                                            Alamat Penjemputan *
+                                                                            Alamat penjemputan *
                                                                         </Label>
                                                                         <Textarea
                                                                             id="pickup-address"
@@ -1115,7 +1075,7 @@ export default function BookingPortal({
                                                                             aria-describedby={pickupAddressError || errors.pickup_address ? 'pickup-address-error' : undefined}
                                                                         />
                                                                         {(pickupAddressError || errors.pickup_address) && (
-                                                                            <p id="pickup-address-error" role="alert" className="text-xs font-medium text-destructive">
+                                                                            <p id="pickup-address-error" className="text-xs font-medium text-destructive">
                                                                                 {pickupAddressError || errors.pickup_address}
                                                                             </p>
                                                                         )}
@@ -1131,7 +1091,7 @@ export default function BookingPortal({
                                     <div aria-live="polite" className="min-h-[148px]">
                                         <div className="mb-3 flex items-center justify-between gap-2">
                                             <p className="text-sm font-semibold text-ink">
-                                                Slot Tersedia ({tz})
+                                                Slot tersedia ({tz})
                                             </p>
                                             {showRefreshing && (
                                                 <span className="text-xs font-medium text-mute">
@@ -1142,11 +1102,11 @@ export default function BookingPortal({
 
                                         {isSelectedHoliday ? (
                                             <p className="rounded-sm bg-bone p-4 text-sm text-mute">
-                                                Bisnis libur pada tanggal yang dipilih. Silakan pilih tanggal lain.
+                                                Toko libur di tanggal ini. Pilih tanggal lain.
                                             </p>
                                         ) : isSelectedDateClosed ? (
                                             <p className="rounded-sm bg-bone p-4 text-sm text-mute">
-                                                Bisnis tutup pada hari ini sesuai jadwal operasional mingguan. Silakan pilih hari lain.
+                                                Toko tutup di hari itu. Pilih hari lain.
                                             </p>
                                         ) : showInitialLoading ? (
                                             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Memuat ketersediaan jadwal">
@@ -1214,7 +1174,7 @@ export default function BookingPortal({
 
                                     <div className="grid gap-4 sm:grid-cols-2">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="customer_name">Nama Lengkap *</Label>
+                                            <Label htmlFor="customer_name">Nama lengkap *</Label>
                                             <Input
                                                 id="customer_name"
                                                 autoComplete="name"
@@ -1227,7 +1187,7 @@ export default function BookingPortal({
                                                 required
                                             />
                                             {errors.customer_name && (
-                                                <p id="customer-name-error" role="alert" className="text-xs text-destructive">
+                                                <p id="customer-name-error" className="text-xs text-destructive">
                                                     {errors.customer_name}
                                                 </p>
                                             )}
@@ -1249,14 +1209,14 @@ export default function BookingPortal({
                                                 required
                                             />
                                             {errors.customer_phone && (
-                                                <p id="customer-phone-error" role="alert" className="text-xs text-destructive">
+                                                <p id="customer-phone-error" className="text-xs text-destructive">
                                                     {errors.customer_phone}
                                                 </p>
                                             )}
                                         </div>
 
                                         <div className="space-y-1.5 sm:col-span-2">
-                                            <Label htmlFor="customer_email">Email (Opsional)</Label>
+                                            <Label htmlFor="customer_email">Email (opsional)</Label>
                                             <Input
                                                 id="customer_email"
                                                 type="email"
@@ -1269,14 +1229,14 @@ export default function BookingPortal({
                                                 aria-describedby={errors.customer_email ? 'customer-email-error' : undefined}
                                             />
                                             {errors.customer_email && (
-                                                <p id="customer-email-error" role="alert" className="text-xs text-destructive">
+                                                <p id="customer-email-error" className="text-xs text-destructive">
                                                     {errors.customer_email}
                                                 </p>
                                             )}
                                         </div>
 
                                         <div className="space-y-1.5 sm:col-span-2">
-                                            <Label htmlFor="customer_notes">Catatan Tambahan (Opsional)</Label>
+                                            <Label htmlFor="customer_notes">Catatan tambahan (opsional)</Label>
                                             <Textarea
                                                 id="customer_notes"
                                                 className="bg-canvas"
@@ -1291,7 +1251,7 @@ export default function BookingPortal({
                                                 aria-describedby={errors.customer_notes ? 'customer-notes-error' : undefined}
                                             />
                                             {errors.customer_notes && (
-                                                <p id="customer-notes-error" role="alert" className="text-xs text-destructive">
+                                                <p id="customer-notes-error" className="text-xs text-destructive">
                                                     {errors.customer_notes}
                                                 </p>
                                             )}
@@ -1304,10 +1264,10 @@ export default function BookingPortal({
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
                                                     <h3 className="text-base font-semibold text-ink">
-                                                        Down Payment (DP) Diperlukan
+                                                        Down payment (DP) diperlukan
                                                     </h3>
                                                     <p className="text-xs text-mute">
-                                                        Transfer langsung ke rekening bisnis (0% biaya admin).
+                                                        Transfer langsung ke rekening toko.
                                                     </p>
                                                 </div>
                                                 <span className="text-lg font-semibold tabular-nums text-ink">
@@ -1340,7 +1300,7 @@ export default function BookingPortal({
                                                         className="size-24 shrink-0 rounded-xs object-cover outline-1 -outline-offset-1 outline-black/10"
                                                     />
                                                     <div className="text-xs text-mute">
-                                                        <p className="font-semibold text-ink">Scan QRIS Merchant</p>
+                                                        <p className="font-semibold text-ink">Scan QRIS</p>
                                                         <p className="mt-1">Gunakan aplikasi mobile banking atau e-wallet Anda.</p>
                                                     </div>
                                                 </div>
@@ -1357,7 +1317,7 @@ export default function BookingPortal({
                                                         dpMode === 'now' ? 'bg-canvas text-ink' : 'text-mute'
                                                     )}
                                                 >
-                                                    Upload Bukti Sekarang
+                                                    Upload bukti sekarang
                                                 </button>
                                                 <button
                                                     type="button"
@@ -1372,7 +1332,7 @@ export default function BookingPortal({
                                                         dpMode === 'later' ? 'bg-canvas text-ink' : 'text-mute'
                                                     )}
                                                 >
-                                                    Bayar DP Nanti ({business.dp_expiry_minutes} mnt)
+                                                    Bayar DP nanti ({business.dp_expiry_minutes} mnt)
                                                 </button>
                                             </div>
 
@@ -1403,7 +1363,7 @@ export default function BookingPortal({
                                                         />
                                                     </label>
                                                     {(dpProofError || errors.dp_proof) && (
-                                                        <p id="dp-proof-error" role="alert" className="text-xs font-medium text-destructive">
+                                                        <p id="dp-proof-error" className="text-xs font-medium text-destructive">
                                                             {dpProofError || errors.dp_proof}
                                                         </p>
                                                     )}
@@ -1426,31 +1386,9 @@ export default function BookingPortal({
                                         </div>
                                     )}
 
-                                    <div className="flex flex-col items-stretch justify-between gap-4 pt-2 sm:flex-row sm:items-center lg:hidden">
-                                        <div className="text-sm">
-                                            <p className="text-mute">
-                                                Ringkasan: <strong className="text-ink">{selectedService?.name}</strong>
-                                                {selectedStaffObj && ` · ${selectedStaffObj.name}`}
-                                                {isDropoffService &&
-                                                    ` · ${effectiveQuantity} item (${fulfillmentType === 'pickup' ? 'Jemput' : 'Drop-off'})`}
-                                            </p>
-                                            <p className="font-semibold text-ink">
-                                                {formatDateIndo(selectedDate)}
-                                                {!isDropoffService && ` · ${selectedTime}`}
-                                            </p>
-                                            <p className="font-semibold tabular-nums text-ink">
-                                                Total: {formatRupiah(computedTotalPrice)}
-                                            </p>
-                                        </div>
-
-                                        <Button type="submit" size="lg" disabled={submitting || Boolean(bookingDisabledReason)}>
-                                            {submitting ? 'Memproses Pesanan…' : isDropoffService ? 'Buat Pesanan Drop-off' : 'Konfirmasi Reservasi'}
-                                        </Button>
-                                    </div>
-
                                     <div className="hidden lg:block">
                                         <Button type="submit" size="lg" className="w-full" disabled={submitting || Boolean(bookingDisabledReason)}>
-                                            {submitting ? 'Memproses Pesanan…' : isDropoffService ? 'Buat Pesanan Drop-off' : 'Konfirmasi Reservasi'}
+                                            {submitting ? 'Memproses…' : isDropoffService ? 'Buat pesanan' : 'Buat reservasi'}
                                         </Button>
                                     </div>
                                 </section>
@@ -1480,7 +1418,7 @@ export default function BookingPortal({
                                         />
                                     )}
                                     <div className="min-w-0">
-                                        <p className="text-xs font-semibold text-mute">Ringkasan Reservasi</p>
+                                        <p className="text-xs font-semibold text-mute">Ringkasan reservasi</p>
                                         <h2 className="mt-0.5 truncate text-lg font-semibold text-ink">{business.name}</h2>
                                     </div>
                                 </div>
@@ -1523,7 +1461,7 @@ export default function BookingPortal({
                                     )}
 
                                     <div className="flex items-start justify-between gap-3">
-                                        <span className="text-mute">{isDropoffService ? 'Tanggal Drop-off' : 'Tanggal'}</span>
+                                        <span className="text-mute">{isDropoffService ? 'Tanggal drop-off' : 'Tanggal'}</span>
                                         <span className="text-right font-semibold tabular-nums text-ink">
                                             {formatDateIndo(selectedDate)}
                                         </span>
@@ -1536,12 +1474,12 @@ export default function BookingPortal({
                                                 <span className="text-right font-semibold text-ink">
                                                     {selectedService?.supports_pickup && fulfillmentType === 'pickup'
                                                         ? `Jemput (${PICKUP_SESSION_LABELS[pickupSession]})`
-                                                        : 'Antar ke Toko'}
+                                                        : 'Antar ke toko'}
                                                 </span>
                                             </div>
                                             {dropoff?.estimated_ready_date && (
                                                 <div className="flex items-start justify-between gap-3">
-                                                    <span className="text-mute">Est. Selesai</span>
+                                                    <span className="text-mute">Est. selesai</span>
                                                     <span className="text-right font-semibold tabular-nums text-ink">
                                                         {formatDateIndo(dropoff.estimated_ready_date)}
                                                     </span>
@@ -1560,7 +1498,7 @@ export default function BookingPortal({
 
                                 <div className="space-y-2 border-t border-divider pt-4">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-mute">Total Biaya</span>
+                                        <span className="text-mute">Total biaya</span>
                                         <span className="text-lg font-semibold tabular-nums text-ink">
                                             {formatRupiah(computedTotalPrice)}
                                         </span>
@@ -1578,7 +1516,7 @@ export default function BookingPortal({
                                 <div className="space-y-2 rounded-sm bg-canvas p-4 text-xs text-mute">
                                     <div className="flex items-center gap-2 font-semibold text-ink">
                                         <ShieldCheck className="size-4 shrink-0 text-electric" aria-hidden="true" />
-                                        <span>{isDropoffService ? 'Jaminan Pesanan' : 'Jaminan Reservasi'}</span>
+                                        <span>{isDropoffService ? 'Jaminan pesanan' : 'Jaminan reservasi'}</span>
                                     </div>
                                     <ul className="space-y-1 leading-relaxed">
                                         <li>
@@ -1588,13 +1526,48 @@ export default function BookingPortal({
                                                 : 'Slot terkunci otomatis dan bebas bentrok jadwal.'}
                                         </li>
                                         {requiresDp && (
-                                            <li>• Transfer DP langsung ke rekening merchant (0% biaya admin).</li>
+                                            <li>• Transfer DP langsung ke rekening toko.</li>
                                         )}
                                         <li>• Halaman status & ringkasan WhatsApp tersedia setelah submit.</li>
                                     </ul>
                                 </div>
                             </div>
                         </aside>
+
+                        {/* Mobile/tablet sticky total + CTA */}
+                        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-canvas px-4 py-3 sm:px-6 lg:hidden">
+                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="truncate text-xs text-mute">
+                                        {selectedService?.name}
+                                        {isDropoffService && ` × ${effectiveQuantity}`}
+                                        {` · ${formatDateShortIndo(selectedDate)}`}
+                                        {!isDropoffService && selectedTime && `, ${selectedTime}`}
+                                    </p>
+                                    <p className="text-lg font-semibold whitespace-nowrap tabular-nums text-ink">
+                                        {formatRupiah(computedTotalPrice)}
+                                    </p>
+                                </div>
+                                {canShowCustomerStep ? (
+                                    <Button
+                                        type="submit"
+                                        className="shrink-0"
+                                        disabled={submitting || Boolean(bookingDisabledReason)}
+                                    >
+                                        {submitting ? 'Memproses…' : isDropoffService ? 'Buat pesanan' : 'Buat reservasi'}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        className="shrink-0"
+                                        disabled={Boolean(bookingDisabledReason)}
+                                        onClick={() => document.getElementById('step-schedule')?.scrollIntoView()}
+                                    >
+                                        {isDropoffService ? 'Pilih tanggal' : 'Pilih jam'}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </form>
                 )}
             </main>

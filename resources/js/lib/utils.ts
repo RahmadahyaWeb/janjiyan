@@ -20,7 +20,7 @@ export function scrollToFirstInvalid(container?: ParentNode | null): void {
     requestAnimationFrame(() => {
         const scope = container ?? document;
         const invalidEl = scope.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"][data-form-error="true"]');
-        invalidEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        invalidEl?.scrollIntoView({ block: 'center' });
         invalidEl?.focus?.();
     });
 }
