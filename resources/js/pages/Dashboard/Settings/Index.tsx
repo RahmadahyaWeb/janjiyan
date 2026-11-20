@@ -235,7 +235,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                 <HorizontalScrollContainer
                     as="div"
                     ariaLabel="Lompat ke bagian pengaturan"
-                    wrapperClassName="sticky top-16 z-30 -mx-4 bg-canvas/95 py-2 backdrop-blur-xs sm:mx-0"
+                    wrapperClassName="sticky top-16 z-30 -mx-4 bg-canvas py-2 sm:mx-0"
                     className="flex gap-1.5 px-4 sm:px-0"
                 >
                     {SECTION_LINKS.map((s) => (

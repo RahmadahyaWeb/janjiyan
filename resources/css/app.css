@@ -110,6 +110,18 @@
         font-weight: 650;
         letter-spacing: 0;
     }
+
+    /* iOS WebKit draws date inputs natively: ignores width/height, grey bg, centered text. */
+    input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+    }
+
+    input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
+        min-height: 1.5em;
+    }
 }
 
 @keyframes marquee {

@@ -123,7 +123,7 @@ export default function AdminIndex({
         <div className="min-h-screen bg-canvas text-ink">
             <Head title="Panel Superadmin" />
 
-            <header className="sticky top-0 z-40 border-b border-divider bg-canvas/95 backdrop-blur-xs">
+            <header className="sticky top-0 z-40 border-b border-divider bg-canvas">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                         <JanjiyanLogo size="sm" />
