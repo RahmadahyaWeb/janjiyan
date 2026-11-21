@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Business;
 use App\Models\User;
-use App\Services\PlanLimitService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -67,22 +64,13 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'business_name' => ['required', 'string', 'max:120'],
-            'business_category' => ['required', 'string', 'max:80'],
         ]);
 
-        // Atomic: a failed provisioning step must not leave an orphan user that blocks re-registering.
-        $user = DB::transaction(function () use ($validated) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-            ]);
-
-            $this->provisionNewOwner($user, $validated['business_name'], $validated['business_category']);
-
-            return $user;
-        });
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
 
         // Mail outage must not 500 an account that already exists; user can resend from the notice page.
         try {
@@ -156,8 +144,6 @@ class AuthController extends Controller
                 'avatar_url' => $googleUser->getAvatar(),
                 'email_verified_at' => now(),
             ]);
-
-            $this->provisionNewOwner($user, $user->name.' Studio', 'Jasa & Layanan');
         } else {
             $user->update([
                 'google_id' => $user->google_id ?: $googleUser->getId(),
@@ -187,35 +173,5 @@ class AuthController extends Controller
         }
 
         return redirect()->route('home');
-    }
-
-    private function provisionNewOwner(User $user, string $businessName, string $category): void
-    {
-        app(PlanLimitService::class)->ensureTrialSubscription($user);
-
-        $baseSlug = Str::slug($businessName) ?: 'bisnis';
-        $slug = $baseSlug;
-        $counter = 1;
-        while (Business::where('slug', $slug)->exists()) {
-            $slug = "{$baseSlug}-{$counter}";
-            $counter++;
-        }
-
-        $business = Business::create([
-            'owner_id' => $user->id,
-            'name' => $businessName,
-            'slug' => $slug,
-            'category' => $category,
-            'timezone' => 'Asia/Jakarta',
-            'dp_expiry_minutes' => 120,
-        ]);
-
-        $business->users()->attach($user->id, [
-            'role' => 'owner',
-            'permissions' => json_encode(['*']),
-        ]);
-        $business->seedDefaultOperatingHours();
-
-        $user->update(['active_business_id' => $business->id]);
     }
 }

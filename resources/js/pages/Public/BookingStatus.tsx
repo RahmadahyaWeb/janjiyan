@@ -6,6 +6,7 @@ import { BusinessHeader, headerActionClass } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { resolveBusinessType } from '@/lib/businessType';
 import {
     buildWhatsAppUrl,
     formatBookingScheduleShort,
@@ -17,12 +18,13 @@ import {
     WORK_STATUS_LABELS,
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { PageProps } from '@/types';
+import type { BusinessType, PageProps, ServiceUnitLabel } from '@/types';
 
 interface BookingStatusProps {
     business: {
         name: string;
         slug: string;
+        business_type?: BusinessType;
         phone: string | null;
         address: string | null;
         timezone: string;
@@ -48,6 +50,7 @@ interface BookingStatusProps {
         end_time_local: string;
         booking_mode?: 'time_slot' | 'dropoff';
         quantity?: number;
+        unit_label?: ServiceUnitLabel;
         fulfillment_type?: 'dropoff' | 'pickup';
         pickup_session?: string | null;
         pickup_address?: string | null;
@@ -77,10 +80,14 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     const [remainingText, setRemainingText] = useState<string>('');
     const dpExpired = remainingText === 'Waktu habis';
 
+    const businessType = resolveBusinessType(business.business_type);
     const invoiceLabel = booking.invoice_number || booking.booking_code;
-    const isDropoff = booking.booking_mode === 'dropoff';
+    const isDropoff = businessType === 'dropoff' || booking.booking_mode === 'dropoff';
     const qty = Math.max(1, booking.quantity ?? 1);
+    const unitLabel = booking.unit_label ?? 'item';
     const scheduleLabel = booking.schedule_label ?? formatBookingScheduleShort(booking);
+    const bookingNoun = businessType === 'dropoff' ? 'pesanan' : businessType === 'space_booking' ? 'booking' : 'reservasi';
+    const lookupLabel = businessType === 'dropoff' ? 'Cek pesanan' : businessType === 'space_booking' ? 'Cek booking' : 'Cek reservasi';
 
     const dropoffSteps = [
         {
@@ -158,11 +165,11 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     };
 
     const waMessage = [
-        `Halo ${business.name}, saya ingin konfirmasi ${isDropoff ? 'pesanan' : 'reservasi'}:`,
+        `Halo ${business.name}, saya ingin konfirmasi ${bookingNoun}:`,
         `No. Invoice: ${invoiceLabel}`,
         `Kode Booking: ${booking.booking_code}`,
         `Nama: ${booking.customer_name}`,
-        `Layanan: ${booking.service_name}${isDropoff ? ` (${qty} item)` : ''}`,
+        `${businessType === 'space_booking' ? 'Fasilitas / Paket' : 'Layanan'}: ${booking.service_name}${isDropoff ? ` (${qty} ${unitLabel})` : ''}`,
         `Jadwal: ${formatDateIndo(booking.booking_date)} (${scheduleLabel})`,
         isDropoff && booking.estimated_ready_date
             ? `Estimasi Selesai: ${formatDateIndo(booking.estimated_ready_date)}`
@@ -184,11 +191,11 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                   dates: `${booking.start_at_utc}/${booking.end_at_utc}`,
                   details: [
                       `Kode Booking: ${booking.booking_code}`,
-                      isDropoff ? `Jumlah: ${qty} item` : '',
+                      isDropoff ? `Jumlah: ${qty} ${unitLabel}` : '',
                       isDropoff && booking.estimated_ready_date
                           ? `Estimasi Selesai: ${formatDateIndo(booking.estimated_ready_date)}`
                           : '',
-                      booking.staff_name ? `Staff: ${booking.staff_name}` : '',
+                      businessType === 'staff_appointment' && booking.staff_name ? `Staff: ${booking.staff_name}` : '',
                       `Total: ${formatRupiah(booking.total_price)}`,
                   ]
                       .filter(Boolean)
@@ -211,8 +218,8 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
             <BusinessHeader business={business} label="Invoice" widthClassName="box-content max-w-xl">
                 <Link href={route('public.booking.invoices', business.slug)} className={headerActionClass}>
                     <FileText className="size-4" aria-hidden="true" />
-                    <span className="hidden sm:inline">Cek pesanan</span>
-                    <span className="sr-only sm:hidden">Cek pesanan</span>
+                    <span className="hidden sm:inline">{lookupLabel}</span>
+                    <span className="sr-only sm:hidden">{lookupLabel}</span>
                 </Link>
             </BusinessHeader>
 
@@ -297,10 +304,10 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             </span>
                         </div>
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">Layanan</span>
+                            <span className="text-mute">{businessType === 'space_booking' ? 'Fasilitas / Paket' : 'Layanan'}</span>
                             <span className="text-right font-semibold text-ink">
                                 {booking.service_name}
-                                {isDropoff ? ` (${qty} item)` : ''}
+                                {isDropoff ? ` (${qty} ${unitLabel})` : ''}
                             </span>
                         </div>
                         {isDropoff && (
@@ -317,7 +324,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                 <span className="max-w-xs text-right text-body">{booking.pickup_address}</span>
                             </div>
                         )}
-                        {booking.staff_name && (
+                        {businessType === 'staff_appointment' && booking.staff_name && (
                             <div className="flex justify-between gap-4">
                                 <span className="text-mute">Staff</span>
                                 <span className="text-right font-semibold text-ink">{booking.staff_name}</span>
@@ -493,7 +500,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                         href={route('public.booking', business.slug)}
                         className="inline-flex min-h-11 items-center text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                     >
-                        Buat reservasi lain
+                        Buat {bookingNoun} lain
                     </Link>
                 </p>
 

@@ -6,12 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Business;
 use App\Models\Service;
-use App\Services\PlanLimitService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -84,6 +82,7 @@ class DashboardController extends Controller
                 'staff_name' => $b->staff?->name,
                 'booking_mode' => $b->booking_mode ?? 'time_slot',
                 'quantity' => (int) ($b->quantity ?? 1),
+                'unit_label' => $b->resolvedUnitLabel(),
                 'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
                 'work_status' => $b->work_status,
                 'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
@@ -109,10 +108,13 @@ class DashboardController extends Controller
 
         $onboarding = [
             'has_services' => $business->services()->where('is_active', true)->exists(),
-            'has_staff' => $business->staff()->where('is_active', true)->exists(),
             'has_payment_info' => ! empty($business->bank_accounts) || ! empty($business->qris_path),
             'has_bookings' => $business->bookings()->exists(),
         ];
+
+        if ($business->supportsStaffScheduling()) {
+            $onboarding['has_staff'] = $business->staff()->where('is_active', true)->exists();
+        }
 
         $trendStart = now($tz)->subDays(6)->toDateString();
         $trendRows = $business->bookings()
@@ -164,55 +166,6 @@ class DashboardController extends Controller
         $user->update(['active_business_id' => $business->id]);
 
         return back()->with('success', "Berhasil beralih ke {$business->name}.");
-    }
-
-    public function createBusinessPage(): Response
-    {
-        return Inertia::render('Dashboard/Businesses/Create');
-    }
-
-    public function createBusiness(Request $request, PlanLimitService $planLimitService): RedirectResponse
-    {
-        $user = $request->user();
-        if (! $planLimitService->canCreateBusiness($user)) {
-            return back()->with('error', 'Jumlah bisnis sudah mencapai batas paket Anda. Silakan upgrade paket.');
-        }
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'category' => ['required', 'string', 'max:80'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $baseSlug = Str::slug($validated['name']) ?: 'bisnis';
-        $slug = $baseSlug;
-        $counter = 1;
-        while (Business::where('slug', $slug)->exists()) {
-            $slug = "{$baseSlug}-{$counter}";
-            $counter++;
-        }
-
-        $business = Business::create([
-            'owner_id' => $user->id,
-            'name' => $validated['name'],
-            'slug' => $slug,
-            'category' => $validated['category'],
-            'phone' => $validated['phone'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'timezone' => 'Asia/Jakarta',
-            'dp_expiry_minutes' => 120,
-        ]);
-
-        $business->users()->attach($user->id, [
-            'role' => 'owner',
-            'permissions' => json_encode(['*']),
-        ]);
-        $business->seedDefaultOperatingHours();
-
-        $user->update(['active_business_id' => $business->id]);
-
-        return to_route('dashboard')->with('success', "Bisnis {$business->name} berhasil dibuat!");
     }
 
     public function destroyBusiness(Request $request, Business $business): RedirectResponse

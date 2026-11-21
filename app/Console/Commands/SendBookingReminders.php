@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Booking;
+use App\Models\Business;
 use App\Services\BookingNotificationService;
 use App\Services\PlanLimitService;
 use Illuminate\Console\Command;
@@ -77,7 +78,7 @@ class SendBookingReminders extends Command
             ->where('reservation_status', 'confirmed')
             ->whereNull('reminder_h2_sent_at')
             ->whereBetween('start_at', [$now->copy()->addMinutes(105), $now->copy()->addMinutes(135)])
-            ->whereHas('business', fn ($q) => $q->where('is_active', true)->whereNull('suspended_at')->where('reminder_h2_enabled', true))
+            ->whereHas('business', fn ($q) => $q->where('is_active', true)->whereNull('suspended_at')->where('reminder_h2_enabled', true)->where('business_type', '!=', Business::TYPE_DROPOFF))
             ->whereHas('customer', fn ($q) => $q->whereNotNull('email')->where('email', '!=', ''))
             ->chunkById(100, function ($candidates) use (&$h2Sent, $hasActiveOwnerSubscription, $notificationService): void {
                 foreach ($candidates as $booking) {

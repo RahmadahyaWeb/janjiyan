@@ -1,11 +1,13 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarClock, Download, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatRupiah, STAFF_ROLE_LABELS } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface StaffMember {
     id: number;
@@ -28,37 +30,46 @@ interface StaffIndexProps {
 }
 
 export default function StaffIndex({ staffMembers }: StaffIndexProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const isStaffAppointment = config.type === 'staff_appointment';
+    const addLabel = isStaffAppointment ? 'Tambah Staff' : 'Tambah Anggota Tim';
     const [deletingStaff, setDeletingStaff] = useState<StaffMember | null>(null);
 
     return (
         <DashboardLayout
-            title="Tim & Staff"
+            title={config.nav.teamLabel}
             actions={
                 <Button asChild size="sm" className="h-10 px-4">
                     <Link href={route('dashboard.staff.create')}>
                         <Plus className="size-4" aria-hidden="true" />
-                        Tambah Staff
+                        {addLabel}
                     </Link>
                 </Button>
             }
         >
-            <Head title="Tim & Staff" />
+            <Head title={config.nav.teamLabel} />
 
             <p className="max-w-2xl text-sm text-mute">
-                Staff di sini bisa dipilih pelanggan saat booking. Akun login dashboard itu opsional, cukup untuk staff
-                yang perlu membuka reservasi.
+                {isStaffAppointment
+                    ? 'Staff di sini bisa dipilih pelanggan saat booking. Akun login dashboard bersifat opsional, cukup untuk staff yang perlu membuka jadwal dan reservasi.'
+                    : 'Tambahkan anggota tim, kasir, atau admin untuk membantu mengelola operasional dashboard, memverifikasi DP, dan memproses transaksi.'}
             </p>
 
             {staffMembers.length === 0 ? (
                 <div className="space-y-3 rounded-md bg-bone p-12 text-center">
-                    <p className="text-base font-semibold text-ink">Belum ada staff terdaftar.</p>
+                    <p className="text-base font-semibold text-ink">
+                        {isStaffAppointment ? 'Belum ada staff terdaftar.' : 'Belum ada anggota tim terdaftar.'}
+                    </p>
                     <p className="text-sm text-mute">
-                        Tambahkan anggota tim agar pelanggan dapat memilih staff saat membuat reservasi.
+                        {isStaffAppointment
+                            ? 'Tambahkan anggota tim agar pelanggan dapat memilih staff saat membuat reservasi.'
+                            : 'Tambahkan admin atau kasir yang perlu mengakses dashboard bisnis Anda.'}
                     </p>
                     <Button asChild size="sm">
                         <Link href={route('dashboard.staff.create')}>
                             <Plus className="size-4" aria-hidden="true" />
-                            Tambah Staff
+                            {addLabel}
                         </Link>
                     </Button>
                 </div>
@@ -77,8 +88,10 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {!st.is_active && <Badge variant="danger">Nonaktif</Badge>}
-                                        {st.has_custom_schedule && <Badge variant="outline">Jam kerja khusus</Badge>}
-                                        {(st.upcoming_time_offs_count ?? 0) > 0 && (
+                                        {isStaffAppointment && st.has_custom_schedule && (
+                                            <Badge variant="outline">Jam kerja khusus</Badge>
+                                        )}
+                                        {isStaffAppointment && (st.upcoming_time_offs_count ?? 0) > 0 && (
                                             <Badge variant="warning">{st.upcoming_time_offs_count} cuti terjadwal</Badge>
                                         )}
                                         {st.has_login ? (
@@ -90,7 +103,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                 </div>
                                 {st.email && <p className="mt-3 text-xs text-mute">{st.email}</p>}
                                 {st.phone && <p className="text-xs text-mute">{st.phone}</p>}
-                                {st.commission_type && st.commission_type !== 'none' && (
+                                {isStaffAppointment && st.commission_type && st.commission_type !== 'none' && (
                                     <p className="mt-2 inline-flex items-center rounded-full bg-bone px-2.5 py-0.5 font-mono text-xs font-medium text-ink">
                                         Komisi:{' '}
                                         {st.commission_type === 'percentage'
@@ -101,36 +114,40 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                             </div>
 
                             <div className="mt-4 flex flex-wrap justify-end gap-1.5 border-t border-divider pt-3">
+                                {isStaffAppointment && (
+                                    <>
+                                        <Button
+                                            asChild
+                                            variant="ghost"
+                                            size="sm"
+                                            aria-label={`Simpan jadwal ${st.name} ke kalender HP (file .ics)`}
+                                        >
+                                            <a
+                                                href={route('dashboard.staff.calendar.ics', st.id)}
+                                                title="Unduh jadwal reservasi staff ini untuk Google Calendar atau Kalender iPhone"
+                                            >
+                                                <Download className="size-3.5" aria-hidden="true" />
+                                                Ke Kalender HP
+                                            </a>
+                                        </Button>
+                                        <Button
+                                            asChild
+                                            variant="ghost"
+                                            size="sm"
+                                            aria-label={`Jadwal dan cuti ${st.name}`}
+                                        >
+                                            <Link href={route('dashboard.staff.schedule.edit', st.id)}>
+                                                <CalendarClock className="size-3.5" aria-hidden="true" />
+                                                Jadwal &amp; Cuti
+                                            </Link>
+                                        </Button>
+                                    </>
+                                )}
                                 <Button
                                     asChild
                                     variant="ghost"
                                     size="sm"
-                                    aria-label={`Simpan jadwal ${st.name} ke kalender HP (file .ics)`}
-                                >
-                                    <a
-                                        href={route('dashboard.staff.calendar.ics', st.id)}
-                                        title="Unduh jadwal reservasi staff ini untuk Google Calendar atau Kalender iPhone"
-                                    >
-                                        <Download className="size-3.5" aria-hidden="true" />
-                                        Ke Kalender HP
-                                    </a>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label={`Jadwal dan cuti ${st.name}`}
-                                >
-                                    <Link href={route('dashboard.staff.schedule.edit', st.id)}>
-                                        <CalendarClock className="size-3.5" aria-hidden="true" />
-                                        Jadwal &amp; Cuti
-                                    </Link>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label={`Edit staff ${st.name}`}
+                                    aria-label={`Edit ${isStaffAppointment ? 'staff' : 'anggota tim'} ${st.name}`}
                                 >
                                     <Link href={route('dashboard.staff.edit', st.id)}>
                                         <Pencil className="size-3.5" aria-hidden="true" />
@@ -141,7 +158,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    aria-label={`Hapus staff ${st.name}`}
+                                    aria-label={`Hapus ${isStaffAppointment ? 'staff' : 'anggota tim'} ${st.name}`}
                                     className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                                     onClick={() => setDeletingStaff(st)}
                                 >
@@ -157,9 +174,13 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
             <ConfirmDialog
                 open={deletingStaff !== null}
                 onOpenChange={(open) => !open && setDeletingStaff(null)}
-                title={`Hapus staff "${deletingStaff?.name ?? ''}"?`}
-                description="Staff yang dihapus tidak lagi tersedia untuk pilihan reservasi dan akses dashboard-nya akan dicabut."
-                confirmLabel="Hapus Staff"
+                title={`Hapus ${isStaffAppointment ? 'staff' : 'anggota tim'} "${deletingStaff?.name ?? ''}"?`}
+                description={
+                    isStaffAppointment
+                        ? 'Staff yang dihapus tidak lagi tersedia untuk pilihan reservasi dan akses dashboard-nya akan dicabut.'
+                        : 'Anggota tim yang dihapus akan dicabut akses dashboard-nya secara permanen.'
+                }
+                confirmLabel={isStaffAppointment ? 'Hapus Staff' : 'Hapus Anggota Tim'}
                 onConfirm={() => {
                     if (!deletingStaff) return;
                     router.delete(route('dashboard.staff.destroy', deletingStaff.id), {

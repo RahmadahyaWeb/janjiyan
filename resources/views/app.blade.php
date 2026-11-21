@@ -3,8 +3,8 @@
     <head>
         @php
             $appName = config('app.name', 'Janjiyan');
-            $seoTitle = $seo['title'] ?? "{$appName} — Sistem booking dan DP untuk bisnis jasa";
-            $seoDescription = $seo['description'] ?? 'Atur janji temu lebih pasti lewat link di bio Instagram atau poster QR di meja kasir. Kelola booking, DP, pengingat otomatis, dan jadwal staff dalam satu tempat. Gratis 14 hari.';
+            $seoTitle = $seo['title'] ?? "{$appName} — Sistem booking, DP, dan pesanan untuk bisnis jasa";
+            $seoDescription = $seo['description'] ?? 'Kelola janji temu, booking ruang atau lapangan, hingga pesanan laundry dan cuci sepatu lewat satu link. Atur DP, pengingat otomatis, dan kuota harian tanpa balas chat satu per satu. Gratis 14 hari.';
             $seoImage = $seo['image'] ?? url('/og-default.png');
             $seoUrl = $seo['url'] ?? url()->current();
             $seoNoindex = (bool) ($seo['noindex'] ?? false)

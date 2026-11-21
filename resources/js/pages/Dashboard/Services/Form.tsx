@@ -1,5 +1,5 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { Upload } from 'lucide-react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Lock, Upload } from 'lucide-react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,9 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig, getBusinessTypeOption, UNIT_LABEL_OPTIONS } from '@/lib/businessType';
 import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
+import type { PageProps, ServiceUnitLabel } from '@/types';
 
 interface ServiceData {
     id: number;
@@ -21,6 +23,7 @@ interface ServiceData {
     capacity: number;
     assignment_mode: 'staff' | 'capacity';
     booking_mode: 'time_slot' | 'dropoff';
+    unit_label?: ServiceUnitLabel;
     turnaround_days: number;
     supports_pickup: boolean;
     dp_type: 'none' | 'fixed' | 'percentage';
@@ -41,6 +44,10 @@ interface ServiceFormProps {
 }
 
 export default function ServiceForm({ service, staffList }: ServiceFormProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const typeOption = getBusinessTypeOption(activeBusiness?.business_type);
+    const isDropoff = config.services.usesDropoffFields;
     const isEditing = service !== null;
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -52,9 +59,8 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
         price: (service?.price ?? 100000) as number | '',
         duration_minutes: (service?.duration_minutes ?? 60) as number | '',
         buffer_minutes: (service?.buffer_minutes ?? 0) as number | '',
-        capacity: (service?.capacity ?? 1) as number | '',
-        assignment_mode: (service?.assignment_mode ?? 'staff') as 'staff' | 'capacity',
-        booking_mode: (service?.booking_mode ?? 'time_slot') as 'time_slot' | 'dropoff',
+        capacity: (service?.capacity ?? (isDropoff ? 10 : 1)) as number | '',
+        unit_label: (service?.unit_label ?? 'item') as ServiceUnitLabel,
         turnaround_days: (service?.turnaround_days ?? 2) as number | '',
         supports_pickup: Boolean(service?.supports_pickup ?? false),
         dp_type: (service?.dp_type ?? 'none') as 'none' | 'fixed' | 'percentage',
@@ -62,6 +68,9 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
         is_active: service?.is_active ?? true,
         staff_ids: service?.staff_ids ?? ([] as number[]),
     });
+
+    const selectedUnitOption =
+        UNIT_LABEL_OPTIONS.find((u) => u.value === form.data.unit_label) ?? UNIT_LABEL_OPTIONS[0];
 
     const toggleStaff = (id: number) => {
         const exists = form.data.staff_ids.includes(id);
@@ -99,22 +108,39 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
         }
     };
 
-    const pageTitle = isEditing ? 'Edit Layanan' : 'Tambah Layanan Baru';
+    const pageTitle = isEditing ? config.services.formTitleEdit : config.services.formTitleCreate;
 
     return (
-        <DashboardLayout title={pageTitle} back={{ href: route('dashboard.services'), label: 'Kembali ke Daftar Layanan' }}>
+        <DashboardLayout
+            title={pageTitle}
+            back={{ href: route('dashboard.services'), label: `Kembali ke ${config.services.pageTitle}` }}
+        >
             <Head title={pageTitle} />
-
 
             <form
                 ref={formRef}
                 onSubmit={handleSubmit}
                 className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
             >
+                <div className="flex items-start gap-3 rounded-sm border border-hairline-soft bg-bone/70 px-4 py-3 text-xs">
+                    <Lock className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
+                    <div className="min-w-0 space-y-0.5">
+                        <p className="font-semibold text-ink">
+                            Mode Operasional: {config.label}
+                        </p>
+                        <p className="leading-relaxed text-mute">
+                            {typeOption.tagline}
+                        </p>
+                    </div>
+                </div>
+
                 <div className="space-y-1.5">
-                    <Label htmlFor="service-name">Nama Layanan *</Label>
+                    <Label htmlFor="service-name">
+                        {config.type === 'space_booking' ? 'Nama Fasilitas / Paket *' : 'Nama Layanan *'}
+                    </Label>
                     <Input
                         id="service-name"
+                        placeholder={config.services.namePlaceholder}
                         value={form.data.name}
                         onChange={(e) => form.setData('name', e.target.value)}
                         aria-invalid={Boolean(form.errors.name)}
@@ -191,57 +217,34 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                     )}
                 </div>
 
-                <div className="space-y-1.5">
-                    <Label>Tipe Penjadwalan Layanan</Label>
-                    <div
-                        className="grid grid-cols-2 rounded-sm bg-bone p-1"
-                        role="group"
-                        aria-label="Pilih tipe penjadwalan layanan"
-                    >
-                        <button
-                            type="button"
-                            aria-pressed={form.data.booking_mode === 'time_slot'}
-                            onClick={() => form.setData('booking_mode', 'time_slot')}
-                            className={`min-h-10 cursor-pointer rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
-                                form.data.booking_mode === 'time_slot'
-                                    ? 'bg-canvas text-ink'
-                                    : 'text-mute hover:text-ink'
-                            }`}
-                        >
-                            Janji Temu (Pilih Jam)
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={form.data.booking_mode === 'dropoff'}
-                            onClick={() =>
-                                form.setData((prev) => ({
-                                    ...prev,
-                                    booking_mode: 'dropoff',
-                                    assignment_mode: 'capacity',
-                                    capacity: Math.max(Number(prev.capacity || 0), 10),
-                                }))
-                            }
-                            className={`min-h-10 cursor-pointer rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
-                                form.data.booking_mode === 'dropoff'
-                                    ? 'bg-canvas text-ink'
-                                    : 'text-mute hover:text-ink'
-                            }`}
-                        >
-                            Drop-off (Tanpa Jam)
-                        </button>
-                    </div>
-                    <p className="text-xs text-mute">
-                        {form.data.booking_mode === 'dropoff'
-                            ? 'Cocok untuk cuci sepatu, laundry, atau servis: pelanggan cukup pilih tanggal & jumlah tanpa slot jam.'
-                            : 'Cocok untuk barbershop, klinik, atau studio: pelanggan memilih jam kedatangan yang tersedia.'}
-                    </p>
-                </div>
-
-                {form.data.booking_mode === 'dropoff' ? (
+                {isDropoff ? (
                     <>
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-price">Harga per Item (Rp)</Label>
+                                <Label htmlFor="service-unit-label">Satuan Hitung *</Label>
+                                <NativeSelect
+                                    id="service-unit-label"
+                                    value={form.data.unit_label}
+                                    onChange={(e) =>
+                                        form.setData('unit_label', e.target.value as ServiceUnitLabel)
+                                    }
+                                    aria-invalid={Boolean(form.errors.unit_label)}
+                                >
+                                    {UNIT_LABEL_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label} — {opt.hint}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                                <p className="text-xs text-mute">{selectedUnitOption.hint}.</p>
+                                {form.errors.unit_label && (
+                                    <p className="text-xs text-destructive">{form.errors.unit_label}</p>
+                                )}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="service-price">
+                                    Harga per {form.data.unit_label} (Rp) *
+                                </Label>
                                 <Input
                                     id="service-price"
                                     type="number"
@@ -255,8 +258,11 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     <p className="text-xs text-destructive">{form.errors.price}</p>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-turnaround">Estimasi (hari)</Label>
+                                <Label htmlFor="service-turnaround">Estimasi Selesai (hari) *</Label>
                                 <Input
                                     id="service-turnaround"
                                     type="number"
@@ -269,13 +275,15 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     aria-invalid={Boolean(form.errors.turnaround_days)}
                                     required
                                 />
-                                <p className="text-xs text-mute">0 = selesai hari ini</p>
+                                <p className="text-xs text-mute">0 = selesai di hari yang sama</p>
                                 {form.errors.turnaround_days && (
                                     <p className="text-xs text-destructive">{form.errors.turnaround_days}</p>
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-daily-capacity">Maks. Item per Hari</Label>
+                                <Label htmlFor="service-daily-capacity">
+                                    Maks. {form.data.unit_label} per Hari *
+                                </Label>
                                 <Input
                                     id="service-daily-capacity"
                                     type="number"
@@ -286,7 +294,9 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     aria-invalid={Boolean(form.errors.capacity)}
                                     required
                                 />
-                                <p className="text-xs text-mute">Pesanan baru ditolak kalau hari itu sudah penuh</p>
+                                <p className="text-xs text-mute">
+                                    Pesanan baru ditolak jika kuota {form.data.unit_label} hari tersebut sudah penuh.
+                                </p>
                                 {form.errors.capacity && (
                                     <p className="text-xs text-destructive">{form.errors.capacity}</p>
                                 )}
@@ -313,7 +323,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                     <>
                         <div className="grid gap-3 sm:grid-cols-3">
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-price">Harga (Rp)</Label>
+                                <Label htmlFor="service-price">{config.services.priceLabel} (Rp) *</Label>
                                 <Input
                                     id="service-price"
                                     type="number"
@@ -328,7 +338,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-duration">Lama (menit)</Label>
+                                <Label htmlFor="service-duration">Durasi (menit) *</Label>
                                 <Input
                                     id="service-duration"
                                     type="number"
@@ -346,7 +356,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-buffer">Jeda (menit)</Label>
+                                <Label htmlFor="service-buffer">Jeda (menit) *</Label>
                                 <Input
                                     id="service-buffer"
                                     type="number"
@@ -359,77 +369,66 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                     aria-invalid={Boolean(form.errors.buffer_minutes)}
                                     required
                                 />
-                                <p className="text-xs text-mute">Waktu beres-beres sebelum pelanggan berikutnya</p>
+                                <p className="text-xs text-mute">Waktu persiapan sebelum sesi berikutnya</p>
                                 {form.errors.buffer_minutes && (
                                     <p className="text-xs text-destructive">{form.errors.buffer_minutes}</p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        {config.services.usesCapacity && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="service-assignment-mode">Cara Membatasi Jadwal</Label>
-                                <NativeSelect
-                                    id="service-assignment-mode"
-                                    value={form.data.assignment_mode}
+                                <Label htmlFor="service-capacity">{config.services.capacityLabel} *</Label>
+                                <Input
+                                    id="service-capacity"
+                                    type="number"
+                                    min={1}
+                                    max={500}
+                                    value={form.data.capacity}
                                     onChange={(e) =>
-                                        form.setData('assignment_mode', e.target.value as 'staff' | 'capacity')
+                                        form.setData('capacity', parseNumericInput(e.target.value))
                                     }
-                                >
-                                    <option value="staff">Per staff (1 staff, 1 pelanggan)</option>
-                                    <option value="capacity">Per tempat (kelas, lapangan, ruangan)</option>
-                                </NativeSelect>
-                                <p className="text-xs text-mute">
-                                    {form.data.assignment_mode === 'staff'
-                                        ? 'Jam penuh kalau semua staff yang melayani sudah dipesan.'
-                                        : 'Jam penuh kalau jumlah pelanggan sudah mencapai batas.'}
-                                </p>
+                                    aria-invalid={Boolean(form.errors.capacity)}
+                                    required
+                                />
+                                <p className="text-xs text-mute">{config.services.capacityHint}</p>
+                                {form.errors.capacity && (
+                                    <p className="text-xs text-destructive">{form.errors.capacity}</p>
+                                )}
                             </div>
+                        )}
 
-                            {form.data.assignment_mode === 'capacity' && (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="service-capacity">Maks. Pelanggan per Sesi</Label>
-                                    <Input
-                                        id="service-capacity"
-                                        type="number"
-                                        min={1}
-                                        max={500}
-                                        value={form.data.capacity}
-                                        onChange={(e) =>
-                                            form.setData('capacity', parseNumericInput(e.target.value))
-                                        }
-                                        aria-invalid={Boolean(form.errors.capacity)}
-                                        required
-                                    />
-                                    <p className="text-xs text-mute">Berapa orang boleh booking di jam yang sama</p>
-                                    {form.errors.capacity && (
-                                        <p className="text-xs text-destructive">{form.errors.capacity}</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {form.data.assignment_mode === 'staff' && staffList.length > 0 && (
+                        {config.services.usesStaffAssignment && (
                             <div className="space-y-2">
                                 <Label>Staff yang Melayani</Label>
-                                <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih staff yang melayani">
-                                    {staffList.map((st) => {
-                                        const checked = form.data.staff_ids.includes(st.id);
-                                        return (
-                                            <button
-                                                key={st.id}
-                                                type="button"
-                                                aria-pressed={checked}
-                                                onClick={() => toggleStaff(st.id)}
-                                                className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
-                                                    checked ? 'bg-ink text-canvas' : 'bg-bone text-ink'
-                                                }`}
-                                            >
-                                                {st.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                {staffList.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih staff yang melayani">
+                                        {staffList.map((st) => {
+                                            const checked = form.data.staff_ids.includes(st.id);
+                                            return (
+                                                <button
+                                                    key={st.id}
+                                                    type="button"
+                                                    aria-pressed={checked}
+                                                    onClick={() => toggleStaff(st.id)}
+                                                    className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                                        checked ? 'bg-ink text-canvas' : 'bg-bone text-ink'
+                                                    }`}
+                                                >
+                                                    {st.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="rounded-sm bg-bone px-4 py-3 text-xs text-mute">
+                                        Belum ada staff aktif. Tambahkan staff di menu{' '}
+                                        <Link href={route('dashboard.staff')} className="font-semibold text-electric hover:underline">
+                                            Tim &amp; Staff
+                                        </Link>{' '}
+                                        agar jadwal bisa dipesan pelanggan.
+                                    </p>
+                                )}
                             </div>
                         )}
                     </>

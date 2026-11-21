@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureBusinessOnboarded;
 use App\Http\Middleware\EnsureMerchantAccount;
 use App\Http\Middleware\EnsureSuperadmin;
 use App\Http\Middleware\EnsureWritableSubscription;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'merchant' => EnsureMerchantAccount::class,
+            'onboarded' => EnsureBusinessOnboarded::class,
             'superadmin' => EnsureSuperadmin::class,
             'writable.subscription' => EnsureWritableSubscription::class,
         ]);

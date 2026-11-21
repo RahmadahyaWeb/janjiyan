@@ -3,7 +3,6 @@ import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
 import AuthLayout from '@/layouts/AuthLayout';
 
 interface RegisterProps {
@@ -14,8 +13,6 @@ export default function Register({ googleEnabled }: RegisterProps) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
-        business_name: '',
-        business_category: 'Barbershop & Salon',
         password: '',
         password_confirmation: '',
     });
@@ -30,8 +27,8 @@ export default function Register({ googleEnabled }: RegisterProps) {
             <Head title="Daftar Trial 14 Hari" />
 
             <h1 className="text-3xl font-semibold text-ink">Mulai trial 14 hari gratis.</h1>
-            <p className="mt-2 text-sm text-mute">
-                Siapkan link booking online bisnis Anda dalam kurang dari lima menit.
+            <p className="mt-2 text-sm leading-relaxed text-mute">
+                Buat akun Anda terlebih dahulu, lalu pilih tipe bisnis di langkah berikutnya.
             </p>
 
             {googleEnabled && (
@@ -40,7 +37,10 @@ export default function Register({ googleEnabled }: RegisterProps) {
                         <Button asChild variant="outline" className="w-full">
                             <a href={route('auth.google')}>
                                 <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z" />
+                                    <path
+                                        fill="currentColor"
+                                        d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"
+                                    />
                                 </svg>
                                 Daftar dengan Google
                             </a>
@@ -60,6 +60,7 @@ export default function Register({ googleEnabled }: RegisterProps) {
                     <Label htmlFor="name">Nama Lengkap</Label>
                     <Input
                         id="name"
+                        name="name"
                         autoComplete="name"
                         placeholder="Raka Pratama"
                         value={data.name}
@@ -76,45 +77,10 @@ export default function Register({ googleEnabled }: RegisterProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="business_name">Nama Bisnis Pertama</Label>
-                    <Input
-                        id="business_name"
-                        autoComplete="organization"
-                        placeholder="Barber Rapi Studio"
-                        value={data.business_name}
-                        onChange={(e) => setData('business_name', e.target.value)}
-                        aria-invalid={Boolean(errors.business_name)}
-                        aria-describedby={errors.business_name ? 'reg-business-error' : undefined}
-                        required
-                    />
-                    {errors.business_name && (
-                        <p id="reg-business-error" className="text-xs text-destructive">
-                            {errors.business_name}
-                        </p>
-                    )}
-                </div>
-
-                <div className="space-y-1.5">
-                    <Label htmlFor="business_category">Kategori Bisnis</Label>
-                    <NativeSelect
-                        id="business_category"
-                        value={data.business_category}
-                        onChange={(e) => setData('business_category', e.target.value)}
-                        className="font-normal"
-                    >
-                        <option value="Barbershop & Salon">Barbershop & Salon</option>
-                        <option value="Klinik & Kesehatan">Klinik & Kesehatan</option>
-                        <option value="Fitness & Olahraga">Fitness & Olahraga</option>
-                        <option value="Studio Foto & Kreatif">Studio Foto & Kreatif</option>
-                        <option value="Otomotif & Bengkel">Otomotif & Bengkel</option>
-                        <option value="Jasa & Layanan">Jasa & Layanan Lainnya</option>
-                    </NativeSelect>
-                </div>
-
-                <div className="space-y-1.5">
                     <Label htmlFor="email">Email</Label>
                     <Input
                         id="email"
+                        name="email"
                         type="email"
                         autoComplete="email"
                         placeholder="nama@bisnis.com"
@@ -136,6 +102,7 @@ export default function Register({ googleEnabled }: RegisterProps) {
                         <Label htmlFor="password">Kata Sandi</Label>
                         <Input
                             id="password"
+                            name="password"
                             type="password"
                             autoComplete="new-password"
                             placeholder="Min. 8 karakter"
@@ -152,21 +119,29 @@ export default function Register({ googleEnabled }: RegisterProps) {
                         )}
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="password_confirmation">Konfirmasi</Label>
+                        <Label htmlFor="password_confirmation">Konfirmasi Kata Sandi</Label>
                         <Input
                             id="password_confirmation"
+                            name="password_confirmation"
                             type="password"
                             autoComplete="new-password"
-                            placeholder="Ulangi sandi"
+                            placeholder="Ulangi kata sandi"
                             value={data.password_confirmation}
                             onChange={(e) => setData('password_confirmation', e.target.value)}
+                            aria-invalid={Boolean(errors.password_confirmation)}
+                            aria-describedby={errors.password_confirmation ? 'reg-password-confirmation-error' : undefined}
                             required
                         />
+                        {errors.password_confirmation && (
+                            <p id="reg-password-confirmation-error" className="text-xs text-destructive">
+                                {errors.password_confirmation}
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={processing}>
-                    {processing ? 'Menyiapkan Akun…' : 'Buat Akun & Mulai Trial'}
+                    {processing ? 'Menyiapkan Akun…' : 'Buat Akun & Lanjut'}
                 </Button>
 
                 <p className="text-center text-xs leading-6 text-mute">

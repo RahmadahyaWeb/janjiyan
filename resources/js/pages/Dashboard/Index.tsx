@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo, formatRupiah, RESERVATION_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PageProps } from '@/types';
@@ -28,10 +29,10 @@ interface DashboardIndexProps {
     todayDate?: string;
     onboarding?: {
         has_services: boolean;
-        has_staff: boolean;
+        has_staff?: boolean;
         has_payment_info: boolean;
         has_bookings: boolean;
-    };
+    } | null;
     weeklyTrend?: TrendPoint[];
     recentBookings: Array<{
         id: number;
@@ -42,6 +43,7 @@ interface DashboardIndexProps {
         staff_name: string | null;
         booking_mode?: 'time_slot' | 'dropoff';
         quantity?: number;
+        unit_label?: string;
         fulfillment_type?: 'dropoff' | 'pickup';
         booking_date: string;
         start_time_local: string;
@@ -67,7 +69,8 @@ export default function DashboardIndex({
     topServices,
 }: DashboardIndexProps) {
     const { activeBusiness } = usePage<PageProps>().props;
-    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const bookingsItemLower = config.bookings.itemSingular.toLowerCase();
     const [copied, setCopied] = useState(false);
     const [trendMetric, setTrendMetric] = useState<'bookings' | 'revenue'>('bookings');
 
@@ -93,19 +96,23 @@ export default function DashboardIndex({
         ? [
               {
                   done: onboarding.has_services,
-                  label: 'Tambahkan minimal 1 layanan',
+                  label: config.dashboard.serviceStepLabel,
                   href: route('dashboard.services'),
-                  cta: 'Atur Layanan',
+                  cta: config.dashboard.serviceStepCta,
               },
-              {
-                  done: onboarding.has_staff,
-                  label: 'Tambahkan anggota tim / staff',
-                  href: route('dashboard.staff'),
-                  cta: 'Atur Staff',
-              },
+              ...(config.dashboard.onboardingStepsIncludeStaff
+                  ? [
+                        {
+                            done: Boolean(onboarding.has_staff),
+                            label: 'Tambahkan anggota tim / staff',
+                            href: route('dashboard.staff'),
+                            cta: 'Atur Staff',
+                        },
+                    ]
+                  : []),
               {
                   done: onboarding.has_payment_info,
-                  label: 'Lengkapi rekening bank atau QRIS untuk DP',
+                  label: config.dashboard.paymentStepLabel,
                   href: route('dashboard.settings'),
                   cta: 'Atur Pembayaran',
               },
@@ -189,7 +196,12 @@ export default function DashboardIndex({
                         </Badge>
                     </div>
 
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div
+                        className={cn(
+                            'mt-4 grid gap-3',
+                            setupSteps.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'
+                        )}
+                    >
                         {setupSteps.map((step, idx) => (
                             <Link
                                 key={step.label}
@@ -243,7 +255,7 @@ export default function DashboardIndex({
                 >
                     <div className="flex items-center justify-between text-mute">
                         <span className="text-xs font-semibold">
-                            {isDropoffPrimary ? 'Pesanan Hari Ini' : 'Reservasi Hari Ini'}
+                            {config.dashboard.todayMetricLabel}
                         </span>
                         <Calendar className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </div>
@@ -316,7 +328,7 @@ export default function DashboardIndex({
                             <h2 className="text-lg font-semibold text-ink">Tren 7 Hari Terakhir</h2>
                             <p className="text-xs tabular-nums text-mute">
                                 {trendMetric === 'bookings'
-                                    ? `Total ${totalWeeklyBookings} ${isDropoffPrimary ? 'pesanan' : 'reservasi'} dalam 7 hari terakhir`
+                                    ? `Total ${totalWeeklyBookings} ${bookingsItemLower} dalam 7 hari terakhir`
                                     : `Total omzet terverifikasi ${formatRupiah(totalWeeklyRevenue)} dalam 7 hari terakhir`}
                             </p>
                         </div>
@@ -336,7 +348,7 @@ export default function DashboardIndex({
                                         trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
-                                {isDropoffPrimary ? 'Pesanan' : 'Reservasi'}
+                                {config.bookings.itemSingular}
                             </button>
                             <button
                                 type="button"
@@ -405,7 +417,7 @@ export default function DashboardIndex({
                                             })}
                                             aria-label={`${day.label} ${day.full_label}: ${
                                                 trendMetric === 'bookings'
-                                                    ? `${day.bookings_count} ${isDropoffPrimary ? 'pesanan' : 'reservasi'}`
+                                                    ? `${day.bookings_count} ${bookingsItemLower}`
                                                     : formatRupiah(day.revenue ?? 0)
                                             }`}
                                             className="group flex min-w-0 flex-col items-center rounded-xl px-1 pt-1 pb-2 transition-colors hover:bg-bone/50 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-2"
@@ -462,7 +474,7 @@ export default function DashboardIndex({
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div className="mb-4 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-ink">
-                            {isDropoffPrimary ? 'Pesanan Terbaru' : 'Reservasi Terbaru'}
+                            {config.dashboard.recentSectionTitle}
                         </h2>
                         <Link
                             href={route('dashboard.bookings', { status: 'all' })}
@@ -474,16 +486,14 @@ export default function DashboardIndex({
 
                     {recentBookings.length === 0 ? (
                         <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
-                            {isDropoffPrimary
-                                ? 'Belum ada pesanan masuk. Bagikan link booking Anda!'
-                                : 'Belum ada reservasi masuk. Bagikan link booking Anda!'}
+                            {config.dashboard.emptyRecentText}
                         </p>
                     ) : (
                         <div className="divide-y divide-divider">
                             {recentBookings.map((b) => (
                                 <Link
                                     key={b.id}
-                                    href={route('dashboard.bookings', { status: 'all', search: b.booking_code, mode: b.booking_mode ?? 'time_slot' })}
+                                    href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
                                     className="flex items-center justify-between gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                 >
                                     <div className="min-w-0">
@@ -495,8 +505,10 @@ export default function DashboardIndex({
                                         </p>
                                         <p className="truncate text-xs text-mute">
                                             {b.service_name}
-                                            {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''} ·{' '}
-                                            {formatDateIndo(b.booking_date)} (
+                                            {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
+                                                ? ` (${b.quantity} ${b.unit_label ?? 'item'})`
+                                                : ''}{' '}
+                                            · {formatDateIndo(b.booking_date)} (
                                             {b.booking_mode === 'dropoff'
                                                 ? b.fulfillment_type === 'pickup'
                                                     ? 'Jemput-Antar'
@@ -516,10 +528,10 @@ export default function DashboardIndex({
 
                 {/* Top Services */}
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                    <h2 className="mb-4 text-lg font-semibold text-ink">Layanan Terpopuler</h2>
+                    <h2 className="mb-4 text-lg font-semibold text-ink">{config.services.pageTitle} Terpopuler</h2>
                     {topServices.length === 0 ? (
                         <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
-                            Belum ada layanan.
+                            Belum ada {config.services.pageTitle.toLowerCase()}.
                         </p>
                     ) : (
                         <div className="space-y-3">
@@ -533,7 +545,7 @@ export default function DashboardIndex({
                                         <p className="text-xs tabular-nums text-mute">{formatRupiah(s.price)}</p>
                                     </div>
                                     <Badge variant="secondary" className="shrink-0 tabular-nums">
-                                        {s.bookings_count} {isDropoffPrimary ? 'pesanan' : 'reservasi'}
+                                        {s.bookings_count} {bookingsItemLower}
                                     </Badge>
                                 </div>
                             ))}

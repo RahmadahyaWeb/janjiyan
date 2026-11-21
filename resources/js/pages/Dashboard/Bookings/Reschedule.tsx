@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { CalendarClock } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface StaffOption {
     id: number;
@@ -24,6 +26,7 @@ interface ReschedulePageProps {
         service_assignment_mode: 'staff' | 'capacity';
         booking_mode?: 'time_slot' | 'dropoff';
         quantity?: number;
+        unit_label?: string;
         customer_name: string;
         staff_id: number | null;
         booking_date: string;
@@ -33,6 +36,8 @@ interface ReschedulePageProps {
 }
 
 export default function BookingReschedule({ booking, staffOptions }: ReschedulePageProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const [timeError, setTimeError] = useState('');
     const form = useForm({
         date: booking.booking_date,
@@ -42,6 +47,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
 
     const isDropoff = booking.booking_mode === 'dropoff';
     const requiredQty = Math.max(1, booking.quantity ?? 1);
+    const unitLabel = booking.unit_label ?? 'item';
     const todayString = new Date().toISOString().slice(0, 10);
 
     const slotUrl = useMemo(() => {
@@ -72,7 +78,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
         e.preventDefault();
         if (isDropoff) {
             if (!dropoff || !dropoff.available || dropoff.remaining_capacity < requiredQty) {
-                setTimeError(dropoff?.reason ?? `Sisa kuota harian tidak mencukupi untuk ${requiredQty} item.`);
+                setTimeError(dropoff?.reason ?? `Sisa kuota harian tidak mencukupi untuk ${requiredQty} ${unitLabel}.`);
                 return;
             }
         } else if (!form.data.time) {
@@ -84,7 +90,10 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
     };
 
     return (
-        <DashboardLayout title="Ubah Jadwal Reservasi" back={{ href: route('dashboard.bookings', { mode: booking.booking_mode }), label: 'Kembali ke Daftar Reservasi' }}>
+        <DashboardLayout
+            title={`Ubah Jadwal ${config.bookings.itemSingular}`}
+            back={{ href: route('dashboard.bookings'), label: `Kembali ke ${config.bookings.pageTitle}` }}
+        >
             <Head title={`Ubah Jadwal ${booking.booking_code}`} />
 
 
@@ -114,7 +123,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                     />
                 </div>
 
-                {!isDropoff && booking.service_assignment_mode === 'staff' && staffOptions.length > 0 && (
+                {config.bookings.supportsStaffColumn && !isDropoff && booking.service_assignment_mode === 'staff' && staffOptions.length > 0 && (
                     <div className="space-y-1.5">
                         <Label htmlFor="reschedule-staff">Staff (Opsional)</Label>
                         <NativeSelect
@@ -144,7 +153,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                         ) : dropoff?.available && dropoff.remaining_capacity >= requiredQty ? (
                             <div className="space-y-1 text-mute">
                                 <p className="font-medium text-ink tabular-nums">
-                                    Tersedia {dropoff.remaining_capacity} dari {dropoff.total_capacity} kuota (butuh {requiredQty} item)
+                                    Tersedia {dropoff.remaining_capacity} dari {dropoff.total_capacity} kuota (butuh {requiredQty} {dropoff.unit_label ?? unitLabel})
                                 </p>
                                 {dropoff.estimated_ready_date && (
                                     <p>Estimasi selesai baru: {formatDateIndo(dropoff.estimated_ready_date)}</p>
@@ -152,7 +161,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                             </div>
                         ) : (
                             <p className="text-destructive">
-                                {dropoff?.reason ?? `Sisa kuota (${dropoff?.remaining_capacity ?? 0}) tidak mencukupi untuk ${requiredQty} item.`}
+                                {dropoff?.reason ?? `Sisa kuota (${dropoff?.remaining_capacity ?? 0}) tidak mencukupi untuk ${requiredQty} ${dropoff?.unit_label ?? unitLabel}.`}
                             </p>
                         )}
                         {(timeError || form.errors.date) && (
@@ -219,7 +228,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
 
                 <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <Button asChild type="button" variant="outline">
-                        <Link href={route('dashboard.bookings', { mode: booking.booking_mode })}>Batal</Link>
+                        <Link href={route('dashboard.bookings')}>Batal</Link>
                     </Button>
                     <Button
                         type="submit"

@@ -65,6 +65,7 @@ class MerchantProductivityAndCommissionTest extends TestCase
             'name' => 'Barber Nusantara',
             'slug' => 'barber-nusantara',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'phone' => '6281234567890',
             'address' => 'Jl. Sudirman No. 10, Jakarta',
             'timezone' => 'Asia/Jakarta',
@@ -133,7 +134,7 @@ class MerchantProductivityAndCommissionTest extends TestCase
             'Halo {customer_name}, jangan lupa jadwal {service_name} besok jam {time}!',
             $resolved['reminder']
         );
-        $this->assertSame(Business::defaultWhatsappTemplates()['dp_verified'], $resolved['dp_verified']);
+        $this->assertSame(Business::defaultWhatsappTemplates(Business::TYPE_STAFF_APPOINTMENT)['dp_verified'], $resolved['dp_verified']);
     }
 
     public function test_telegram_token_is_encrypted_never_leaked_and_alerts_are_queued(): void
@@ -247,6 +248,7 @@ class MerchantProductivityAndCommissionTest extends TestCase
             'name' => 'Other Salon',
             'slug' => 'other-salon',
             'category' => 'Salon',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);

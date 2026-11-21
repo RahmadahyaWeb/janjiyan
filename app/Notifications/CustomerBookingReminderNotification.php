@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Booking;
+use App\Models\Business;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -41,6 +42,7 @@ class CustomerBookingReminderNotification extends Notification implements Should
     {
         $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer']);
         $business = $booking->business;
+        $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
         $tz = $business?->timezone ?: 'Asia/Jakarta';
         $dateLabel = $booking->start_at->setTimezone($tz)->format('d M Y');
         $timeLabel = $booking->start_at->setTimezone($tz)->format('H:i');
@@ -51,27 +53,54 @@ class CustomerBookingReminderNotification extends Notification implements Should
             ? route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
             : ($business ? route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]) : url('/'));
 
+        $unitLabel = $booking->resolvedUnitLabel();
+        $isDropoff = $businessType === Business::TYPE_DROPOFF || $booking->isDropoff();
+
+        [$subjectNoun, $introLine, $servicePrefix, $actionLabel, $closingLine] = match ($businessType) {
+            Business::TYPE_DROPOFF => [
+                'Drop-off / Jemput',
+                "Ini adalah pengingat bahwa jadwal drop-off / penjemputan pesanan Anda di {$businessName} berlangsung {$windowLabel}.",
+                'Layanan',
+                'Lihat Detail Pesanan',
+                'Silakan antar barang Anda sesuai jam operasional toko atau siapkan barang untuk penjemputan. Terima kasih!',
+            ],
+            Business::TYPE_SPACE_BOOKING => [
+                'Jadwal Sesi',
+                "Ini adalah pengingat bahwa jadwal booking sesi Anda di {$businessName} akan berlangsung {$windowLabel}.",
+                'Fasilitas / Paket',
+                'Lihat Detail Booking',
+                'Mohon hadir tepat waktu sesuai jadwal sesi Anda. Terima kasih!',
+            ],
+            default => [
+                'Reservasi',
+                "Ini adalah pengingat bahwa jadwal reservasi Anda di {$businessName} akan berlangsung {$windowLabel}.",
+                'Layanan',
+                'Lihat Detail Reservasi',
+                'Mohon hadir 10 menit sebelum jadwal dimulai. Terima kasih!',
+            ],
+        };
+
+        $serviceValue = $isDropoff
+            ? "{$booking->service->name} ({$booking->quantity} {$unitLabel})"
+            : $booking->service->name;
+
         $mail = (new MailMessage)
-            ->subject("[{$businessName}] Pengingat ".($booking->isDropoff() ? 'Drop-off / Jemput' : 'Reservasi')." ({$windowLabel}) — {$booking->booking_code}")
+            ->subject("[{$businessName}] Pengingat {$subjectNoun} ({$windowLabel}) — {$booking->booking_code}")
             ->greeting("Halo {$booking->customer->name},")
-            ->line(
-                $booking->isDropoff()
-                    ? "Ini adalah pengingat bahwa jadwal drop-off / penjemputan pesanan Anda di {$businessName} berlangsung {$windowLabel}."
-                    : "Ini adalah pengingat bahwa jadwal reservasi Anda di {$businessName} akan berlangsung {$windowLabel}."
-            )
+            ->line($introLine)
             ->line("Kode Booking: {$booking->booking_code}")
-            ->line('Layanan: '.$booking->service->name.($booking->isDropoff() ? " ({$booking->quantity} item)" : ''))
+            ->line("{$servicePrefix}: {$serviceValue}")
             ->line(
-                $booking->isDropoff()
+                $isDropoff
                     ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
                     : "Jadwal: {$dateLabel}, {$timeLabel}"
             );
 
-        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+        if ($isDropoff && $booking->estimated_ready_date) {
             $mail->line('Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y'));
         }
 
-        if ($booking->staff) {
+        if ($businessType === Business::TYPE_STAFF_APPOINTMENT && $booking->staff) {
             $mail->line("Staff: {$booking->staff->name}");
         }
 
@@ -80,11 +109,7 @@ class CustomerBookingReminderNotification extends Notification implements Should
         }
 
         return $mail
-            ->action('Lihat Detail Pesanan', $invoiceUrl)
-            ->line(
-                $booking->isDropoff()
-                    ? 'Silakan antar barang Anda sesuai jam operasional toko atau siapkan barang untuk penjemputan. Terima kasih!'
-                    : 'Mohon hadir 10 menit sebelum jadwal dimulai. Terima kasih!'
-            );
+            ->action($actionLabel, $invoiceUrl)
+            ->line($closingLine);
     }
 }

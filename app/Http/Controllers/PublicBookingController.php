@@ -48,11 +48,26 @@ class PublicBookingController extends Controller
         return $business;
     }
 
+    private function bookingNoun(Business $business): string
+    {
+        return match ($business->resolvedBusinessType()) {
+            Business::TYPE_DROPOFF => 'pesanan',
+            Business::TYPE_SPACE_BOOKING => 'booking',
+            default => 'reservasi',
+        };
+    }
+
     private function bookingDisabledReason(Business $business, PlanLimitService $planLimitService): ?string
     {
-        return ! $planLimitService->hasActiveSubscription($business->owner)
-            ? 'Reservasi online untuk bisnis ini sementara ditutup karena masa langganan merchant telah berakhir.'
-            : null;
+        if ($planLimitService->hasActiveSubscription($business->owner)) {
+            return null;
+        }
+
+        return match ($business->resolvedBusinessType()) {
+            Business::TYPE_DROPOFF => 'Pemesanan online untuk bisnis ini sementara ditutup karena masa langganan merchant telah berakhir.',
+            Business::TYPE_SPACE_BOOKING => 'Booking online untuk bisnis ini sementara ditutup karena masa langganan merchant telah berakhir.',
+            default => 'Reservasi online untuk bisnis ini sementara ditutup karena masa langganan merchant telah berakhir.',
+        };
     }
 
     public function show(Request $request, string $slug, PlanLimitService $planLimitService): Response|SymfonyResponse
@@ -69,12 +84,26 @@ class PublicBookingController extends Controller
         $firstGallery = $business->galleries->first()?->image_path;
         $firstServiceImage = $business->services->firstWhere('image_path', '!=', null)?->image_path;
         $coverPath = $business->cover_path ?: ($firstGallery ?: $firstServiceImage);
+        $businessType = $business->resolvedBusinessType();
+
+        $seoTitle = match ($businessType) {
+            Business::TYPE_DROPOFF => "{$business->name} — Pesan Layanan Online | Janjiyan",
+            Business::TYPE_SPACE_BOOKING => "{$business->name} — Booking Online | Janjiyan",
+            default => "{$business->name} — Reservasi Online | Janjiyan",
+        };
+
+        $seoDescriptionFallback = match ($businessType) {
+            Business::TYPE_DROPOFF => "Pesan layanan drop-off {$business->name} ({$business->category}) secara online dengan kuota harian dan estimasi selesai real-time di Janjiyan.",
+            Business::TYPE_SPACE_BOOKING => "Booking tempat atau sesi di {$business->name} ({$business->category}) secara online dengan ketersediaan real-time di Janjiyan.",
+            default => "Buat janji temu di {$business->name} ({$business->category}) secara online dengan jadwal real-time di Janjiyan.",
+        };
 
         return Inertia::render('Public/BusinessHome', [
             'business' => [
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'category' => $business->category,
+                'business_type' => $businessType,
                 'description' => $business->description,
                 'phone' => $business->phone,
                 'address' => $business->address,
@@ -89,9 +118,11 @@ class PublicBookingController extends Controller
                 'image_url' => $service->image_path ? Storage::url($service->image_path) : null,
                 'price' => $service->price,
                 'duration_minutes' => $service->duration_minutes,
+                'capacity' => (int) $service->capacity,
                 'booking_mode' => $service->booking_mode ?? 'time_slot',
                 'turnaround_days' => (int) ($service->turnaround_days ?? 1),
                 'supports_pickup' => (bool) ($service->supports_pickup ?? false),
+                'unit_label' => $service->resolvedUnitLabel(),
                 'dp_amount' => $service->calculateDpAmount(),
             ])->values(),
             // The photo already used as the cover band is not repeated in the strip.
@@ -106,8 +137,8 @@ class PublicBookingController extends Controller
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
             'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
         ])->withViewData('seo', [
-            'title' => "{$business->name} — Reservasi Online | Janjiyan",
-            'description' => $business->description ?: "Pesan layanan {$business->name} ({$business->category}) secara online dengan jadwal real-time di Janjiyan.",
+            'title' => $seoTitle,
+            'description' => $business->description ?: $seoDescriptionFallback,
             'image' => $business->logo_path ? url(Storage::url($business->logo_path)) : url('/og-default.png'),
             'url' => route('public.booking', $business->slug),
         ]);
@@ -116,12 +147,29 @@ class PublicBookingController extends Controller
     public function booking(Request $request, string $slug, PlanLimitService $planLimitService): Response|SymfonyResponse
     {
         $business = $this->loadPublicBusiness($request, $slug, [
-            'services' => fn ($q) => $q->where('is_active', true)->with(['staff' => fn ($sq) => $sq->where('is_active', true)]),
+            'services' => fn ($q) => $q->where('is_active', true),
             'operatingHours',
         ]);
         if ($business instanceof SymfonyResponse) {
             return $business;
         }
+
+        $isStaffAppointment = $business->isStaffAppointment();
+        if ($isStaffAppointment) {
+            $business->services->load(['staff' => fn ($sq) => $sq->where('is_active', true)]);
+        }
+
+        $businessType = $business->resolvedBusinessType();
+        $seoTitle = match ($businessType) {
+            Business::TYPE_DROPOFF => "Titip / Pesan Layanan — {$business->name} | Janjiyan",
+            Business::TYPE_SPACE_BOOKING => "Booking Tempat / Sesi — {$business->name} | Janjiyan",
+            default => "Buat Janji Temu — {$business->name} | Janjiyan",
+        };
+        $seoDescription = match ($businessType) {
+            Business::TYPE_DROPOFF => "Pilih layanan, tanggal drop-off, dan jumlah di {$business->name}.",
+            Business::TYPE_SPACE_BOOKING => "Pilih fasilitas atau paket dan jadwal sesi di {$business->name}.",
+            default => "Pilih layanan, staff, dan jadwal di {$business->name}.",
+        };
 
         return Inertia::render('Public/BookingPortal', [
             'business' => [
@@ -129,6 +177,7 @@ class PublicBookingController extends Controller
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'category' => $business->category,
+                'business_type' => $businessType,
                 'phone' => $business->phone,
                 'timezone' => $business->timezone,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
@@ -152,14 +201,17 @@ class PublicBookingController extends Controller
                 'booking_mode' => $service->booking_mode ?? 'time_slot',
                 'turnaround_days' => (int) ($service->turnaround_days ?? 1),
                 'supports_pickup' => (bool) ($service->supports_pickup ?? false),
+                'unit_label' => $service->resolvedUnitLabel(),
                 'dp_type' => $service->dp_type,
                 'dp_value' => $service->dp_value,
                 'dp_amount' => $service->calculateDpAmount(),
-                'staff' => $service->staff->map(fn ($s) => [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'title' => $s->title,
-                ])->values(),
+                'staff' => $isStaffAppointment
+                    ? $service->staff->map(fn ($s) => [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'title' => $s->title,
+                    ])->values()
+                    : [],
             ])->values(),
             'operatingHours' => $business->operatingHours,
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
@@ -167,8 +219,8 @@ class PublicBookingController extends Controller
             'selectedServiceId' => $business->services->firstWhere('id', $request->integer('layanan'))?->id,
             'bookingDisabledReason' => $this->bookingDisabledReason($business, $planLimitService),
         ])->withViewData('seo', [
-            'title' => "Pesan — {$business->name} | Janjiyan",
-            'description' => "Pilih layanan dan jadwal di {$business->name}.",
+            'title' => $seoTitle,
+            'description' => $seoDescription,
             'url' => route('public.booking.form', $business->slug),
         ]);
     }
@@ -191,6 +243,7 @@ class PublicBookingController extends Controller
         if ($service->isDropoff()) {
             return response()->json([
                 'booking_mode' => 'dropoff',
+                'unit_label' => $service->resolvedUnitLabel(),
                 'dropoff' => $slotService->getDropoffAvailability($business, $service, $validated['date']),
                 'slots' => [],
             ]);
@@ -218,11 +271,11 @@ class PublicBookingController extends Controller
         $business = Business::where('slug', $slug)->where('is_active', true)->with('owner')->firstOrFail();
 
         if ($business->isSuspended()) {
-            return back()->with('error', 'Portal reservasi bisnis ini sedang ditangguhkan.');
+            return back()->with('error', 'Portal booking bisnis ini sedang ditangguhkan.');
         }
 
         if (! $planLimitService->hasActiveSubscription($business->owner)) {
-            return back()->with('error', 'Reservasi online bisnis ini sementara tidak tersedia karena masa berlangganan telah berakhir.');
+            return back()->with('error', $this->bookingDisabledReason($business, $planLimitService));
         }
 
         if (! $planLimitService->canCreateMonthlyBooking($business)) {
@@ -275,8 +328,10 @@ class PublicBookingController extends Controller
             }
         } else {
             if (empty($validated['time'])) {
+                $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
+
                 return back()
-                    ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                    ->withErrors(['time' => $timePrompt])
                     ->withInput();
             }
 
@@ -286,7 +341,7 @@ class PublicBookingController extends Controller
                     $service,
                     $validated['date'],
                     $validated['time'],
-                    isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+                    $business->isStaffAppointment() && isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
                     $validated['customer_name'],
                     $validated['customer_phone'],
                     $validated['customer_email'] ?? null,
@@ -300,10 +355,16 @@ class PublicBookingController extends Controller
 
         $notificationService->notifyNewPublicBooking($booking);
 
+        $successMessage = match ($business->resolvedBusinessType()) {
+            Business::TYPE_DROPOFF => 'Pesanan berhasil dibuat!',
+            Business::TYPE_SPACE_BOOKING => 'Booking berhasil dibuat!',
+            default => 'Reservasi berhasil dibuat!',
+        };
+
         return redirect()->route('public.booking.invoice', [
             'slug' => $business->slug,
             'token' => $booking->invoice_token,
-        ])->with('success', 'Reservasi berhasil dibuat!');
+        ])->with('success', $successMessage);
     }
 
     public function invoice(Request $request, string $slug, string $token): Response|SymfonyResponse
@@ -391,28 +452,28 @@ class PublicBookingController extends Controller
     {
         $business = Business::where('slug', $slug)->where('is_active', true)->firstOrFail();
         if ($business->isSuspended()) {
-            return back()->with('error', 'Portal reservasi bisnis ini sedang ditangguhkan.');
+            return back()->with('error', 'Portal booking bisnis ini sedang ditangguhkan.');
         }
 
         $booking = Booking::where('business_id', $business->id)
             ->where('invoice_token', $token)
             ->firstOrFail();
 
-        return $this->handleProofUpload($request, $booking);
+        return $this->handleProofUpload($request, $business, $booking);
     }
 
     public function uploadProof(Request $request, string $slug, string $code): RedirectResponse
     {
         $business = Business::where('slug', $slug)->where('is_active', true)->firstOrFail();
         if ($business->isSuspended()) {
-            return back()->with('error', 'Portal reservasi bisnis ini sedang ditangguhkan.');
+            return back()->with('error', 'Portal booking bisnis ini sedang ditangguhkan.');
         }
 
         $booking = Booking::where('business_id', $business->id)
             ->where('booking_code', $code)
             ->firstOrFail();
 
-        return $this->handleProofUpload($request, $booking);
+        return $this->handleProofUpload($request, $business, $booking);
     }
 
     public function invoices(Request $request, string $slug): Response|SymfonyResponse
@@ -425,17 +486,25 @@ class PublicBookingController extends Controller
             ])->toResponse($request)->setStatusCode(403);
         }
 
+        $businessType = $business->resolvedBusinessType();
+        $lookupTitle = match ($businessType) {
+            Business::TYPE_DROPOFF => 'Cek pesanan',
+            Business::TYPE_SPACE_BOOKING => 'Cek booking',
+            default => 'Cek reservasi',
+        };
+
         return Inertia::render('Public/InvoiceLookup', [
             'business' => [
                 'name' => $business->name,
                 'slug' => $business->slug,
+                'business_type' => $businessType,
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
                 'brand_color' => $business->brand_color,
             ],
             'history' => null,
             'matchedInvoiceToken' => null,
         ])->withViewData('seo', [
-            'title' => "Cek pesanan — {$business->name}",
+            'title' => "{$lookupTitle} — {$business->name}",
             'noindex' => true,
         ]);
     }
@@ -444,7 +513,7 @@ class PublicBookingController extends Controller
     {
         $business = Business::where('slug', $slug)->where('is_active', true)->firstOrFail();
         if ($business->isSuspended()) {
-            return back()->with('error', 'Portal reservasi bisnis ini sedang ditangguhkan.');
+            return back()->with('error', 'Portal booking bisnis ini sedang ditangguhkan.');
         }
 
         $validated = $request->validate([
@@ -470,6 +539,7 @@ class PublicBookingController extends Controller
         }
 
         $tz = $business->timezone ?: 'Asia/Jakarta';
+        $isStaffAppointment = $business->isStaffAppointment();
         // Only the booking the visitor proved knowledge of. A phone number is never verified, so anyone can
         // book under someone else's number; widening to the customer's history would hand out their tokens.
         $history = collect([$matched->load(['service', 'staff'])])
@@ -478,11 +548,12 @@ class PublicBookingController extends Controller
                 'invoice_token' => $b->invoice_token,
                 'booking_code' => $b->booking_code,
                 'service_name' => $b->service?->name ?? '-',
-                'staff_name' => $b->staff?->name,
+                'staff_name' => $isStaffAppointment ? $b->staff?->name : null,
                 'booking_date' => $b->booking_date->toDateString(),
                 'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
                 'booking_mode' => $b->booking_mode ?? 'time_slot',
                 'quantity' => (int) ($b->quantity ?? 1),
+                'unit_label' => $b->resolvedUnitLabel(),
                 'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
                 'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
                 'work_status' => $b->work_status,
@@ -498,6 +569,7 @@ class PublicBookingController extends Controller
             'business' => [
                 'name' => $business->name,
                 'slug' => $business->slug,
+                'business_type' => $business->resolvedBusinessType(),
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
                 'brand_color' => $business->brand_color,
             ],
@@ -510,6 +582,9 @@ class PublicBookingController extends Controller
     private function renderInvoicePage(Business $business, Booking $booking): Response
     {
         $tz = $business->timezone ?: 'Asia/Jakarta';
+        $businessType = $business->resolvedBusinessType();
+        $isStaffAppointment = $business->isStaffAppointment();
+        $noun = $this->bookingNoun($business);
         $invoiceUrl = $booking->invoice_token
             ? route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
             : route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]);
@@ -518,6 +593,7 @@ class PublicBookingController extends Controller
             'business' => [
                 'name' => $business->name,
                 'slug' => $business->slug,
+                'business_type' => $businessType,
                 'phone' => $business->phone,
                 'address' => $business->address,
                 'timezone' => $business->timezone,
@@ -531,7 +607,7 @@ class PublicBookingController extends Controller
                 'invoice_number' => $booking->invoice_number,
                 'invoice_token' => $booking->invoice_token,
                 'service_name' => $booking->service->name,
-                'staff_name' => $booking->staff?->name,
+                'staff_name' => $isStaffAppointment ? $booking->staff?->name : null,
                 'customer_name' => $booking->customer->name,
                 'customer_phone' => $this->maskPhone($booking->customer->phone),
                 'booking_date' => $booking->booking_date->toDateString(),
@@ -539,6 +615,7 @@ class PublicBookingController extends Controller
                 'end_time_local' => $booking->end_at->setTimezone($tz)->format('H:i'),
                 'booking_mode' => $booking->booking_mode ?? 'time_slot',
                 'quantity' => (int) ($booking->quantity ?? 1),
+                'unit_label' => $booking->resolvedUnitLabel(),
                 'fulfillment_type' => $booking->fulfillment_type ?? 'dropoff',
                 'pickup_session' => $booking->pickup_session,
                 'pickup_address' => $booking->pickup_address,
@@ -562,14 +639,14 @@ class PublicBookingController extends Controller
             ],
         ])->withViewData('seo', [
             'title' => 'Invoice '.($booking->invoice_number ?: $booking->booking_code)." — {$business->name}",
-            'description' => 'Invoice dan status reservasi '.($booking->invoice_number ?: $booking->booking_code)." di {$business->name}.",
+            'description' => "Invoice dan status {$noun} ".($booking->invoice_number ?: $booking->booking_code)." di {$business->name}.",
             'image' => $business->logo_path ? url(Storage::url($business->logo_path)) : url('/og-default.png'),
             'url' => $invoiceUrl,
             'noindex' => true,
         ]);
     }
 
-    private function handleProofUpload(Request $request, Booking $booking): RedirectResponse
+    private function handleProofUpload(Request $request, Business $business, Booking $booking): RedirectResponse
     {
         $request->validate([
             'dp_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -606,12 +683,15 @@ class PublicBookingController extends Controller
             return ['status' => 'ok', 'booking' => $locked, 'previous_path' => $previousProofPath];
         });
 
+        $noun = $this->bookingNoun($business);
+        $nounTitle = ucfirst($noun);
+
         if ($result['status'] !== 'ok') {
             Storage::disk('local')->delete($path);
 
             $errorMessage = $result['status'] === 'expired'
-                ? 'Batas waktu pembayaran DP telah berakhir dan reservasi dibatalkan.'
-                : 'Reservasi ini tidak lagi menerima unggahan bukti DP.';
+                ? "Batas waktu pembayaran DP telah berakhir dan {$noun} dibatalkan."
+                : "{$nounTitle} ini tidak lagi menerima unggahan bukti DP.";
 
             return back()->with('error', $errorMessage);
         }
@@ -622,7 +702,9 @@ class PublicBookingController extends Controller
 
         app(BookingNotificationService::class)->notifyDpProofUploaded($result['booking']);
 
-        return back()->with('success', 'Bukti pembayaran DP berhasil diunggah dan menunggu verifikasi staff.');
+        $verifierLabel = $business->isStaffAppointment() ? 'staff' : 'admin';
+
+        return back()->with('success', "Bukti pembayaran DP berhasil diunggah dan menunggu verifikasi {$verifierLabel}.");
     }
 
     private function maskPhone(?string $phone): string

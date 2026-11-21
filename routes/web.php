@@ -6,10 +6,12 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\BookingController;
+use App\Http\Controllers\Dashboard\BusinessController;
 use App\Http\Controllers\Dashboard\CommissionController;
 use App\Http\Controllers\Dashboard\CustomerController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\GalleryController;
+use App\Http\Controllers\Dashboard\OnboardingController;
 use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\ScheduleController;
 use App\Http\Controllers\Dashboard\ServiceController;
@@ -110,11 +112,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
-// Merchant Dashboard
+// Business Onboarding (accessible before a merchant has created/joined a business)
 Route::middleware(['auth', 'verified', 'merchant'])->prefix('dashboard')->group(function () {
+    Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.business');
+    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.business.store');
+});
+
+// Merchant Dashboard
+Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashboard')->group(function () {
     // Read-only & account/billing routes (remain accessible during soft-lock)
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/businesses/create', [DashboardController::class, 'createBusinessPage'])->name('dashboard.businesses.create');
+    Route::get('/businesses/create', [BusinessController::class, 'create'])->name('dashboard.businesses.create');
     Route::post('/businesses/switch', [DashboardController::class, 'switchBusiness'])->name('dashboard.businesses.switch');
     Route::delete('/businesses/{business}', [DashboardController::class, 'destroyBusiness'])->name('dashboard.businesses.destroy');
 
@@ -156,7 +164,7 @@ Route::middleware(['auth', 'verified', 'merchant'])->prefix('dashboard')->group(
 
     // Operational write & export routes (soft-locked when subscription expired or business suspended)
     Route::middleware('writable.subscription')->group(function () {
-        Route::post('/businesses', [DashboardController::class, 'createBusiness'])->name('dashboard.businesses.store');
+        Route::post('/businesses', [BusinessController::class, 'store'])->name('dashboard.businesses.store');
 
         Route::post('/bookings', [BookingController::class, 'store'])->name('dashboard.bookings.store');
         Route::post('/bookings/{booking}/reschedule', [BookingController::class, 'reschedule'])->name('dashboard.bookings.reschedule');

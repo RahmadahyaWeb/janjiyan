@@ -60,6 +60,7 @@ class OperationalFeaturesBatch1To3Test extends TestCase
             'name' => 'Barber Operasional',
             'slug' => 'barber-operasional',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'phone' => '081234567890',
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
@@ -117,6 +118,7 @@ class OperationalFeaturesBatch1To3Test extends TestCase
             'name' => 'Salon Tetangga',
             'slug' => 'salon-tetangga',
             'category' => 'Salon',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);

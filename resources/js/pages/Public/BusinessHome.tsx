@@ -16,6 +16,7 @@ import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { brandVars, isHex } from '@/lib/brand';
+import { getBusinessTypeConfig, resolveBusinessType } from '@/lib/businessType';
 import {
     buildWhatsAppUrl,
     formatDateIndo,
@@ -25,6 +26,7 @@ import {
     getLocalDayOfWeek,
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import type { BusinessType, ServiceUnitLabel } from '@/types';
 
 interface OperatingHourItem {
     day_of_week: number;
@@ -45,9 +47,11 @@ interface ServiceItem {
     image_url: string | null;
     price: number;
     duration_minutes: number;
+    capacity?: number;
     booking_mode: 'time_slot' | 'dropoff';
     turnaround_days: number;
     supports_pickup: boolean;
+    unit_label?: ServiceUnitLabel;
     dp_amount: number;
 }
 
@@ -59,6 +63,7 @@ interface BusinessHomeProps {
         name: string;
         slug: string;
         category: string;
+        business_type?: BusinessType;
         description: string | null;
         phone: string | null;
         address: string | null;
@@ -157,14 +162,45 @@ export default function BusinessHome({
     const isTodayHoliday = holidays.includes(todayLocal);
     const isOpenToday = Boolean(todaySchedule?.is_open && !isTodayHoliday);
 
+    const businessType = resolveBusinessType(business.business_type);
+    const typeConfig = getBusinessTypeConfig(businessType);
     const bookingUrl = route('public.booking.form', business.slug);
     const anyServiceImage = services.some((s) => s.image_url);
+    const waTopic =
+        businessType === 'dropoff'
+            ? 'layanan dan jadwal drop-off'
+            : businessType === 'space_booking'
+              ? 'fasilitas dan jadwal booking'
+              : 'layanan dan jadwal janji temu';
     const whatsappUrl = business.phone
-        ? buildWhatsAppUrl(business.phone, `Halo ${business.name}, saya ingin bertanya tentang layanan dan jadwal reservasi.`)
+        ? buildWhatsAppUrl(business.phone, `Halo ${business.name}, saya ingin bertanya tentang ${waTopic}.`)
         : null;
     const mapsUrl = business.address
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${business.name} ${business.address}`)}`
         : null;
+
+    const fallbackDescription =
+        businessType === 'dropoff'
+            ? 'Pilih layanan, tentukan tanggal drop-off dan jumlah barang, lalu pesan langsung dari halaman ini.'
+            : businessType === 'space_booking'
+              ? 'Pilih fasilitas atau paket, tentukan jadwal sesi, lalu booking langsung dari halaman ini.'
+              : 'Pilih layanan, tentukan staff serta tanggal, lalu buat janji temu langsung dari halaman ini.';
+
+    const primaryDetail =
+        services.length === 0
+            ? 'Belum ada layanan'
+            : businessType === 'dropoff'
+              ? 'Pilih layanan, tanggal, dan jumlah'
+              : businessType === 'space_booking'
+                ? 'Pilih fasilitas dan jadwal sesi'
+                : 'Pilih layanan dan jadwal';
+
+    const lookupLabel =
+        businessType === 'dropoff'
+            ? 'Cek pesanan'
+            : businessType === 'space_booking'
+              ? 'Cek booking'
+              : 'Cek reservasi';
 
     return (
         <div style={brandVars(business.brand_color)} className="min-h-screen bg-canvas text-ink">
@@ -174,7 +210,7 @@ export default function BusinessHome({
                     name="description"
                     content={
                         business.description ||
-                        `Pesan layanan ${business.name} (${business.category}) secara online dengan jadwal real-time di Janjiyan.`
+                        `${typeConfig.publicPortal.ctaLabel} di ${business.name} (${business.category}) secara online dengan ketersediaan real-time di Janjiyan.`
                     }
                 />
                 {isHex(business.brand_color) && <meta head-key="theme-color" name="theme-color" content={business.brand_color} />}
@@ -203,7 +239,7 @@ export default function BusinessHome({
                             {business.name}
                         </h1>
                         <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-mute">
-                            {business.description || 'Pilih layanan, tentukan tanggal, lalu pesan langsung dari halaman ini.'}
+                            {business.description || fallbackDescription}
                         </p>
 
                         {operatingHours.length > 0 && (
@@ -311,24 +347,29 @@ export default function BusinessHome({
                             primary
                             href={bookingUrl}
                             icon={CalendarCheck}
-                            title="Pesan layanan"
-                            detail={services.length > 0 ? 'Pilih layanan dan jadwal' : 'Belum ada layanan'}
+                            title={typeConfig.publicPortal.ctaLabel}
+                            detail={primaryDetail}
                         />
                     </div>
 
                     {services.length > 0 && (
                         <section aria-labelledby="services-heading" className="mt-6">
                             <h2 id="services-heading" className="mx-1 mb-2.5 flex items-center gap-1.5 text-base font-semibold">
-                                Layanan
+                                {typeConfig.nav.servicesLabel}
                                 <span className="rounded-full bg-bone px-2 text-xs text-mute tabular-nums">{services.length}</span>
                             </h2>
                             <ul className="divide-y divide-hairline overflow-hidden rounded-sm bg-bone">
                                 {services.slice(0, MAX_SERVICES).map((service) => {
+                                    const isDropoff = businessType === 'dropoff' || service.booking_mode === 'dropoff';
+                                    const unitLabel = service.unit_label ?? 'item';
                                     const meta = [
-                                        service.booking_mode === 'dropoff'
+                                        isDropoff
                                             ? formatTurnaroundLabel(service.turnaround_days)
                                             : `${service.duration_minutes} mnt`,
-                                        service.booking_mode === 'dropoff' && service.supports_pickup ? 'bisa jemput-antar' : null,
+                                        businessType === 'space_booking' && service.capacity
+                                            ? `Kapasitas ${service.capacity}`
+                                            : null,
+                                        isDropoff && service.supports_pickup ? 'bisa jemput-antar' : null,
                                         service.dp_amount > 0 ? `DP ${formatRupiah(service.dp_amount)}` : null,
                                     ].filter(Boolean);
                                     return (
@@ -354,7 +395,10 @@ export default function BusinessHome({
                                                         {service.name}
                                                     </span>
                                                     <span className="mt-0.5 block text-xs text-mute">
-                                                        <strong className="font-semibold text-ink tabular-nums">{formatRupiah(service.price)}</strong>
+                                                        <strong className="font-semibold text-ink tabular-nums">
+                                                            {formatRupiah(service.price)}
+                                                            {isDropoff ? `/${unitLabel}` : ''}
+                                                        </strong>
                                                         {meta.map((m) => (
                                                             <Fragment key={m}>
                                                                 {' · '}
@@ -374,7 +418,7 @@ export default function BusinessHome({
                                             href={`${bookingUrl}#layanan`}
                                             className="flex items-center justify-center gap-1 py-3 text-sm font-semibold text-(--brand-ink) focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset focus-visible:outline-none"
                                         >
-                                            Lihat semua layanan ({services.length})
+                                            Lihat semua {typeConfig.nav.servicesLabel.toLowerCase()} ({services.length})
                                             <ChevronRight className="size-4" aria-hidden="true" />
                                         </Link>
                                     </li>
@@ -405,7 +449,7 @@ export default function BusinessHome({
                         <ActionRow
                             href={route('public.booking.invoices', business.slug)}
                             icon={FileSearch}
-                            title="Cek pesanan"
+                            title={lookupLabel}
                             detail="Lihat status dan invoice"
                         />
                     </nav>

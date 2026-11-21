@@ -40,6 +40,7 @@ class BusinessHomePageTest extends TestCase
             'name' => 'Cuci Sepatu Hub',
             'slug' => 'cuci-hub',
             'category' => 'Laundry Sepatu',
+            'business_type' => Business::TYPE_DROPOFF,
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
             'is_active' => true,
@@ -54,8 +55,11 @@ class BusinessHomePageTest extends TestCase
                 'price' => $price,
                 'duration_minutes' => 60,
                 'buffer_minutes' => 0,
-                'capacity' => 1,
+                'capacity' => 5,
                 'assignment_mode' => 'capacity',
+                'booking_mode' => 'dropoff',
+                'unit_label' => 'pasang',
+                'turnaround_days' => 2,
                 'dp_type' => 'none',
                 'dp_value' => 0,
                 'is_active' => true,
@@ -81,8 +85,10 @@ class BusinessHomePageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BusinessHome')
+                ->where('business.business_type', Business::TYPE_DROPOFF)
                 ->has('services', 2)
                 ->where('services.0.price', 30000)
+                ->where('services.0.unit_label', 'pasang')
                 // No cover and no gallery: falls back to the first service photo.
                 ->where('business.cover_url', Storage::url('services/deep.jpg')));
 
@@ -90,6 +96,7 @@ class BusinessHomePageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BookingPortal')
+                ->where('business.business_type', Business::TYPE_DROPOFF)
                 ->has('services', 2)
                 ->where('selectedServiceId', null));
     }
@@ -100,6 +107,7 @@ class BusinessHomePageTest extends TestCase
         $other = Service::create([
             'business_id' => Business::create([
                 'owner_id' => $this->owner->id, 'name' => 'Lain', 'slug' => 'lain', 'category' => 'X',
+                'business_type' => Business::TYPE_SPACE_BOOKING,
                 'timezone' => 'Asia/Jakarta', 'dp_expiry_minutes' => 120, 'is_active' => true,
             ])->id,
             'name' => 'Bukan milik toko ini', 'price' => 1000, 'duration_minutes' => 30, 'buffer_minutes' => 0,

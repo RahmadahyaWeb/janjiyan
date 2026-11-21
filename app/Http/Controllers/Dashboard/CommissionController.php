@@ -22,7 +22,7 @@ class CommissionController extends Controller
     ): Response {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
-        abort_unless(! $business || $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless($business && $business->supportsCommissions() && $user->hasBusinessPermission($business, 'manage_staff'), 403);
         $tz = $business?->timezone ?: 'Asia/Jakarta';
         $now = CarbonImmutable::now($tz);
 
@@ -68,7 +68,7 @@ class CommissionController extends Controller
     ): StreamedResponse|RedirectResponse {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
-        abort_unless($business && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless($business && $business->supportsCommissions() && $user->hasBusinessPermission($business, 'manage_staff'), 403);
 
         if (! $planLimitService->canExportCsv($business->owner)) {
             return back()->with('error', 'Export CSV hanya tersedia pada paket Professional dan Enterprise.');

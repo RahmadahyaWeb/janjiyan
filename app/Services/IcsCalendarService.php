@@ -14,29 +14,39 @@ class IcsCalendarService
     {
         $booking->loadMissing(['business', 'service', 'staff', 'customer']);
         $business = $booking->business;
+        $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
 
         $summaryPrefix = $booking->isDropoff()
             ? ($booking->fulfillment_type === 'pickup' ? 'Jemput ' : 'Drop-off ')
             : '';
 
+        $defaultNoun = match ($businessType) {
+            Business::TYPE_DROPOFF => 'Pesanan',
+            Business::TYPE_SPACE_BOOKING => 'Booking Sesi',
+            default => 'Reservasi',
+        };
+
         $summary = sprintf(
             '%s%s — %s',
             $summaryPrefix,
-            $booking->service?->name ?? 'Reservasi',
+            $booking->service?->name ?? $defaultNoun,
             $business?->name ?? 'Janjiyan'
         );
 
+        $unitLabel = $booking->resolvedUnitLabel();
         $descriptionLines = array_filter([
             'Kode Booking: '.$booking->booking_code,
             $booking->invoice_number ? 'No. Invoice: '.$booking->invoice_number : null,
-            'Layanan: '.($booking->service?->name ?? '-').($booking->isDropoff() ? " ({$booking->quantity} item)" : ''),
+            'Layanan: '.($booking->service?->name ?? '-').($booking->isDropoff() ? " ({$booking->quantity} {$unitLabel})" : ''),
             $booking->isDropoff() && $booking->estimated_ready_date
                 ? 'Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y')
                 : null,
             $booking->isDropoff() && $booking->fulfillment_type === 'pickup' && $booking->pickup_address
                 ? 'Alamat Jemput: '.$booking->pickup_address
                 : null,
-            $booking->staff?->name ? 'Staff: '.$booking->staff->name : null,
+            ($businessType === Business::TYPE_STAFF_APPOINTMENT && $booking->staff?->name)
+                ? 'Staff: '.$booking->staff->name
+                : null,
             'Total: Rp '.number_format((int) $booking->total_price, 0, ',', '.'),
             $booking->dp_amount > 0 ? 'DP: Rp '.number_format((int) $booking->dp_amount, 0, ',', '.') : null,
             ($business && $booking->invoice_token)
@@ -56,8 +66,14 @@ class IcsCalendarService
             ),
         ];
 
+        $calNoun = match ($businessType) {
+            Business::TYPE_DROPOFF => 'Pesanan',
+            Business::TYPE_SPACE_BOOKING => 'Booking',
+            default => 'Reservasi',
+        };
+
         return $this->wrapCalendar(
-            calName: ($business?->name ?? 'Janjiyan').' — Reservasi '.$booking->booking_code,
+            calName: ($business?->name ?? 'Janjiyan')." — {$calNoun} ".$booking->booking_code,
             events: $events
         );
     }

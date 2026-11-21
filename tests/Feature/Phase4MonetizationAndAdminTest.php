@@ -51,6 +51,7 @@ class Phase4MonetizationAndAdminTest extends TestCase
             'name' => 'Studio Phase 4',
             'slug' => 'studio-phase-4',
             'category' => 'Barbershop & Grooming',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'phone' => '081234567890',
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,

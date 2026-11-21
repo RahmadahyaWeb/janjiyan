@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { resolveBusinessType } from '@/lib/businessType';
 import { formatDateIndo, formatRupiah, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS, WORK_STATUS_LABELS } from '@/lib/format';
+import type { BusinessType, ServiceUnitLabel } from '@/types';
 
 interface HistoryItem {
     invoice_number: string | null;
@@ -19,6 +21,7 @@ interface HistoryItem {
     start_time_local: string;
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
+    unit_label?: ServiceUnitLabel;
     fulfillment_type?: 'dropoff' | 'pickup';
     work_status?: string | null;
     schedule_label?: string;
@@ -32,6 +35,7 @@ interface InvoiceLookupProps {
     business: {
         name: string;
         slug: string;
+        business_type?: BusinessType;
         logo_url: string | null;
         brand_color: string | null;
     };
@@ -46,6 +50,11 @@ export default function InvoiceLookup({
     matchedInvoiceToken,
     history,
 }: InvoiceLookupProps) {
+    const businessType = resolveBusinessType(business.business_type);
+    const lookupTitle = businessType === 'dropoff' ? 'Cek pesanan' : businessType === 'space_booking' ? 'Cek booking' : 'Cek reservasi';
+    const historyTitle =
+        businessType === 'dropoff' ? 'Riwayat Pemesanan' : businessType === 'space_booking' ? 'Riwayat Booking' : 'Riwayat Reservasi';
+
     const form = useForm({
         invoice_number: '',
         phone_last4: '',
@@ -60,9 +69,9 @@ export default function InvoiceLookup({
 
     return (
         <div className="min-h-screen bg-canvas text-ink">
-            <Head title={`Cek pesanan — ${business.name}`} />
+            <Head title={`${lookupTitle} — ${business.name}`} />
 
-            <BusinessHeader business={business} label="Cek pesanan" widthClassName="box-content max-w-xl" />
+            <BusinessHeader business={business} label={lookupTitle} widthClassName="box-content max-w-xl" />
 
             <main className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 sm:px-6">
                 <div className="rounded-md border border-hairline-soft bg-canvas p-6 sm:p-8">
@@ -71,7 +80,7 @@ export default function InvoiceLookup({
                             <FileText className="size-5" aria-hidden="true" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-semibold text-ink sm:text-2xl">Cek pesanan</h1>
+                            <h1 className="text-xl font-semibold text-ink sm:text-2xl">{lookupTitle}</h1>
                             <p className="text-sm text-mute">{business.name}</p>
                         </div>
                     </div>
@@ -122,7 +131,7 @@ export default function InvoiceLookup({
                     <section aria-label="Riwayat invoice pelanggan" className="space-y-3 rounded-md bg-bone p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">
-                                Riwayat Pemesanan {customerName ? `· ${customerName}` : ''}
+                                {historyTitle} {customerName ? `· ${customerName}` : ''}
                             </h2>
                             <p className="text-xs text-mute">
                                 Ditemukan {history.length} transaksi pada {business.name}.
@@ -158,7 +167,9 @@ export default function InvoiceLookup({
                                             </div>
                                             <p className="text-sm font-semibold text-ink">
                                                 {item.service_name}
-                                                {item.booking_mode === 'dropoff' && (item.quantity ?? 1) > 1 ? ` (${item.quantity} item)` : ''}
+                                                {item.booking_mode === 'dropoff'
+                                                    ? ` (${item.quantity ?? 1} ${item.unit_label ?? 'item'})`
+                                                    : ''}
                                             </p>
                                             <p className="text-xs text-mute">
                                                 {formatDateIndo(item.booking_date)} · {item.schedule_label ?? item.start_time_local} · {formatRupiah(item.total_price)}

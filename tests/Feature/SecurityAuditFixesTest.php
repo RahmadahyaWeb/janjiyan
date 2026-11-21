@@ -51,7 +51,7 @@ class SecurityAuditFixesTest extends TestCase
             'subscription_plan_id' => SubscriptionPlan::where('slug', 'enterprise')->firstOrFail()->id,
             'status' => 'active',
         ]);
-        $this->business = Business::create(['owner_id' => $this->owner->id, 'name' => 'Dummy Studio', 'slug' => 'dummy-studio', 'category' => 'Barbershop', 'timezone' => 'Asia/Jakarta', 'dp_expiry_minutes' => 120, 'is_active' => true]);
+        $this->business = Business::create(['owner_id' => $this->owner->id, 'name' => 'Dummy Studio', 'slug' => 'dummy-studio', 'category' => 'Barbershop', 'business_type' => Business::TYPE_SPACE_BOOKING, 'timezone' => 'Asia/Jakarta', 'dp_expiry_minutes' => 120, 'is_active' => true]);
         $this->business->users()->attach($this->owner->id, ['role' => 'owner', 'permissions' => json_encode(['*'])]);
         $this->business->seedDefaultOperatingHours();
         $this->owner->update(['active_business_id' => $this->business->id]);
@@ -86,7 +86,6 @@ class SecurityAuditFixesTest extends TestCase
     {
         $this->post('/register', [
             'name' => 'Attacker', 'email' => 'victim@example.test', 'password' => 'attackerpw1', 'password_confirmation' => 'attackerpw1',
-            'business_name' => 'Attacker Biz', 'business_category' => 'Jasa',
         ])->assertRedirect(route('verification.notice'));
         $row = User::where('email', 'victim@example.test')->firstOrFail();
         $this->freshGuest();

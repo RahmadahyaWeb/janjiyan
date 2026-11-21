@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import {
     formatDateShortIndo,
     formatRupiah,
@@ -26,6 +27,7 @@ interface ServiceOption {
     capacity: number;
     assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
+    unit_label?: string;
     turnaround_days?: number;
     supports_pickup?: boolean;
     dp_amount: number;
@@ -62,8 +64,9 @@ function normalizePhoneForComparison(phone: string): string {
 
 export default function BookingCreate({ services }: BookingCreateProps) {
     const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const canManageServices = activeBusiness?.can?.manage_services ?? true;
-    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
+    const isDropoffBusiness = config.type === 'dropoff';
     const [timeError, setTimeError] = useState('');
     const [lookupQuery, setLookupQuery] = useState('');
     const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
@@ -91,7 +94,8 @@ export default function BookingCreate({ services }: BookingCreateProps) {
     });
 
     const selectedService = services.find((s) => String(s.id) === form.data.service_id) ?? null;
-    const isDropoff = selectedService?.booking_mode === 'dropoff';
+    const isDropoff = isDropoffBusiness || selectedService?.booking_mode === 'dropoff';
+    const unitLabel = selectedService?.unit_label ?? 'item';
 
     const slotUrl = useMemo(() => {
         if (!form.data.service_id || !form.data.date) {
@@ -237,13 +241,13 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
     return (
         <DashboardLayout
-            title="Tambah Booking Manual"
+            title={`Tambah ${config.bookings.itemSingular} Manual`}
             back={{
                 href: route('dashboard.bookings'),
-                label: isDropoffPrimary || isDropoff ? 'Kembali ke Daftar Pesanan' : 'Kembali ke Daftar Reservasi',
+                label: `Kembali ke ${config.bookings.pageTitle}`,
             }}
         >
-            <Head title="Tambah Booking Manual" />
+            <Head title={`Tambah ${config.bookings.itemSingular} Manual`} />
 
 
             {services.length === 0 ? (
@@ -265,7 +269,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                     className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
                 >
                     <div className="space-y-1.5">
-                        <Label htmlFor="manual-service">Layanan *</Label>
+                        <Label htmlFor="manual-service">{config.services.pageTitle} *</Label>
                         <NativeSelect
                             id="manual-service"
                             value={form.data.service_id}
@@ -308,7 +312,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
                         {isDropoff ? (
                             <div className="space-y-1.5">
-                                <Label htmlFor="manual-quantity">Jumlah Item *</Label>
+                                <Label htmlFor="manual-quantity">Jumlah ({unitLabel}) *</Label>
                                 <Input
                                     id="manual-quantity"
                                     type="number"
@@ -324,7 +328,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 )}
                             </div>
                         ) : (
-                            selectedService?.assignment_mode === 'staff' && (
+                            config.bookings.supportsStaffColumn && selectedService?.assignment_mode === 'staff' && (
                                 <div className="space-y-1.5">
                                     <Label htmlFor="manual-staff">Staff</Label>
                                     <NativeSelect
@@ -352,7 +356,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 ) : dropoff?.available ? (
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <span className="font-semibold text-ink tabular-nums">
-                                            Sisa kuota: {dropoff.remaining_capacity} / {dropoff.total_capacity} item
+                                            Sisa kuota: {dropoff.remaining_capacity} / {dropoff.total_capacity} {dropoff.unit_label ?? unitLabel}
                                         </span>
                                         {dropoff.estimated_ready_date && (
                                             <span className="text-mute">
@@ -707,9 +711,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         <Button type="submit" disabled={form.processing}>
                             {form.processing
                                 ? 'Menyimpan…'
-                                : isDropoff
-                                  ? 'Simpan Pesanan Manual'
-                                  : 'Simpan Reservasi Manual'}
+                                : `Simpan ${config.bookings.itemSingular} Manual`}
                         </Button>
                     </div>
                 </form>

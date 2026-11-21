@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Booking;
+use App\Models\Business;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -41,6 +42,7 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
     {
         $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer']);
         $business = $booking->business;
+        $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
         $tz = $business?->timezone ?: 'Asia/Jakarta';
         $dateLabel = $booking->start_at->setTimezone($tz)->format('d M Y');
         $timeLabel = $booking->start_at->setTimezone($tz)->format('H:i');
@@ -50,36 +52,63 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
             ? route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
             : ($business ? route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]) : url('/'));
 
-        [$subject, $headline] = match ($this->eventType) {
-            'dp_verified' => [
-                "[{$businessName}] DP Terverifikasi & Reservasi Dikonfirmasi — {$booking->booking_code}",
-                'Pembayaran DP Anda telah diverifikasi dan reservasi Anda sudah dikonfirmasi.',
+        [$nounTitle, $nounLower, $servicePrefix, $actionLabel, $closingLine] = match ($businessType) {
+            Business::TYPE_DROPOFF => [
+                'Pesanan',
+                'pesanan',
+                'Layanan',
+                'Lihat Status & Invoice Pesanan',
+                'Simpan tautan di atas untuk memantau progres pesanan atau mengunggah bukti DP Anda.',
             ],
-            'confirmed' => [
-                "[{$businessName}] Reservasi Dikonfirmasi — {$booking->booking_code}",
-                'Reservasi Anda telah dikonfirmasi oleh merchant.',
-            ],
-            'cancelled' => [
-                "[{$businessName}] Reservasi Dibatalkan — {$booking->booking_code}",
-                'Reservasi Anda telah dibatalkan.'.($booking->cancellation_reason ? " Alasan: {$booking->cancellation_reason}" : ''),
-            ],
-            'rescheduled' => [
-                "[{$businessName}] Jadwal Reservasi Diperbarui — {$booking->booking_code}",
-                'Jadwal reservasi Anda telah diperbarui ke waktu baru di bawah ini.',
+            Business::TYPE_SPACE_BOOKING => [
+                'Booking',
+                'booking',
+                'Fasilitas / Paket',
+                'Lihat Status & Invoice Booking',
+                'Simpan tautan di atas untuk memantau status booking atau mengunggah bukti DP Anda.',
             ],
             default => [
-                "[{$businessName}] Konfirmasi Reservasi — {$booking->booking_code}",
-                'Terima kasih! Reservasi Anda telah kami terima.',
+                'Reservasi',
+                'reservasi',
+                'Layanan',
+                'Lihat Status & Invoice Reservasi',
+                'Simpan tautan di atas untuk memantau status reservasi atau mengunggah bukti DP Anda.',
             ],
         };
 
-        $scheduleLine = $booking->isDropoff()
+        [$subject, $headline] = match ($this->eventType) {
+            'dp_verified' => [
+                "[{$businessName}] DP Terverifikasi & {$nounTitle} Dikonfirmasi — {$booking->booking_code}",
+                "Pembayaran DP Anda telah diverifikasi dan {$nounLower} Anda sudah dikonfirmasi.",
+            ],
+            'confirmed' => [
+                "[{$businessName}] {$nounTitle} Dikonfirmasi — {$booking->booking_code}",
+                "{$nounTitle} Anda telah dikonfirmasi oleh merchant.",
+            ],
+            'cancelled' => [
+                "[{$businessName}] {$nounTitle} Dibatalkan — {$booking->booking_code}",
+                "{$nounTitle} Anda telah dibatalkan.".($booking->cancellation_reason ? " Alasan: {$booking->cancellation_reason}" : ''),
+            ],
+            'rescheduled' => [
+                "[{$businessName}] Jadwal {$nounTitle} Diperbarui — {$booking->booking_code}",
+                "Jadwal {$nounLower} Anda telah diperbarui ke waktu baru di bawah ini.",
+            ],
+            default => [
+                "[{$businessName}] Konfirmasi {$nounTitle} — {$booking->booking_code}",
+                "Terima kasih! {$nounTitle} Anda telah kami terima.",
+            ],
+        };
+
+        $isDropoff = $businessType === Business::TYPE_DROPOFF || $booking->isDropoff();
+        $unitLabel = $booking->resolvedUnitLabel();
+
+        $scheduleLine = $isDropoff
             ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
             : "Jadwal: {$dateLabel}, {$timeLabel}";
 
-        $serviceLine = $booking->isDropoff()
-            ? "Layanan: {$booking->service->name} ({$booking->quantity} item)"
-            : "Layanan: {$booking->service->name}";
+        $serviceLine = $isDropoff
+            ? "{$servicePrefix}: {$booking->service->name} ({$booking->quantity} {$unitLabel})"
+            : "{$servicePrefix}: {$booking->service->name}";
 
         $mail = (new MailMessage)
             ->subject($subject)
@@ -90,15 +119,15 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
             ->line($serviceLine)
             ->line($scheduleLine);
 
-        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+        if ($isDropoff && $booking->estimated_ready_date) {
             $mail->line('Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y'));
         }
 
-        if ($booking->isDropoff() && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
+        if ($isDropoff && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
             $mail->line("Alamat Jemput: {$booking->pickup_address}");
         }
 
-        if ($booking->staff) {
+        if ($businessType === Business::TYPE_STAFF_APPOINTMENT && $booking->staff) {
             $mail->line("Staff: {$booking->staff->name}");
         }
 
@@ -109,7 +138,7 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
         }
 
         return $mail
-            ->action('Lihat Status & Invoice Reservasi', $invoiceUrl)
-            ->line('Simpan tautan di atas untuk memantau status reservasi atau mengunggah bukti DP Anda.');
+            ->action($actionLabel, $invoiceUrl)
+            ->line($closingLine);
     }
 }

@@ -58,13 +58,14 @@ class Phase3Test extends TestCase
             'name' => 'Studio Kencana',
             'slug' => 'studio-kencana',
             'category' => 'Studio Foto',
+            'business_type' => Business::TYPE_SPACE_BOOKING,
             'description' => 'Foto potret dan keluarga berkualitas tinggi.',
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);
 
         $portal = $this->get(route('public.booking', $business->slug))->assertOk();
-        $portal->assertSee('Studio Kencana — Reservasi Online | Janjiyan', false);
+        $portal->assertSee('Studio Kencana — Booking Online | Janjiyan', false);
         $portal->assertSee('Foto potret dan keluarga berkualitas tinggi.', false);
     }
 

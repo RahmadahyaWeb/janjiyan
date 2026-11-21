@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatRupiah, INVOICE_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PageProps, SubscriptionPlan } from '@/types';
@@ -44,7 +45,8 @@ export default function BillingIndex({
     isOwner = true,
     invoices = [],
 }: BillingIndexProps) {
-    const { subscription } = usePage<PageProps>().props;
+    const { subscription, activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const activePlan = subscription?.plan;
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
     const [submittingSlug, setSubmittingSlug] = useState<string | null>(null);
@@ -79,9 +81,9 @@ export default function BillingIndex({
 
     const meters = [
         { label: 'Bisnis', used: usage.businesses, max: activePlan?.max_businesses },
-        { label: 'Layanan (Bisnis Aktif)', used: usage.services, max: activePlan?.max_services_per_business },
-        { label: 'Staff (Bisnis Aktif)', used: usage.staff, max: activePlan?.max_staff_per_business },
-        { label: 'Booking Bulan Ini', used: usage.monthly_bookings, max: activePlan?.max_bookings_per_month },
+        { label: `${config.services.pageTitle} (Bisnis Aktif)`, used: usage.services, max: activePlan?.max_services_per_business },
+        { label: `${config.nav.teamLabel} (Bisnis Aktif)`, used: usage.staff, max: activePlan?.max_staff_per_business },
+        { label: `${config.bookings.itemSingular} Bulan Ini`, used: usage.monthly_bookings, max: activePlan?.max_bookings_per_month },
         { label: 'Pelanggan (Bisnis Aktif)', used: usage.customers, max: activePlan?.max_customers_per_business },
     ];
 

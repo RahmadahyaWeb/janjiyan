@@ -27,6 +27,7 @@ class SettingsController extends Controller
                 'name' => $business->name,
                 'slug' => $business->slug,
                 'category' => $business->category,
+                'business_type' => $business->resolvedBusinessType(),
                 'description' => $business->description,
                 'qr_poster_subtitle' => $business->qr_poster_subtitle,
                 'phone' => $business->phone,
@@ -38,7 +39,7 @@ class SettingsController extends Controller
                 'reminder_h1_enabled' => (bool) ($business->reminder_h1_enabled ?? true),
                 'reminder_h2_enabled' => (bool) ($business->reminder_h2_enabled ?? true),
                 'whatsapp_templates' => $business->resolvedWhatsappTemplates(),
-                'default_whatsapp_templates' => Business::defaultWhatsappTemplates(),
+                'default_whatsapp_templates' => Business::defaultWhatsappTemplates($business->resolvedBusinessType()),
                 'telegram_notifications_enabled' => (bool) ($business->telegram_notifications_enabled ?? false),
                 'telegram_chat_id' => $business->telegram_chat_id ?? '',
                 'has_telegram_bot_token' => $rawToken !== '',
@@ -160,9 +161,11 @@ class SettingsController extends Controller
             $telegramEnabled = false;
         }
 
+        $isDropoff = $business->isDropoff();
+
         $whatsappTemplates = $business->whatsapp_templates;
         if (array_key_exists('whatsapp_templates', $validated) && is_array($validated['whatsapp_templates'])) {
-            $defaults = Business::defaultWhatsappTemplates();
+            $defaults = Business::defaultWhatsappTemplates($business->resolvedBusinessType());
             $sanitizedTemplates = [];
             foreach (array_keys($defaults) as $key) {
                 $val = isset($validated['whatsapp_templates'][$key])
@@ -187,7 +190,7 @@ class SettingsController extends Controller
             'address' => $validated['address'] ?? null,
             'timezone' => $validated['timezone'],
             'dp_expiry_minutes' => $validated['dp_expiry_minutes'],
-            'min_booking_lead_minutes' => array_key_exists('min_booking_lead_minutes', $validated)
+            'min_booking_lead_minutes' => ! $isDropoff && array_key_exists('min_booking_lead_minutes', $validated)
                 ? (int) $validated['min_booking_lead_minutes']
                 : (int) ($business->min_booking_lead_minutes ?? 15),
             'max_booking_advance_days' => array_key_exists('max_booking_advance_days', $validated)
@@ -196,18 +199,22 @@ class SettingsController extends Controller
             'reminder_h1_enabled' => array_key_exists('reminder_h1_enabled', $validated)
                 ? (bool) $validated['reminder_h1_enabled']
                 : (bool) ($business->reminder_h1_enabled ?? true),
-            'reminder_h2_enabled' => array_key_exists('reminder_h2_enabled', $validated)
-                ? (bool) $validated['reminder_h2_enabled']
-                : (bool) ($business->reminder_h2_enabled ?? true),
+            'reminder_h2_enabled' => $isDropoff
+                ? false
+                : (array_key_exists('reminder_h2_enabled', $validated)
+                    ? (bool) $validated['reminder_h2_enabled']
+                    : (bool) ($business->reminder_h2_enabled ?? true)),
             'whatsapp_templates' => $whatsappTemplates,
             'telegram_notifications_enabled' => $telegramEnabled,
             'telegram_bot_token' => $telegramBotToken,
             'telegram_chat_id' => array_key_exists('telegram_chat_id', $validated)
                 ? ($validated['telegram_chat_id'] ? trim((string) $validated['telegram_chat_id']) : null)
                 : $business->telegram_chat_id,
-            'no_show_require_full_dp' => array_key_exists('no_show_require_full_dp', $validated)
-                ? (bool) $validated['no_show_require_full_dp']
-                : (bool) ($business->no_show_require_full_dp ?? false),
+            'no_show_require_full_dp' => $isDropoff
+                ? false
+                : (array_key_exists('no_show_require_full_dp', $validated)
+                    ? (bool) $validated['no_show_require_full_dp']
+                    : (bool) ($business->no_show_require_full_dp ?? false)),
             'no_show_dp_threshold' => array_key_exists('no_show_dp_threshold', $validated)
                 ? (int) $validated['no_show_dp_threshold']
                 : (int) ($business->no_show_dp_threshold ?? 2),

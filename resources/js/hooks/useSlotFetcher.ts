@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ServiceUnitLabel } from '@/types';
 
 export interface SlotItem {
     time: string;
@@ -11,6 +12,7 @@ export interface DropoffAvailability {
     reason: string | null;
     remaining_capacity: number;
     total_capacity: number;
+    unit_label?: ServiceUnitLabel | string;
     open_time: string | null;
     close_time: string | null;
     estimated_ready_date: string | null;

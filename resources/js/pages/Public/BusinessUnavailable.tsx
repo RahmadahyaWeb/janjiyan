@@ -19,9 +19,9 @@ export default function BusinessUnavailable({ businessName, reason }: BusinessUn
                 </div>
 
                 <div className="space-y-2">
-                    <h1 className="text-xl font-semibold text-ink">Portal Reservasi Ditangguhkan</h1>
+                    <h1 className="text-xl font-semibold text-ink">Portal Booking Ditangguhkan</h1>
                     <p className="text-sm text-mute">
-                        Portal reservasi untuk <span className="font-semibold text-ink">{businessName}</span> saat ini tidak tersedia.
+                        Portal booking untuk <span className="font-semibold text-ink">{businessName}</span> saat ini tidak tersedia.
                     </p>
                     {reason && (
                         <p className="rounded-xl bg-bone px-3 py-2 text-xs text-body">

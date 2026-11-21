@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Business;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\PlanLimitService;
@@ -41,6 +42,17 @@ class ProductionSafetyTest extends TestCase
         ]);
 
         $subscription = app(PlanLimitService::class)->ensureTrialSubscription($user);
+        $business = Business::create([
+            'owner_id' => $user->id,
+            'name' => 'Production Studio',
+            'slug' => 'production-studio',
+            'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
+            'timezone' => 'Asia/Jakarta',
+            'is_active' => true,
+        ]);
+        $business->users()->attach($user->id, ['role' => 'owner', 'permissions' => json_encode(['*'])]);
+        $user->update(['active_business_id' => $business->id]);
         $initialPlanId = $subscription->subscription_plan_id;
         $enterprisePlan = SubscriptionPlan::where('slug', 'enterprise')->firstOrFail();
 

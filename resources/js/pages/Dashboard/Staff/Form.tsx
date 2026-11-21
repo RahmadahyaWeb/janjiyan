@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
+import type { PageProps } from '@/types';
 
 interface StaffData {
     id: number;
@@ -26,18 +28,42 @@ interface StaffFormProps {
     staffMember: StaffData | null;
 }
 
-// Hints name the menus each permission opens (see NAV_ITEMS in DashboardLayout).
-const ALL_PERMISSIONS = [
-    { key: 'manage_bookings', label: 'Kelola Reservasi', hint: 'Reservasi & Pelanggan' },
-    { key: 'verify_payments', label: 'Verifikasi DP', hint: 'Cek bukti DP, tandai lunas' },
-    { key: 'manage_services', label: 'Kelola Layanan', hint: 'Menu Layanan' },
-    { key: 'manage_staff', label: 'Kelola Staff', hint: 'Tim, jadwal staff, komisi & omzet per staff' },
-    { key: 'manage_settings', label: 'Pengaturan Bisnis', hint: 'Pengaturan, jam buka, omzet, billing' },
-];
-
 export default function StaffForm({ staffMember }: StaffFormProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const isStaffAppointment = config.type === 'staff_appointment';
     const isEditing = staffMember !== null;
     const formRef = useRef<HTMLFormElement>(null);
+
+    const permissionOptions = [
+        {
+            key: 'manage_bookings',
+            label: `Kelola ${config.bookings.pageTitle}`,
+            hint: `${config.bookings.pageTitle} & Pelanggan`,
+        },
+        {
+            key: 'verify_payments',
+            label: 'Verifikasi DP',
+            hint: 'Cek bukti DP, tandai lunas',
+        },
+        {
+            key: 'manage_services',
+            label: `Kelola ${config.services.pageTitle}`,
+            hint: `Menu ${config.services.pageTitle}`,
+        },
+        {
+            key: 'manage_staff',
+            label: `Kelola ${config.nav.teamLabel}`,
+            hint: isStaffAppointment
+                ? 'Tim, jadwal staff, komisi & omzet per staff'
+                : 'Daftar tim admin & hak akses dashboard',
+        },
+        {
+            key: 'manage_settings',
+            label: 'Pengaturan Bisnis',
+            hint: 'Pengaturan, jam operasional, omzet, billing',
+        },
+    ];
 
     const form = useForm({
         name: staffMember?.name ?? '',
@@ -68,7 +94,8 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
         e.preventDefault();
         form.transform((data) => ({
             ...data,
-            commission_value: Number(data.commission_value || 0),
+            commission_type: isStaffAppointment ? data.commission_type : 'none',
+            commission_value: isStaffAppointment ? Number(data.commission_value || 0) : 0,
         }));
 
         if (isEditing) {
@@ -82,15 +109,23 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
         }
     };
 
-    const pageTitle = isEditing ? 'Edit Staff' : 'Tambah Staff';
+    const pageTitle = isEditing
+        ? isStaffAppointment
+            ? 'Edit Staff'
+            : 'Edit Anggota Tim'
+        : isStaffAppointment
+          ? 'Tambah Staff'
+          : 'Tambah Anggota Tim';
     const showPermissionFields = isEditing
         ? staffMember.has_login && staffMember.role !== 'owner'
         : form.data.grant_login;
 
     return (
-        <DashboardLayout title={pageTitle} back={{ href: route('dashboard.staff'), label: 'Kembali ke Tim & Staff' }}>
+        <DashboardLayout
+            title={pageTitle}
+            back={{ href: route('dashboard.staff'), label: `Kembali ke ${config.nav.teamLabel}` }}
+        >
             <Head title={pageTitle} />
-
 
             <form
                 ref={formRef}
@@ -115,10 +150,12 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="staff-title">Jabatan / Spesialisasi</Label>
+                    <Label htmlFor="staff-title">
+                        {isStaffAppointment ? 'Jabatan / Spesialisasi' : 'Jabatan / Peran'}
+                    </Label>
                     <Input
                         id="staff-title"
-                        placeholder="Senior Barber"
+                        placeholder={isStaffAppointment ? 'Senior Barber' : 'Kasir / Admin Operasional'}
                         value={form.data.title}
                         onChange={(e) => form.setData('title', e.target.value)}
                     />
@@ -156,58 +193,62 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                     </div>
                 </div>
 
-                <div className="space-y-3 rounded-sm border border-hairline-soft p-3.5">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="staff-commission-type">Komisi Staff</Label>
-                        <p className="text-xs text-mute">
-                            Dihitung otomatis tiap reservasi staff ini. Rekapnya ada di menu Komisi Staff.
-                        </p>
-                        <NativeSelect
-                            id="staff-commission-type"
-                            value={form.data.commission_type}
-                            onChange={(e) =>
-                                form.setData(
-                                    'commission_type',
-                                    e.target.value as 'none' | 'percentage' | 'fixed'
-                                )
-                            }
-                        >
-                            <option value="none">Tidak Ada Komisi</option>
-                            <option value="percentage">Persentase dari Harga Layanan (%)</option>
-                            <option value="fixed">Nominal Tetap per Reservasi (Rp)</option>
-                        </NativeSelect>
-                    </div>
-                    {form.data.commission_type !== 'none' && (
+                {isStaffAppointment && (
+                    <div className="space-y-3 rounded-sm border border-hairline-soft p-3.5">
                         <div className="space-y-1.5">
-                            <Label htmlFor="staff-commission-value">
-                                {form.data.commission_type === 'percentage'
-                                    ? 'Persentase Komisi (%)'
-                                    : 'Nominal Komisi per Sesi (Rp)'}
-                            </Label>
-                            <Input
-                                id="staff-commission-value"
-                                type="number"
-                                min={0}
-                                max={form.data.commission_type === 'percentage' ? 100 : 100000000}
-                                value={form.data.commission_value}
-                                onChange={(e) => form.setData('commission_value', parseNumericInput(e.target.value))}
-                                aria-invalid={Boolean(form.errors.commission_value)}
-                            />
-                            {form.errors.commission_value && (
-                                <p className="text-xs text-destructive">{form.errors.commission_value}</p>
-                            )}
+                            <Label htmlFor="staff-commission-type">Komisi Staff</Label>
+                            <p className="text-xs text-mute">
+                                Dihitung otomatis tiap reservasi staff ini. Rekapnya ada di menu Komisi Staff.
+                            </p>
+                            <NativeSelect
+                                id="staff-commission-type"
+                                value={form.data.commission_type}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'commission_type',
+                                        e.target.value as 'none' | 'percentage' | 'fixed'
+                                    )
+                                }
+                            >
+                                <option value="none">Tidak Ada Komisi</option>
+                                <option value="percentage">Persentase dari Harga Layanan (%)</option>
+                                <option value="fixed">Nominal Tetap per Reservasi (Rp)</option>
+                            </NativeSelect>
                         </div>
-                    )}
-                </div>
+                        {form.data.commission_type !== 'none' && (
+                            <div className="space-y-1.5">
+                                <Label htmlFor="staff-commission-value">
+                                    {form.data.commission_type === 'percentage'
+                                        ? 'Persentase Komisi (%)'
+                                        : 'Nominal Komisi per Sesi (Rp)'}
+                                </Label>
+                                <Input
+                                    id="staff-commission-value"
+                                    type="number"
+                                    min={0}
+                                    max={form.data.commission_type === 'percentage' ? 100 : 100000000}
+                                    value={form.data.commission_value}
+                                    onChange={(e) => form.setData('commission_value', parseNumericInput(e.target.value))}
+                                    aria-invalid={Boolean(form.errors.commission_value)}
+                                />
+                                {form.errors.commission_value && (
+                                    <p className="text-xs text-destructive">{form.errors.commission_value}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {isEditing ? (
                     <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
                         <div>
                             <Label htmlFor="edit-staff-active" className="text-sm font-semibold text-ink">
-                                Staff Aktif untuk Reservasi
+                                {isStaffAppointment ? 'Staff Aktif untuk Reservasi' : 'Anggota Tim Aktif'}
                             </Label>
                             <p className="mt-0.5 text-xs text-mute">
-                                Nonaktifkan sementara jika staff sedang cuti atau tidak bertugas.
+                                {isStaffAppointment
+                                    ? 'Nonaktifkan sementara jika staff sedang cuti atau tidak bertugas.'
+                                    : 'Nonaktifkan sementara jika anggota tim sedang tidak bertugas.'}
                             </p>
                         </div>
                         <Switch
@@ -223,8 +264,9 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                                 Buatkan Akun Login Dashboard (opsional)
                             </Label>
                             <p className="mt-0.5 text-xs text-mute">
-                                Tanpa akun pun staff tetap bisa dipilih pelanggan. Aktifkan hanya kalau staff perlu
-                                membuka dashboard. Wajib isi email di atas.
+                                {isStaffAppointment
+                                    ? 'Tanpa akun pun staff tetap bisa dipilih pelanggan. Aktifkan hanya kalau staff perlu membuka dashboard. Wajib isi email di atas.'
+                                    : 'Aktifkan agar anggota tim ini dapat masuk ke dashboard sesuai izin menu yang dipilih. Wajib isi email di atas.'}
                             </p>
                         </div>
                         <Switch
@@ -244,13 +286,13 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                                 value={form.data.role}
                                 onChange={(e) => form.setData('role', e.target.value as 'admin' | 'staff')}
                             >
-                                <option value="staff">Staff (pilih menu)</option>
+                                <option value="staff">Staff / Kasir (pilih menu)</option>
                                 <option value="admin">Admin (semua menu)</option>
                             </NativeSelect>
                             <p className="text-xs text-mute">
                                 {form.data.role === 'admin'
                                     ? 'Admin bisa membuka semua menu, sama seperti pemilik.'
-                                    : 'Staff hanya bisa membuka menu yang dipilih di bawah.'}
+                                    : 'Anggota tim hanya bisa membuka menu yang dipilih di bawah.'}
                             </p>
                         </div>
 
@@ -278,8 +320,8 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                         {form.data.role === 'staff' && (
                             <div className="space-y-2">
                                 <Label>Menu yang Boleh Dibuka</Label>
-                                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilih izin akses staff">
-                                    {ALL_PERMISSIONS.map((perm) => {
+                                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilih izin akses tim">
+                                    {permissionOptions.map((perm) => {
                                         const active = form.data.permissions.includes(perm.key);
                                         return (
                                             <button
@@ -323,7 +365,9 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                             ? 'Menyimpan…'
                             : isEditing
                               ? 'Simpan Perubahan'
-                              : 'Simpan Staff'}
+                              : isStaffAppointment
+                                ? 'Simpan Staff'
+                                : 'Simpan Anggota Tim'}
                     </Button>
                 </div>
             </form>

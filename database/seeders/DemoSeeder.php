@@ -130,13 +130,14 @@ class DemoSeeder extends Seeder
             'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&q=80&auto=format&fit=crop'
         );
 
-        // 5. Business #1: Staff-Assigned Mode (Barbershop)
+        // 5. Business #1: Staff Appointment Mode (Barbershop)
         $barbershop = Business::updateOrCreate(
             ['slug' => 'rapi-studio'],
             [
                 'owner_id' => $owner->id,
                 'name' => 'Rapi Studio Barbershop',
-                'category' => 'Barbershop & Grooming',
+                'category' => 'Barbershop & Salon',
+                'business_type' => Business::TYPE_STAFF_APPOINTMENT,
                 'description' => 'Barbershop modern dengan layanan potong rambut presisi, grooming, dan perawatan pria.',
                 'phone' => '6281234567890',
                 'address' => 'Jl. Kemang Raya No. 45, Jakarta Selatan',
@@ -171,13 +172,14 @@ class DemoSeeder extends Seeder
             $barberStaffUser->id => ['role' => 'staff', 'permissions' => json_encode(['manage_bookings', 'verify_payments'])],
         ]);
 
-        // 6. Business #2: Capacity-Based Mode (Sports Court)
+        // 6. Business #2: Space Booking Mode (Sports Court)
         $padelArena = Business::updateOrCreate(
             ['slug' => 'arena-padel'],
             [
                 'owner_id' => $owner->id,
                 'name' => 'Arena Padel & Badminton',
-                'category' => 'Olahraga & Lapangan',
+                'category' => 'Lapangan & Olahraga',
+                'business_type' => Business::TYPE_SPACE_BOOKING,
                 'description' => 'Penyewaan lapangan padel dan badminton indoor dengan sistem booking slot per jam.',
                 'phone' => '6281298765432',
                 'address' => 'Jl. Senopati No. 12, Jakarta Selatan',
@@ -200,6 +202,38 @@ class DemoSeeder extends Seeder
         );
         $padelArena->seedDefaultOperatingHours();
         $padelArena->users()->syncWithoutDetaching([
+            $owner->id => ['role' => 'owner', 'permissions' => json_encode(['*'])],
+        ]);
+
+        // 7. Business #3: Drop-off Mode (Shoe & Bag Care)
+        $soklenn = Business::updateOrCreate(
+            ['slug' => 'soklenn-shoes'],
+            [
+                'owner_id' => $owner->id,
+                'name' => 'Soklenn Cuci Sepatu & Tas',
+                'category' => 'Cuci Sepatu & Tas',
+                'business_type' => Business::TYPE_DROPOFF,
+                'description' => 'Spesialis cuci sepatu, tas, dan unyellowing midsole dengan layanan jemput-antar area Jakarta Selatan.',
+                'phone' => '6281277778888',
+                'address' => 'Jl. Dharmawangsa No. 88, Jakarta Selatan',
+                'timezone' => 'Asia/Jakarta',
+                'dp_expiry_minutes' => 120,
+                'min_booking_lead_minutes' => 0,
+                'max_booking_advance_days' => 30,
+                'reminder_h1_enabled' => true,
+                'reminder_h2_enabled' => false,
+                'bank_accounts' => [
+                    [
+                        'bank_name' => 'BCA',
+                        'account_number' => '7710293847',
+                        'account_holder' => 'Soklenn Care Indonesia',
+                    ],
+                ],
+                'is_active' => true,
+            ]
+        );
+        $soklenn->seedDefaultOperatingHours();
+        $soklenn->users()->syncWithoutDetaching([
             $owner->id => ['role' => 'owner', 'permissions' => json_encode(['*'])],
         ]);
 
@@ -284,7 +318,7 @@ class DemoSeeder extends Seeder
             ]);
         }
 
-        // 7. Services
+        // 8. Services
         $svcHaircut = Service::updateOrCreate(
             ['business_id' => $barbershop->id, 'name' => 'Signature Haircut & Wash'],
             [
@@ -295,6 +329,8 @@ class DemoSeeder extends Seeder
                 'buffer_minutes' => 15,
                 'capacity' => 1,
                 'assignment_mode' => 'staff',
+                'booking_mode' => 'time_slot',
+                'unit_label' => Service::DEFAULT_UNIT_LABEL,
                 'dp_type' => 'fixed',
                 'dp_value' => 25000,
                 'is_active' => true,
@@ -312,6 +348,8 @@ class DemoSeeder extends Seeder
                 'buffer_minutes' => 10,
                 'capacity' => 1,
                 'assignment_mode' => 'staff',
+                'booking_mode' => 'time_slot',
+                'unit_label' => Service::DEFAULT_UNIT_LABEL,
                 'dp_type' => 'percentage',
                 'dp_value' => 50,
                 'is_active' => true,
@@ -329,6 +367,8 @@ class DemoSeeder extends Seeder
                 'buffer_minutes' => 0,
                 'capacity' => 1,
                 'assignment_mode' => 'staff',
+                'booking_mode' => 'time_slot',
+                'unit_label' => Service::DEFAULT_UNIT_LABEL,
                 'dp_type' => 'none',
                 'dp_value' => 0,
                 'is_active' => true,
@@ -346,8 +386,67 @@ class DemoSeeder extends Seeder
                 'buffer_minutes' => 0,
                 'capacity' => 2,
                 'assignment_mode' => 'capacity',
+                'booking_mode' => 'time_slot',
+                'unit_label' => Service::DEFAULT_UNIT_LABEL,
                 'dp_type' => 'fixed',
                 'dp_value' => 100000,
+                'is_active' => true,
+            ]
+        );
+
+        $svcRegularShoes = Service::updateOrCreate(
+            ['business_id' => $soklenn->id, 'name' => 'Regular Clean Sepatu'],
+            [
+                'description' => 'Pembersihan menyeluruh upper, midsole, dan tali sepatu dengan cairan khusus aman material.',
+                'price' => 35000,
+                'duration_minutes' => 60,
+                'buffer_minutes' => 0,
+                'capacity' => 8,
+                'assignment_mode' => 'capacity',
+                'booking_mode' => 'dropoff',
+                'turnaround_days' => 3,
+                'supports_pickup' => true,
+                'unit_label' => 'pasang',
+                'dp_type' => 'none',
+                'dp_value' => 0,
+                'is_active' => true,
+            ]
+        );
+
+        $svcDeepShoes = Service::updateOrCreate(
+            ['business_id' => $soklenn->id, 'name' => 'Deep Clean & Unyellowing'],
+            [
+                'description' => 'Cuci mendalam plus treatment penghilang noda kuning pada midsole dan outsole.',
+                'price' => 65000,
+                'duration_minutes' => 60,
+                'buffer_minutes' => 0,
+                'capacity' => 5,
+                'assignment_mode' => 'capacity',
+                'booking_mode' => 'dropoff',
+                'turnaround_days' => 5,
+                'supports_pickup' => true,
+                'unit_label' => 'pasang',
+                'dp_type' => 'fixed',
+                'dp_value' => 20000,
+                'is_active' => true,
+            ]
+        );
+
+        $svcBagClean = Service::updateOrCreate(
+            ['business_id' => $soklenn->id, 'name' => 'Cuci Tas Kanvas & Kulit'],
+            [
+                'description' => 'Perawatan khusus tas ransel, totebag kanvas, hingga leather conditioning.',
+                'price' => 55000,
+                'duration_minutes' => 60,
+                'buffer_minutes' => 0,
+                'capacity' => 4,
+                'assignment_mode' => 'capacity',
+                'booking_mode' => 'dropoff',
+                'turnaround_days' => 4,
+                'supports_pickup' => false,
+                'unit_label' => 'pcs',
+                'dp_type' => 'percentage',
+                'dp_value' => 50,
                 'is_active' => true,
             ]
         );
@@ -566,6 +665,133 @@ class DemoSeeder extends Seeder
                 'customer_notes' => 'Court 1',
             ]
         );
+
+        // Drop-off bookings across all 4 work statuses for Business #3 (soklenn-shoes)
+        $dropoffCustomersData = [
+            ['name' => 'Nadia Kusuma', 'phone' => '6281310002001', 'email' => 'nadia@example.test', 'notes' => 'Sneakers putih, minta ekstra hati-hati di bagian suede.'],
+            ['name' => 'Bagus Prasetyo', 'phone' => '6281310002002', 'email' => 'bagus@example.test', 'notes' => null],
+            ['name' => 'Tari Wulandari', 'phone' => '6281310002003', 'email' => 'tari@example.test', 'notes' => 'Biasa ambil sore hari setelah jam kerja.'],
+            ['name' => 'Rendi Saputra', 'phone' => '6281310002004', 'email' => null, 'notes' => 'Pelanggan tetap bulanan.'],
+        ];
+
+        $dropoffCustomers = [];
+        foreach ($dropoffCustomersData as $dc) {
+            $dropoffCustomers[] = Customer::updateOrCreate(
+                ['business_id' => $soklenn->id, 'phone' => $dc['phone']],
+                [
+                    'name' => $dc['name'],
+                    'email' => $dc['email'],
+                    'notes' => $dc['notes'],
+                ]
+            );
+        }
+
+        $dropoffDemoBookings = [
+            [
+                'code' => 'JNY-DROP01',
+                'service' => $svcDeepShoes,
+                'customer' => $dropoffCustomers[0],
+                'date' => $today,
+                'quantity' => 2,
+                'fulfillment_type' => 'pickup',
+                'pickup_session' => 'morning',
+                'pickup_address' => 'Jl. Panglima Polim IX No. 14, Jakarta Selatan',
+                'reservation_status' => 'pending',
+                'work_status' => 'awaiting_dropoff',
+                'payment_status' => 'waiting_verification',
+                'dp_proof_path' => $dummyProofPath,
+                'notes' => '2 pasang Nike Air Force & New Balance 550.',
+            ],
+            [
+                'code' => 'JNY-DROP02',
+                'service' => $svcRegularShoes,
+                'customer' => $dropoffCustomers[1],
+                'date' => $today,
+                'quantity' => 3,
+                'fulfillment_type' => 'dropoff',
+                'pickup_session' => null,
+                'pickup_address' => null,
+                'reservation_status' => 'confirmed',
+                'work_status' => 'in_progress',
+                'payment_status' => 'unpaid',
+                'dp_proof_path' => null,
+                'notes' => 'Sepatu lari 3 pasang.',
+            ],
+            [
+                'code' => 'JNY-DROP03',
+                'service' => $svcBagClean,
+                'customer' => $dropoffCustomers[2],
+                'date' => $yesterday,
+                'quantity' => 1,
+                'fulfillment_type' => 'dropoff',
+                'pickup_session' => null,
+                'pickup_address' => null,
+                'reservation_status' => 'confirmed',
+                'work_status' => 'ready_for_pickup',
+                'payment_status' => 'dp_verified',
+                'dp_proof_path' => $dummyProofPath,
+                'notes' => 'Tas kanvas warna krem.',
+            ],
+            [
+                'code' => 'JNY-DROP04',
+                'service' => $svcDeepShoes,
+                'customer' => $dropoffCustomers[3],
+                'date' => $yesterday,
+                'quantity' => 1,
+                'fulfillment_type' => 'pickup',
+                'pickup_session' => 'afternoon',
+                'pickup_address' => 'Jl. Cipete Raya No. 22, Jakarta Selatan',
+                'reservation_status' => 'completed',
+                'work_status' => 'picked_up',
+                'payment_status' => 'settled',
+                'dp_proof_path' => null,
+                'notes' => 'Sudah diantar kembali ke rumah.',
+            ],
+        ];
+
+        foreach ($dropoffDemoBookings as $dItem) {
+            /** @var CarbonImmutable $dDate */
+            $dDate = $dItem['date'];
+            /** @var Service $dService */
+            $dService = $dItem['service'];
+            $dStart = $dDate->setTime(9, 0);
+            $dEnd = $dDate->setTime(18, 0);
+            $qty = $dItem['quantity'];
+            $estimatedReady = $dDate->addDays(max(0, (int) $dService->turnaround_days))->toDateString();
+
+            Booking::updateOrCreate(
+                ['booking_code' => $dItem['code']],
+                [
+                    'business_id' => $soklenn->id,
+                    'service_id' => $dService->id,
+                    'staff_id' => null,
+                    'customer_id' => $dItem['customer']->id,
+                    'booked_customer_name' => $dItem['customer']->name,
+                    'booked_customer_email' => $dItem['customer']->email,
+                    'booking_mode' => 'dropoff',
+                    'quantity' => $qty,
+                    'unit_label' => $dService->resolvedUnitLabel(),
+                    'fulfillment_type' => $dItem['fulfillment_type'],
+                    'pickup_session' => $dItem['pickup_session'],
+                    'pickup_address' => $dItem['pickup_address'],
+                    'invoice_number' => 'INV-'.$dDate->format('Ymd').'-'.substr($dItem['code'], 4),
+                    'invoice_token' => substr(hash('sha256', 'demo-'.$dItem['code']), 0, 32),
+                    'booking_date' => $dDate->toDateString(),
+                    'start_at' => $dStart->utc(),
+                    'end_at' => $dEnd->utc(),
+                    'buffer_end_at' => $dEnd->utc(),
+                    'estimated_ready_date' => $estimatedReady,
+                    'total_price' => $dService->price * $qty,
+                    'dp_amount' => $dService->calculateDpAmount() * $qty,
+                    'reservation_status' => $dItem['reservation_status'],
+                    'work_status' => $dItem['work_status'],
+                    'payment_status' => $dItem['payment_status'],
+                    'dp_proof_path' => $dItem['dp_proof_path'],
+                    'dp_expires_at' => null,
+                    'customer_notes' => $dItem['notes'],
+                ]
+            );
+        }
     }
 
     private function downloadDemoPhoto(string $relativePath, string $url): ?string

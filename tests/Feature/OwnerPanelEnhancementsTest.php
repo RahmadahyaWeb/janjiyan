@@ -50,6 +50,7 @@ class OwnerPanelEnhancementsTest extends TestCase
             'name' => 'Studio Panel',
             'slug' => 'studio-panel',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'phone' => '081234567890',
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
 import type { PageProps } from '@/types';
 
@@ -33,7 +34,9 @@ interface ScheduleIndexProps {
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function ScheduleIndex({ operatingHours, holidays }: ScheduleIndexProps) {
-    const canManageStaff = usePage<PageProps>().props.activeBusiness?.can?.manage_staff ?? false;
+    const activeBusiness = usePage<PageProps>().props.activeBusiness;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const canManageStaff = activeBusiness?.can?.manage_staff ?? false;
     const [deletingHoliday, setDeletingHoliday] = useState<HolidayRow | null>(null);
     const hoursForm = useForm({
         hours: operatingHours.map((h) => ({
@@ -70,30 +73,37 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
     };
 
     return (
-        <DashboardLayout title="Jadwal Operasional & Libur">
-            <Head title="Jadwal" />
+        <DashboardLayout title={config.schedule.pageTitle}>
+            <Head title={config.schedule.pageTitle} />
 
-            {/* Store hours and per-staff shifts live on two pages; say how they combine. */}
+            {/* Info banner adapted per business_type */}
             <div className="flex items-start gap-3 rounded-md border border-hairline-soft bg-bone/60 p-4 text-sm text-body">
                 <Info className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
                 <p>
-                    Jam di sini berlaku untuk <strong className="text-ink">seluruh toko</strong>. Pelanggan hanya bisa
-                    memesan di dalam jam buka. Kalau ada staff yang jam kerjanya berbeda atau sedang cuti, atur di{' '}
-                    {canManageStaff ? (
-                        <Link href={route('dashboard.staff')} className="font-semibold text-electric hover:underline">
-                            Tim &amp; Staff → Jadwal &amp; Cuti
-                        </Link>
-                    ) : (
-                        <strong className="text-ink">Tim &amp; Staff → Jadwal &amp; Cuti</strong>
+                    {config.schedule.infoBannerText}{' '}
+                    {config.schedule.linkToStaffSchedules && (
+                        <>
+                            Atur jadwal pribadi atau cuti staff di{' '}
+                            {canManageStaff ? (
+                                <Link href={route('dashboard.staff')} className="font-semibold text-electric hover:underline">
+                                    Tim &amp; Staff → Jadwal &amp; Cuti
+                                </Link>
+                            ) : (
+                                <strong className="text-ink">Tim &amp; Staff → Jadwal &amp; Cuti</strong>
+                            )}
+                            .
+                        </>
                     )}
-                    .
                 </p>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Operating Hours */}
                 <form onSubmit={submitHours} className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                    <h2 className="text-lg font-semibold text-ink">Jam Operasional Mingguan</h2>
+                    <div>
+                        <h2 className="text-lg font-semibold text-ink">Jam Operasional Mingguan</h2>
+                        <p className="mt-1 text-xs text-mute">{config.schedule.breakTimeHint}</p>
+                    </div>
                     <div className="space-y-3">
                         {hoursForm.data.hours.map((row, idx) => {
                             const dayName = DAY_NAMES[row.day_of_week];

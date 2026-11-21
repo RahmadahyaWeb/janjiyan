@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ExternalLink, GitMerge, MessageCircle, Plus, Save, Search, ShieldBan, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import {
     buildWhatsAppUrl,
     formatDateIndo,
@@ -16,6 +17,7 @@ import {
     PAYMENT_STATUS_LABELS,
     RESERVATION_STATUS_LABELS,
 } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface CustomerDetail {
     id: number;
@@ -59,6 +61,7 @@ interface CustomerBookingRow {
     staff_name: string | null;
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
+    unit_label?: string;
     fulfillment_type?: 'dropoff' | 'pickup';
     booking_date: string;
     start_time_local: string;
@@ -94,6 +97,10 @@ export default function CustomerShow({
     canEdit,
     potentialDuplicates = [],
 }: CustomerShowProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const itemSingular = config.bookings.itemSingular;
+    const itemLower = itemSingular.toLowerCase();
     const [customTag, setCustomTag] = useState('');
     const [mergeQuery, setMergeQuery] = useState('');
     const [mergeSearchResults, setMergeSearchResults] = useState<PotentialDuplicateCustomer[]>([]);
@@ -235,7 +242,7 @@ export default function CustomerShow({
 
     const waLink = buildWhatsAppUrl(
         customer.phone,
-        `Halo ${customer.name}, kami menghubungi Anda terkait reservasi Anda.`
+        `Halo ${customer.name}, kami menghubungi Anda terkait ${itemLower} Anda.`
     );
 
     return (
@@ -253,19 +260,25 @@ export default function CustomerShow({
         >
             <Head title={`${customer.name} — Pelanggan`} />
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+            <div
+                className={`grid grid-cols-2 gap-3 sm:gap-4 ${
+                    config.bookings.supportsNoShow ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+                }`}
+            >
                 <div className="rounded-md border border-hairline-soft bg-canvas p-4">
-                    <p className="text-xs font-medium text-mute">Total Reservasi</p>
+                    <p className="text-xs font-medium text-mute">Total {itemSingular}</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.total_bookings}</p>
                 </div>
                 <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Selesai</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.completed_count}</p>
                 </div>
-                <div className="rounded-md border border-hairline-soft bg-canvas p-4">
-                    <p className="text-xs font-medium text-mute">Tidak Hadir (No-Show)</p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.no_show_count}</p>
-                </div>
+                {config.bookings.supportsNoShow && (
+                    <div className="rounded-md border border-hairline-soft bg-canvas p-4">
+                        <p className="text-xs font-medium text-mute">Tidak Hadir (No-Show)</p>
+                        <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.no_show_count}</p>
+                    </div>
+                )}
                 <div className="rounded-md border border-hairline-soft bg-canvas p-4">
                     <p className="text-xs font-medium text-mute">Dibatalkan</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.cancelled_count}</p>
@@ -306,7 +319,7 @@ export default function CustomerShow({
                                 <div>
                                     <p className="text-xs font-semibold text-ink">Alias Nama Pemesan</p>
                                     <p className="text-xs text-mute">
-                                        Nama lain yang pernah digunakan saat reservasi dengan nomor WhatsApp ini.
+                                        Nama lain yang pernah digunakan saat {itemLower} dengan nomor WhatsApp ini.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
@@ -471,7 +484,7 @@ export default function CustomerShow({
                                     Batasi Booking Online
                                 </Label>
                                 <p className="text-xs leading-relaxed text-mute">
-                                    Jika aktif, nomor ini tidak bisa membuat reservasi baru lewat link publik, namun staff tetap bisa input manual.
+                                    Jika aktif, nomor ini tidak bisa membuat {itemLower} baru lewat link publik, namun tim tetap bisa input manual.
                                 </p>
                             </div>
                             <Switch
@@ -518,7 +531,7 @@ export default function CustomerShow({
                                                 <div className="min-w-0">
                                                     <p className="truncate font-semibold text-ink">{dup.name}</p>
                                                     <p className="font-mono text-[11px] tabular-nums text-mute">
-                                                        +{dup.phone} · {dup.bookings_count}x reservasi
+                                                        +{dup.phone} · {dup.bookings_count}x {itemLower}
                                                     </p>
                                                 </div>
                                                 <Button
@@ -571,7 +584,7 @@ export default function CustomerShow({
                                                 <div className="min-w-0">
                                                     <p className="truncate font-semibold text-ink">{item.name}</p>
                                                     <p className="font-mono text-[11px] tabular-nums text-mute">
-                                                        +{item.phone} · {item.bookings_count}x reservasi
+                                                        +{item.phone} · {item.bookings_count}x {itemLower}
                                                     </p>
                                                 </div>
                                                 <Button
@@ -593,7 +606,7 @@ export default function CustomerShow({
                                     <p className="font-semibold text-ink">Konfirmasi Penggabungan Profil</p>
                                     <ul className="list-disc space-y-1 pl-4 text-mute">
                                         <li>
-                                            Semua riwayat reservasi ({selectedMergeSource.bookings_count}x) dari{' '}
+                                            Semua riwayat {itemLower} ({selectedMergeSource.bookings_count}x) dari{' '}
                                             <strong className="text-ink">
                                                 {selectedMergeSource.name} (+{selectedMergeSource.phone})
                                             </strong>{' '}
@@ -637,12 +650,12 @@ export default function CustomerShow({
                 <div className="min-w-0 space-y-4 lg:col-span-2">
                     <div className="rounded-md border border-hairline-soft bg-canvas">
                         <div className="border-b border-divider px-6 py-4">
-                            <h2 className="text-base font-semibold text-ink">Riwayat Reservasi</h2>
+                            <h2 className="text-base font-semibold text-ink">Riwayat {config.bookings.pageTitle}</h2>
                         </div>
 
                         {bookings.length === 0 ? (
                             <div className="p-10 text-center text-sm text-mute">
-                                Belum ada riwayat reservasi untuk pelanggan ini.
+                                Belum ada riwayat {itemLower} untuk pelanggan ini.
                             </div>
                         ) : (
                             <>
@@ -687,7 +700,7 @@ export default function CustomerShow({
                                                 {formatDateIndo(b.booking_date)} ·{' '}
                                                 {b.booking_mode === 'dropoff'
                                                     ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
-                                                          (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
+                                                          (b.quantity ?? 1) > 1 ? ` (${b.quantity} ${b.unit_label ?? 'item'})` : ''
                                                       }`
                                                     : `${b.start_time_local}–${b.end_time_local}`}
                                             </p>
@@ -738,7 +751,7 @@ export default function CustomerShow({
                                                             {formatDateIndo(b.booking_date)} ·{' '}
                                                             {b.booking_mode === 'dropoff'
                                                                 ? `${b.fulfillment_type === 'pickup' ? 'Jemput-Antar' : 'Drop-off'}${
-                                                                      (b.quantity ?? 1) > 1 ? ` (${b.quantity} item)` : ''
+                                                                      (b.quantity ?? 1) > 1 ? ` (${b.quantity} ${b.unit_label ?? 'item'})` : ''
                                                                   }`
                                                                 : `${b.start_time_local}–${b.end_time_local}`}
                                                         </p>

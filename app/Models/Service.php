@@ -9,6 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
+    public const DEFAULT_UNIT_LABEL = 'item';
+
+    public const UNIT_LABELS = [
+        'item',
+        'pasang',
+        'kg',
+        'pcs',
+        'unit',
+    ];
+
     protected $fillable = [
         'business_id',
         'name',
@@ -22,6 +32,7 @@ class Service extends Model
         'booking_mode',
         'turnaround_days',
         'supports_pickup',
+        'unit_label',
         'dp_type',
         'dp_value',
         'is_active',
@@ -39,6 +50,13 @@ class Service extends Model
     public function isDropoff(): bool
     {
         return $this->booking_mode === 'dropoff';
+    }
+
+    public function resolvedUnitLabel(): string
+    {
+        $unit = is_string($this->unit_label) ? trim($this->unit_label) : '';
+
+        return in_array($unit, self::UNIT_LABELS, true) ? $unit : self::DEFAULT_UNIT_LABEL;
     }
 
     public function business(): BelongsTo

@@ -216,6 +216,7 @@ class CustomerController extends Controller
                 'staff_name' => $b->staff?->name,
                 'booking_mode' => $b->booking_mode ?? 'time_slot',
                 'quantity' => (int) ($b->quantity ?? 1),
+                'unit_label' => $b->resolvedUnitLabel(),
                 'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
                 'work_status' => $b->work_status,
                 'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
@@ -499,9 +500,11 @@ class CustomerController extends Controller
             ->withCount(['bookings as no_show_count' => fn ($q) => $q->where('reservation_status', 'no_show')])
             ->latest();
 
-        return response()->streamDownload(function () use ($customersQuery) {
+        $bookingNoun = $business->isDropoff() ? 'Pesanan' : ($business->isSpaceBooking() ? 'Booking' : 'Reservasi');
+
+        return response()->streamDownload(function () use ($customersQuery, $bookingNoun) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama', 'Telepon', 'Email', 'Tag', 'Status Booking Online', 'Total Reservasi', 'No-Show', 'Catatan Internal', 'Terdaftar']);
+            fputcsv($handle, ['Nama', 'Telepon', 'Email', 'Tag', 'Status Booking Online', "Total {$bookingNoun}", 'No-Show', 'Catatan Internal', 'Terdaftar']);
             foreach ($customersQuery->lazy(500) as $c) {
                 $tagsText = is_array($c->tags) && count($c->tags) > 0 ? implode(', ', $c->tags) : '-';
                 fputcsv($handle, CsvHelper::sanitizeRow([

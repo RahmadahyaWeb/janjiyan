@@ -1,3 +1,6 @@
+import { getBusinessTypeConfig } from '@/lib/businessType';
+import type { BusinessType } from '@/types';
+
 export type WhatsappTemplateKey = 'reminder' | 'dp_verified' | 'confirmed' | 'ready_for_pickup' | 'follow_up';
 
 export type WhatsappTemplatesMap = Record<WhatsappTemplateKey, string>;
@@ -15,6 +18,7 @@ export interface WhatsappTemplateContext {
     invoice_url?: string | null;
     business_address?: string | null;
     quantity?: number;
+    unit_label?: string | null;
     estimated_ready_date?: string | null;
 }
 
@@ -60,7 +64,8 @@ export const WHATSAPP_PLACEHOLDERS: Array<{ token: string; label: string }> = [
     { token: '{customer_name}', label: 'Nama Pelanggan' },
     { token: '{business_name}', label: 'Nama Bisnis' },
     { token: '{service_name}', label: 'Layanan' },
-    { token: '{quantity}', label: 'Jumlah Item' },
+    { token: '{quantity}', label: 'Jumlah' },
+    { token: '{unit_label}', label: 'Satuan' },
     { token: '{staff_name}', label: 'Staff' },
     { token: '{date}', label: 'Tanggal' },
     { token: '{time}', label: 'Jam / Mode' },
@@ -71,6 +76,16 @@ export const WHATSAPP_PLACEHOLDERS: Array<{ token: string; label: string }> = [
     { token: '{invoice_url}', label: 'Link Invoice' },
     { token: '{business_address}', label: 'Alamat Bisnis' },
 ];
+
+export function getWhatsappTemplateMetaForBusiness(businessType?: BusinessType | string | null) {
+    const allowedKeys = getBusinessTypeConfig(businessType).settings.whatsappTemplateKeys;
+    return WHATSAPP_TEMPLATE_META.filter((item) => allowedKeys.includes(item.key));
+}
+
+export function getWhatsappPlaceholdersForBusiness(businessType?: BusinessType | string | null) {
+    const allowedTokens = getBusinessTypeConfig(businessType).settings.whatsappPlaceholders;
+    return WHATSAPP_PLACEHOLDERS.filter((item) => allowedTokens.includes(item.token));
+}
 
 function formatRupiah(amount: number): string {
     return new Intl.NumberFormat('id-ID', {
@@ -86,6 +101,7 @@ export function interpolateWhatsappTemplate(template: string, ctx: WhatsappTempl
         '{business_name}': ctx.business_name || 'Janjiyan',
         '{service_name}': ctx.service_name || '-',
         '{quantity}': String(ctx.quantity ?? 1),
+        '{unit_label}': ctx.unit_label || 'item',
         '{staff_name}': ctx.staff_name || 'Tim kami',
         '{date}': ctx.date || '-',
         '{time}': ctx.time || '-',

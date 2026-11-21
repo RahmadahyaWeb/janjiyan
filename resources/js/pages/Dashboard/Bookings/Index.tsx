@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import {
     buildWhatsAppUrl,
     formatBookingScheduleShort,
@@ -32,13 +33,12 @@ import {
     formatRupiah,
     FULFILLMENT_TYPE_LABELS,
     PAYMENT_STATUS_LABELS,
-    PICKUP_SESSION_LABELS,
     RESERVATION_STATUS_LABELS,
     WORK_STATUS_LABELS,
 } from '@/lib/format';
 import {
     buildWhatsappTemplateUrl,
-    WHATSAPP_TEMPLATE_META,
+    getWhatsappTemplateMetaForBusiness,
     type WhatsappTemplateKey,
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
@@ -62,6 +62,7 @@ interface BookingRow {
     service_assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
+    unit_label?: string;
     fulfillment_type?: 'dropoff' | 'pickup';
     pickup_session?: string | null;
     pickup_address?: string | null;
@@ -92,6 +93,7 @@ interface ServiceOption {
     capacity: number;
     assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
+    unit_label?: string;
     turnaround_days?: number;
     supports_pickup?: boolean;
     dp_amount: number;
@@ -109,11 +111,6 @@ interface StaffFilterOption {
 }
 
 type BookingMode = 'time_slot' | 'dropoff';
-
-const MODE_TABS: { value: BookingMode; label: string }[] = [
-    { value: 'time_slot', label: 'Janji Temu' },
-    { value: 'dropoff', label: 'Drop-off' },
-];
 
 // Must match BookingController::MODE_STATUS_TABS.
 const STATUS_TABS: Record<BookingMode, { value: string; label: string }[]> = {
@@ -156,8 +153,6 @@ interface BookingsIndexProps {
         view: 'list' | 'calendar';
         calendar_date: string;
     };
-    hasBothModes: boolean;
-    modeCounts: Record<BookingMode, number> | null;
     dropoffStageCounts?: Record<string, number> | null;
     todayDate?: string;
     calendar: CalendarPayload;
@@ -173,8 +168,6 @@ export default function BookingsIndex({
     services,
     staffOptions = [],
     filters,
-    hasBothModes,
-    modeCounts,
     dropoffStageCounts,
     todayDate,
     calendar,
@@ -184,11 +177,16 @@ export default function BookingsIndex({
     canExportCsv,
 }: BookingsIndexProps) {
     const { pendingBookingsCount = 0, activeBusiness } = usePage<PageProps>().props;
-    const isDropoffMode = filters.mode === 'dropoff';
-    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff' || (!hasBothModes && isDropoffMode);
-    const nounTitle = isDropoffMode || isDropoffPrimary ? 'Pesanan' : 'Reservasi';
-    const nounLower = isDropoffMode || isDropoffPrimary ? 'pesanan' : 'reservasi';
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const isDropoffMode = config.type === 'dropoff';
+    const supportsCalendar = config.bookings.supportsCalendar;
+    const supportsStaffFilter = config.bookings.supportsStaffColumn;
+    const supportsNoShow = config.bookings.supportsNoShow;
+    const nounTitle = config.bookings.pageTitle;
+    const itemSingular = config.bookings.itemSingular;
+    const nounLower = itemSingular.toLowerCase();
     const todayStr = todayDate || new Date().toISOString().slice(0, 10);
+    const visibleWaTemplates = getWhatsappTemplateMetaForBusiness(activeBusiness?.business_type);
 
     // Verifying DP and marking paid need verify_payments on the server.
     const canVerifyPayments = activeBusiness?.can?.verify_payments ?? true;
@@ -206,21 +204,20 @@ export default function BookingsIndex({
         return () => window.removeEventListener('keydown', onKey);
     }, [mobileFilterOpen]);
 
-    const statusTabs = STATUS_TABS[filters.mode];
-    const modeServices = hasBothModes ? services.filter((svc) => svc.booking_mode === filters.mode) : services;
+    const statusTabs = STATUS_TABS[isDropoffMode ? 'dropoff' : 'time_slot'];
 
     const currentStatus = filters.status || 'active';
     const advancedFilterCount = [
         filters.payment,
         filters.service_id,
-        filters.staff_id,
+        supportsStaffFilter ? filters.staff_id : '',
         filters.date_from || filters.date_to ? 'date' : '',
     ].filter(Boolean).length;
 
     const hasActiveFilter = Boolean(
         (filters.status && filters.status !== 'active') ||
             filters.payment ||
-            filters.staff_id ||
+            (supportsStaffFilter && filters.staff_id) ||
             filters.service_id ||
             filters.search ||
             filters.date_from ||
@@ -239,17 +236,16 @@ export default function BookingsIndex({
         setSearch('');
         router.get(
             route('dashboard.bookings'),
-            { mode: filters.mode, view: filters.view, calendar_date: filters.calendar_date },
+            { view: supportsCalendar ? filters.view : 'list', calendar_date: filters.calendar_date },
             { preserveState: true, preserveScroll: true, replace: true }
         );
     };
 
     const exportUrl = (() => {
         const params = new URLSearchParams();
-        params.set('mode', filters.mode);
         params.set('status', filters.status);
         if (filters.payment) params.set('payment', filters.payment);
-        if (filters.staff_id) params.set('staff_id', filters.staff_id);
+        if (supportsStaffFilter && filters.staff_id) params.set('staff_id', filters.staff_id);
         if (filters.service_id) params.set('service_id', filters.service_id);
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
@@ -267,6 +263,7 @@ export default function BookingsIndex({
             | 'start_time_local'
             | 'booking_mode'
             | 'quantity'
+            | 'unit_label'
             | 'fulfillment_type'
             | 'pickup_session'
             | 'work_status'
@@ -278,18 +275,19 @@ export default function BookingsIndex({
     ) => {
         const dateLabel = formatDateIndo(b.booking_date);
         const isDropoff = b.booking_mode === 'dropoff';
+        const unitLabel = b.unit_label ?? 'item';
         const timeOrMode = b.schedule_label ?? formatBookingScheduleShort(b);
         let msg = `Halo ${b.customer_name}, kami dari ${businessName}.`;
         if (b.payment_status === 'unpaid' && b.reservation_status === 'pending') {
-            msg += ` Mengingatkan untuk menyelesaikan pembayaran DP pesanan ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+            msg += ` Mengingatkan untuk menyelesaikan pembayaran DP ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
         } else if (isDropoff && b.work_status === 'ready_for_pickup') {
-            msg += ` Pesanan ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} item) sudah selesai dan siap diambil/diantar!`;
+            msg += ` Pesanan ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} ${unitLabel}) sudah selesai dan siap diambil/diantar.`;
         } else if (b.reservation_status === 'confirmed') {
             msg += isDropoff
-                ? ` Pesanan drop-off ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} item) pada ${dateLabel} telah dikonfirmasi.`
-                : ` Reservasi ${b.booking_code} untuk ${b.service_name} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya!`;
+                ? ` Pesanan drop-off ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} ${unitLabel}) pada ${dateLabel} telah dikonfirmasi.`
+                : ` ${itemSingular} ${b.booking_code} untuk ${b.service_name} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya.`;
         } else {
-            msg += ` Terkait pesanan ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+            msg += ` Terkait ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
         }
         if (b.invoice_url) {
             msg += ` Detail invoice: ${b.invoice_url}`;
@@ -308,6 +306,7 @@ export default function BookingsIndex({
             | 'start_time_local'
             | 'booking_mode'
             | 'quantity'
+            | 'unit_label'
             | 'fulfillment_type'
             | 'pickup_session'
             | 'estimated_ready_date'
@@ -329,6 +328,7 @@ export default function BookingsIndex({
             business_name: businessName,
             service_name: b.service_name,
             quantity: b.quantity ?? 1,
+            unit_label: b.unit_label ?? 'item',
             staff_name: b.staff_name,
             date: formatDateIndo(b.booking_date),
             time: b.booking_mode === 'dropoff' ? (b.schedule_label ?? formatBookingScheduleShort(b)) : b.start_time_local,
@@ -377,7 +377,7 @@ export default function BookingsIndex({
 
     return (
         <DashboardLayout
-            title={`Manajemen ${nounTitle}`}
+            title={nounTitle}
             actions={
                 services.length > 0 ? (
                     <Button
@@ -388,7 +388,7 @@ export default function BookingsIndex({
                         <Link href={route('dashboard.bookings.create')}>
                             <Plus className="size-4" aria-hidden="true" />
                             <span className="sm:hidden">Baru</span>
-                            <span className="hidden sm:inline">Tambah {nounTitle}</span>
+                            <span className="hidden sm:inline">{config.bookings.createButtonLabel}</span>
                         </Link>
                     </Button>
                 ) : (
@@ -400,7 +400,7 @@ export default function BookingsIndex({
                     >
                         <Plus className="size-4" aria-hidden="true" />
                         <span className="sm:hidden">Baru</span>
-                        <span className="hidden sm:inline">Tambah {nounTitle}</span>
+                        <span className="hidden sm:inline">{config.bookings.createButtonLabel}</span>
                     </Button>
                 )
             }
@@ -409,81 +409,37 @@ export default function BookingsIndex({
 
             {/* Toolbar */}
             <div className="space-y-3">
-                {hasBothModes && (
-                    <div
-                        className="grid grid-cols-2 gap-1 rounded-md border border-hairline-soft bg-bone p-1 sm:inline-grid sm:w-auto"
-                        role="group"
-                        aria-label="Jenis layanan"
-                    >
-                        {MODE_TABS.map((tab) => {
-                            const active = filters.mode === tab.value;
-                            const count = modeCounts?.[tab.value] ?? 0;
-                            return (
-                                <button
-                                    key={tab.value}
-                                    type="button"
-                                    aria-pressed={active}
-                                    onClick={() =>
-                                        !active &&
-                                        applyFilters({
-                                            mode: tab.value,
-                                            status: 'active',
-                                            service_id: '',
-                                            view: tab.value === 'dropoff' ? 'list' : filters.view,
-                                        })
-                                    }
-                                    className={cn(
-                                        'inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 text-sm sm:px-5 font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
-                                        active ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
-                                    )}
-                                >
-                                    {tab.label}
-                                    <span
-                                        className={cn(
-                                            'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums leading-none',
-                                            active ? 'bg-canvas text-ink' : 'bg-canvas text-mute'
-                                        )}
-                                    >
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div
-                        className={cn(
-                            'inline-flex rounded-full border border-hairline-soft bg-bone p-1',
-                            filters.mode === 'dropoff' && 'hidden'
-                        )}
-                        role="group"
-                        aria-label="Tampilan reservasi"
-                    >
-                        <button
-                            type="button"
-                            aria-pressed={filters.view === 'list'}
-                            onClick={() => applyFilters({ view: 'list' })}
-                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-4 ${
-                                filters.view === 'list' ? 'bg-ink text-white' : 'text-mute hover:text-ink'
-                            }`}
+                    {supportsCalendar && (
+                        <div
+                            className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
+                            role="group"
+                            aria-label={`Tampilan ${nounLower}`}
                         >
-                            <List className="size-3.5" aria-hidden="true" />
-                            Daftar
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={filters.view === 'calendar'}
-                            onClick={() => applyFilters({ view: 'calendar' })}
-                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-4 ${
-                                filters.view === 'calendar' ? 'bg-ink text-white' : 'text-mute hover:text-ink'
-                            }`}
-                        >
-                            <Calendar className="size-3.5" aria-hidden="true" />
-                            Kalender
-                        </button>
-                    </div>
+                            <button
+                                type="button"
+                                aria-pressed={filters.view === 'list'}
+                                onClick={() => applyFilters({ view: 'list' })}
+                                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-4 ${
+                                    filters.view === 'list' ? 'bg-ink text-white' : 'text-mute hover:text-ink'
+                                }`}
+                            >
+                                <List className="size-3.5" aria-hidden="true" />
+                                Daftar
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={filters.view === 'calendar'}
+                                onClick={() => applyFilters({ view: 'calendar' })}
+                                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-4 ${
+                                    filters.view === 'calendar' ? 'bg-ink text-white' : 'text-mute hover:text-ink'
+                                }`}
+                            >
+                                <Calendar className="size-3.5" aria-hidden="true" />
+                                Kalender
+                            </button>
+                        </div>
+                    )}
 
                     <div className="ml-auto flex shrink-0 items-center gap-2">
                         {canExportCsv ? (
@@ -534,7 +490,7 @@ export default function BookingsIndex({
                     </div>
                 </div>
 
-                {filters.view === 'list' && (
+                {(supportsCalendar ? filters.view === 'list' : true) && (
                     <>
                         {/* Quick Status Tabs */}
                         <HorizontalScrollContainer
@@ -546,8 +502,7 @@ export default function BookingsIndex({
                         >
                             {statusTabs.map((tab) => {
                                 const active = currentStatus === tab.value;
-                                // Global count spans both modes, so only show it when there is one mode.
-                                const showPendingBadge = !hasBothModes && tab.value === 'pending' && pendingBookingsCount > 0;
+                                const showPendingBadge = tab.value === 'pending' && pendingBookingsCount > 0;
                                 const stageCount =
                                     isDropoffMode && dropoffStageCounts && DROPOFF_COUNTER_TABS.has(tab.value)
                                         ? (dropoffStageCounts[tab.value] ?? 0)
@@ -662,14 +617,14 @@ export default function BookingsIndex({
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="mobile-filter-service">Layanan</Label>
+                                    <Label htmlFor="mobile-filter-service">{config.services.pageTitle}</Label>
                                     <NativeSelect
                                         id="mobile-filter-service"
                                         value={filters.service_id ?? ''}
                                         onChange={(e) => applyFilters({ service_id: e.target.value })}
                                     >
-                                        <option value="">Semua Layanan</option>
-                                        {modeServices.map((svc) => (
+                                        <option value="">Semua {config.services.pageTitle}</option>
+                                        {services.map((svc) => (
                                             <option key={svc.id} value={String(svc.id)}>
                                                 {svc.name}
                                             </option>
@@ -677,7 +632,7 @@ export default function BookingsIndex({
                                     </NativeSelect>
                                 </div>
 
-                                {staffOptions.length > 0 && (
+                                {supportsStaffFilter && staffOptions.length > 0 && (
                                     <div className="space-y-1.5">
                                         <Label htmlFor="mobile-filter-staff">Staff</Label>
                                         <NativeSelect
@@ -791,8 +746,8 @@ export default function BookingsIndex({
                                     onChange={(e) => applyFilters({ service_id: e.target.value })}
                                     className="bg-canvas"
                                 >
-                                    <option value="">Semua Layanan</option>
-                                    {modeServices.map((svc) => (
+                                    <option value="">Semua {config.services.pageTitle}</option>
+                                    {services.map((svc) => (
                                         <option key={svc.id} value={String(svc.id)}>
                                             {svc.name}
                                         </option>
@@ -802,7 +757,7 @@ export default function BookingsIndex({
 
                             <div className="flex flex-wrap items-center justify-between gap-2.5">
                                 <div className="flex flex-wrap items-center gap-2.5">
-                                    {staffOptions.length > 0 && (
+                                    {supportsStaffFilter && staffOptions.length > 0 && (
                                         <NativeSelect
                                             aria-label="Filter staff"
                                             value={filters.staff_id ?? ''}
@@ -855,9 +810,10 @@ export default function BookingsIndex({
                 )}
             </div>
 
-            {filters.view === 'calendar' ? (
+            {supportsCalendar && filters.view === 'calendar' ? (
                 <BookingCalendarView
                     calendar={calendar}
+                    businessType={activeBusiness?.business_type}
                     onSelectDate={(date) => applyFilters({ view: 'calendar', calendar_date: date })}
                     onSelectBooking={(booking) => setSelectedCalendarBooking(booking)}
                 />
@@ -873,9 +829,7 @@ export default function BookingsIndex({
                     <p className="text-sm text-mute">
                         {hasActiveFilter
                             ? `Ubah kata kunci pencarian atau reset filter untuk melihat ${nounLower} lainnya.`
-                            : currentStatus === 'active'
-                              ? `Belum ada ${nounLower} yang menunggu konfirmasi atau sedang berjalan. Anda dapat melihat seluruh riwayat atau membuat ${nounLower} manual.`
-                              : `Bagikan link portal booking bisnis Anda atau tambahkan ${nounLower} walk-in secara manual.`}
+                            : config.bookings.emptyStateText}
                     </p>
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                         {hasActiveFilter ? (
@@ -891,14 +845,14 @@ export default function BookingsIndex({
                                         size="sm"
                                         onClick={() => applyFilters({ status: 'all' })}
                                     >
-                                        Lihat Semua {nounTitle}
+                                        Lihat Semua {itemSingular}
                                     </Button>
                                 )}
                                 {services.length > 0 && (
                                     <Button asChild size="sm">
                                         <Link href={route('dashboard.bookings.create')}>
                                             <Plus className="size-4" aria-hidden="true" />
-                                            Tambah {nounTitle} Manual
+                                            {config.bookings.createButtonLabel}
                                         </Link>
                                     </Button>
                                 )}
@@ -921,7 +875,8 @@ export default function BookingsIndex({
                         const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
                         const canReschedule =
                             !dropoffInShop && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
-                        const canNoShow = !dropoffInShop && b.reservation_status === 'confirmed';
+                        const canNoShow =
+                            supportsNoShow && !isDropoff && b.reservation_status === 'confirmed';
                         const showWorkBadge =
                             isDropoff && !!b.work_status && b.reservation_status !== 'cancelled' && b.reservation_status !== 'no_show';
                         const canCancel =
@@ -996,8 +951,8 @@ export default function BookingsIndex({
 
                                     <p className="text-xs text-mute">
                                         <span className="font-medium text-body">{b.service_name}</span>
-                                        {isDropoff ? ` · ${b.quantity ?? 1} item` : ''}
-                                        {b.staff_name ? ` · ${b.staff_name}` : ''}
+                                        {isDropoff ? ` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}` : ''}
+                                        {supportsStaffFilter && b.staff_name ? ` · ${b.staff_name}` : ''}
                                     </p>
 
                                     <div className="flex flex-wrap items-center gap-1.5">
@@ -1149,7 +1104,7 @@ export default function BookingsIndex({
                                                 align="end"
                                                 className="w-56 rounded-md border-hairline-soft p-2 shadow-none"
                                             >
-                                                {WHATSAPP_TEMPLATE_META.map((item) => (
+                                                {visibleWaTemplates.map((item) => (
                                                     <DropdownMenuItem
                                                         key={item.key}
                                                         asChild
@@ -1278,7 +1233,7 @@ export default function BookingsIndex({
                 <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-semibold text-ink">
-                            Detail Reservasi {selectedCalendarBooking?.booking_code}
+                            Detail {itemSingular} {selectedCalendarBooking?.booking_code}
                         </DialogTitle>
                     </DialogHeader>
                     {selectedCalendarBooking && (
@@ -1299,7 +1254,9 @@ export default function BookingsIndex({
                                 </p>
                                 <p className="text-mute">
                                     {selectedCalendarBooking.service_name}
-                                    {selectedCalendarBooking.staff_name ? ` · ${selectedCalendarBooking.staff_name}` : ''}
+                                    {supportsStaffFilter && selectedCalendarBooking.staff_name
+                                        ? ` · ${selectedCalendarBooking.staff_name}`
+                                        : ''}
                                 </p>
                                 <p className="text-mute">
                                     {formatDateIndo(selectedCalendarBooking.booking_date)} ·{' '}
@@ -1378,17 +1335,19 @@ export default function BookingsIndex({
                                         >
                                             Tandai Selesai
                                         </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setNoShowBooking(selectedCalendarBooking);
-                                                setSelectedCalendarBooking(null);
-                                            }}
-                                        >
-                                            Tandai Tidak Hadir
-                                        </Button>
+                                        {supportsNoShow && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setNoShowBooking(selectedCalendarBooking);
+                                                    setSelectedCalendarBooking(null);
+                                                }}
+                                            >
+                                                Tandai Tidak Hadir
+                                            </Button>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -1401,7 +1360,7 @@ export default function BookingsIndex({
                 open={noShowBooking !== null}
                 onOpenChange={(open) => !open && setNoShowBooking(null)}
                 title={`Tandai tidak hadir untuk ${noShowBooking?.booking_code ?? ''}?`}
-                description={`Reservasi atas nama ${noShowBooking?.customer_name ?? ''} akan ditandai sebagai Tidak Hadir (No-Show) dan tercatat di riwayat pelanggan.`}
+                description={`${itemSingular} atas nama ${noShowBooking?.customer_name ?? ''} akan ditandai sebagai Tidak Hadir (No-Show) dan tercatat di riwayat pelanggan.`}
                 confirmLabel="Tandai Tidak Hadir"
                 onConfirm={() => {
                     if (!noShowBooking) return;

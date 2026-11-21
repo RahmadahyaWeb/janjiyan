@@ -1,10 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 interface BookingCancelProps {
     booking: {
@@ -15,11 +17,17 @@ interface BookingCancelProps {
         booking_date: string;
         booking_mode: 'time_slot' | 'dropoff';
         quantity: number;
+        unit_label?: string;
         start_time_local: string;
     };
 }
 
 export default function BookingCancel({ booking }: BookingCancelProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const itemSingular = config.bookings.itemSingular;
+    const unitLabel = booking.unit_label ?? 'item';
+
     const form = useForm({
         reservation_status: 'cancelled',
         cancellation_reason: '',
@@ -36,9 +44,11 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
     };
 
     return (
-        <DashboardLayout title={`Batalkan Reservasi ${booking.booking_code}`} back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
+        <DashboardLayout
+            title={`Batalkan ${itemSingular} ${booking.booking_code}`}
+            back={{ href: route('dashboard.bookings'), label: `Kembali ke ${config.bookings.pageTitle}` }}
+        >
             <Head title={`Batalkan ${booking.booking_code}`} />
-
 
             <form
                 onSubmit={handleSubmit}
@@ -50,7 +60,7 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
                     <p className="text-xs text-mute">
                         {booking.service_name} · {formatDateIndo(booking.booking_date)}
                         {booking.booking_mode === 'dropoff'
-                            ? ` · ${booking.quantity} item`
+                            ? ` · ${booking.quantity} ${unitLabel}`
                             : booking.start_time_local
                               ? ` · ${booking.start_time_local}`
                               : ''}
@@ -58,7 +68,9 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
                 </div>
 
                 <p className="text-sm leading-relaxed text-mute">
-                    Reservasi akan dibatalkan dan slot jadwal / kuota harian akan dibuka kembali secara otomatis.
+                    {itemSingular} akan dibatalkan dan{' '}
+                    {booking.booking_mode === 'dropoff' ? 'kuota harian' : 'slot jadwal'} akan dibuka kembali secara
+                    otomatis.
                 </p>
 
                 <div className="space-y-1.5">
@@ -80,7 +92,7 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
                         <Link href={route('dashboard.bookings')}>Kembali</Link>
                     </Button>
                     <Button type="submit" variant="destructive" disabled={form.processing}>
-                        {form.processing ? 'Memproses…' : 'Batalkan Reservasi'}
+                        {form.processing ? 'Memproses…' : `Batalkan ${itemSingular}`}
                     </Button>
                 </div>
             </form>

@@ -23,6 +23,7 @@ export interface ReschedulableBooking {
     service_assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
+    unit_label?: string;
     staff_id: number | null;
     booking_date: string;
     start_time_local: string;
@@ -90,13 +91,14 @@ export function BookingRescheduleDialog({
 
     const isDropoff = booking?.booking_mode === 'dropoff';
     const requiredQty = Math.max(1, booking?.quantity ?? 1);
+    const unitLabel = booking?.unit_label ?? 'item';
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (!booking) return;
         if (isDropoff) {
             if (!dropoff || !dropoff.available || dropoff.remaining_capacity < requiredQty) {
-                setTimeError(dropoff?.reason ?? `Sisa kuota harian tidak mencukupi untuk ${requiredQty} item.`);
+                setTimeError(dropoff?.reason ?? `Sisa kuota harian tidak mencukupi untuk ${requiredQty} ${unitLabel}.`);
                 return;
             }
         } else if (!form.data.time) {
@@ -175,7 +177,7 @@ export function BookingRescheduleDialog({
                                 ) : dropoff?.available && dropoff.remaining_capacity >= requiredQty ? (
                                     <div className="space-y-1 text-mute">
                                         <p className="font-medium text-ink tabular-nums">
-                                            Tersedia {dropoff.remaining_capacity} dari {dropoff.total_capacity} kuota (butuh {requiredQty} item)
+                                            Tersedia {dropoff.remaining_capacity} dari {dropoff.total_capacity} kuota (butuh {requiredQty} {unitLabel})
                                         </p>
                                         {dropoff.estimated_ready_date && (
                                             <p>Estimasi selesai baru: {formatDateIndo(dropoff.estimated_ready_date)}</p>
@@ -183,7 +185,7 @@ export function BookingRescheduleDialog({
                                     </div>
                                 ) : (
                                     <p className="text-destructive">
-                                        {dropoff?.reason ?? `Sisa kuota (${dropoff?.remaining_capacity ?? 0}) tidak mencukupi untuk ${requiredQty} item.`}
+                                        {dropoff?.reason ?? `Sisa kuota (${dropoff?.remaining_capacity ?? 0}) tidak mencukupi untuk ${requiredQty} ${unitLabel}.`}
                                     </p>
                                 )}
                                 {(timeError || form.errors.date) && (

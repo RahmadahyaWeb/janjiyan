@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Booking;
+use App\Models\Business;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -40,27 +41,37 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
     public function toMail(object $notifiable): MailMessage
     {
         $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer']);
-        $tz = $booking->business?->timezone ?: 'Asia/Jakarta';
+        $business = $booking->business;
+        $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
+        $tz = $business?->timezone ?: 'Asia/Jakarta';
         $dateLabel = $booking->start_at->setTimezone($tz)->format('d M Y');
         $timeLabel = $booking->start_at->setTimezone($tz)->format('H:i');
         $dpFormatted = 'Rp '.number_format($booking->dp_amount, 0, ',', '.');
-        $businessName = $booking->business?->name ?? 'Janjiyan';
+        $businessName = $business?->name ?? 'Janjiyan';
 
         $isDpUploaded = $this->eventType === 'dp_uploaded';
+        $isDropoff = $businessType === Business::TYPE_DROPOFF || $booking->isDropoff();
+        $unitLabel = $booking->resolvedUnitLabel();
+
+        [$nounTitle, $nounLower, $servicePrefix, $actionLabel] = match ($businessType) {
+            Business::TYPE_DROPOFF => ['Pesanan', 'pesanan', 'Layanan', 'Buka Dashboard Pesanan'],
+            Business::TYPE_SPACE_BOOKING => ['Booking', 'booking', 'Fasilitas / Paket', 'Buka Jadwal Booking'],
+            default => ['Reservasi', 'reservasi', 'Layanan', 'Buka Dashboard Reservasi'],
+        };
 
         $subject = $isDpUploaded
             ? "[{$businessName}] Bukti DP Diunggah — {$booking->booking_code}"
-            : "[{$businessName}] Reservasi Baru — {$booking->booking_code}";
+            : "[{$businessName}] {$nounTitle} Baru — {$booking->booking_code}";
 
         $intro = $isDpUploaded
-            ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer DP sebesar {$dpFormatted} dan menunggu verifikasi Anda."
-            : "Ada reservasi baru dari {$booking->customer->name} untuk layanan {$booking->service->name}.";
+            ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer DP sebesar {$dpFormatted} untuk {$nounLower} {$booking->booking_code} dan menunggu verifikasi Anda."
+            : "Ada {$nounLower} baru dari {$booking->customer->name} untuk {$booking->service->name}.";
 
-        $serviceLine = $booking->isDropoff()
-            ? "Layanan: {$booking->service->name} ({$booking->quantity} item)"
-            : "Layanan: {$booking->service->name}";
+        $serviceLine = $isDropoff
+            ? "{$servicePrefix}: {$booking->service->name} ({$booking->quantity} {$unitLabel})"
+            : "{$servicePrefix}: {$booking->service->name}";
 
-        $scheduleLine = $booking->isDropoff()
+        $scheduleLine = $isDropoff
             ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
             : "Jadwal: {$dateLabel}, {$timeLabel}";
 
@@ -73,20 +84,20 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
             ->line($scheduleLine)
             ->line("Pelanggan: {$booking->customer->name} ({$booking->customer->phone})");
 
-        if ($booking->isDropoff() && $booking->estimated_ready_date) {
+        if ($isDropoff && $booking->estimated_ready_date) {
             $mail->line('Estimasi Selesai: '.$booking->estimated_ready_date->format('d M Y'));
         }
 
-        if ($booking->isDropoff() && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
+        if ($isDropoff && $booking->fulfillment_type === 'pickup' && $booking->pickup_address) {
             $mail->line("Alamat Jemput: {$booking->pickup_address}");
         }
 
-        if ($booking->staff) {
+        if ($businessType === Business::TYPE_STAFF_APPOINTMENT && $booking->staff) {
             $mail->line("Staff: {$booking->staff->name}");
         }
 
         return $mail
-            ->action('Buka Dashboard Reservasi', route('dashboard.bookings', ['search' => $booking->booking_code, 'mode' => $booking->booking_mode ?? 'time_slot']))
-            ->line('Kelola verifikasi DP dan status reservasi langsung dari dashboard Janjiyan.');
+            ->action($actionLabel, route('dashboard.bookings', ['search' => $booking->booking_code]))
+            ->line("Kelola verifikasi DP dan status {$nounLower} langsung dari dashboard Janjiyan.");
     }
 }

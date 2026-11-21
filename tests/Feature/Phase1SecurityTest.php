@@ -50,6 +50,7 @@ class Phase1SecurityTest extends TestCase
             'name' => 'Studio Keamanan',
             'slug' => 'studio-keamanan',
             'category' => 'Barbershop & Grooming',
+            'business_type' => Business::TYPE_SPACE_BOOKING,
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
             'is_active' => true,

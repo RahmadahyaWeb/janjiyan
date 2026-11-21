@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { BellRing, Check, ImagePlus, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Tag, Trash2, Upload } from 'lucide-react';
+import { BellRing, Check, ImagePlus, Lock, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Tag, Trash2, Upload } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { BusinessMark } from '@/components/BusinessMark';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -14,14 +14,16 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { BRAND_PRESETS, brandVars, isHex, onBrand } from '@/lib/brand';
+import { BUSINESS_TYPE_LOCK_NOTICE, getBusinessTypeConfig, getBusinessTypeOption } from '@/lib/businessType';
 import { cn, parseNumericInput, scrollToFirstInvalid } from '@/lib/utils';
 import {
+    getWhatsappPlaceholdersForBusiness,
+    getWhatsappTemplateMetaForBusiness,
     interpolateWhatsappTemplate,
-    WHATSAPP_PLACEHOLDERS,
-    WHATSAPP_TEMPLATE_META,
     type WhatsappTemplateKey,
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
+import type { BusinessType } from '@/types';
 
 const SETTINGS_TABS = [
     { id: 'profil', label: 'Profil Toko' },
@@ -68,6 +70,7 @@ interface SettingsIndexProps {
         name: string;
         slug: string;
         category: string;
+        business_type: BusinessType;
         description: string | null;
         qr_poster_subtitle?: string | null;
         phone: string | null;
@@ -170,6 +173,14 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         caption: '',
     });
 
+    const businessConfig = getBusinessTypeConfig(business?.business_type);
+    const businessTypeOption = getBusinessTypeOption(business?.business_type);
+    const filteredWaMeta = getWhatsappTemplateMetaForBusiness(business?.business_type);
+    const filteredWaPlaceholders = getWhatsappPlaceholdersForBusiness(business?.business_type);
+    const resolvedWaTab: WhatsappTemplateKey = filteredWaMeta.some((m) => m.key === activeWaTab)
+        ? activeWaTab
+        : (filteredWaMeta[0]?.key ?? 'reminder');
+
     if (!business) {
         return (
             <DashboardLayout title="Pengaturan Bisnis">
@@ -246,13 +257,13 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
     };
 
     const insertPlaceholder = (token: string) => {
-        const current = form.data.whatsapp_templates[activeWaTab] ?? '';
-        updateWhatsappTemplate(activeWaTab, `${current}${current.endsWith(' ') || current === '' ? '' : ' '}${token}`);
+        const current = form.data.whatsapp_templates[resolvedWaTab] ?? '';
+        updateWhatsappTemplate(resolvedWaTab, `${current}${current.endsWith(' ') || current === '' ? '' : ' '}${token}`);
     };
 
     const resetActiveTemplate = () => {
-        const defaultVal = business.default_whatsapp_templates?.[activeWaTab] ?? '';
-        updateWhatsappTemplate(activeWaTab, defaultVal);
+        const defaultVal = business.default_whatsapp_templates?.[resolvedWaTab] ?? '';
+        updateWhatsappTemplate(resolvedWaTab, defaultVal);
     };
 
     const handleAddGallery = (e: FormEvent) => {
@@ -328,6 +339,23 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 <QrCode className="mr-1.5 size-4" aria-hidden="true" />
                                 QR Poster Siap Cetak
                             </Button>
+                        </div>
+
+                        <div className="flex items-start gap-3 rounded-sm border border-hairline-soft bg-bone/70 p-3.5">
+                            <Lock className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
+                            <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-semibold text-ink">Tipe Bisnis:</span>
+                                    <Badge variant="secondary">{businessTypeOption.label}</Badge>
+                                    <Badge variant="outline" className="gap-1">
+                                        <Lock className="size-3" aria-hidden="true" />
+                                        Terkunci Permanen
+                                    </Badge>
+                                </div>
+                                <p className="text-xs leading-relaxed text-mute">
+                                    {BUSINESS_TYPE_LOCK_NOTICE}
+                                </p>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
@@ -627,7 +655,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 <div className="px-3 pt-9 pb-3 text-center">
                                     <p className="truncate text-sm font-bold text-ink">{form.data.name || 'Nama toko'}</p>
                                     <div className="mt-2.5 rounded-xl bg-(--brand) px-3 py-2.5 text-left text-xs font-semibold text-(--on-brand)">
-                                        Pesan layanan
+                                        {businessConfig.publicPortal.ctaLabel}
                                     </div>
                                     <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-bone px-3 py-2 text-left text-xs font-semibold text-ink">
                                         <span className="flex size-6 items-center justify-center rounded-md bg-(--brand-soft) text-(--brand-ink)">
@@ -643,32 +671,41 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     {/* Booking Window & Automated Reminders */}
                     <div id="aturan" hidden={tab !== 'aturan'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div>
-                            <h2 className="text-lg font-semibold text-ink">Aturan Booking & Pengingat Otomatis</h2>
+                            <h2 className="text-lg font-semibold text-ink">Aturan Booking &amp; Pengingat Otomatis</h2>
                             <p className="text-xs text-mute">
-                                Batasi jarak waktu pemesanan pelanggan dan aktifkan email pengingat otomatis untuk menekan no-show.
+                                {businessConfig.settings.showNoShowDp
+                                    ? 'Batasi jarak waktu pemesanan pelanggan dan aktifkan email pengingat otomatis untuk menekan no-show.'
+                                    : 'Batasi jarak hari pemesanan pelanggan dan aktifkan email pengingat otomatis H-1.'}
                             </p>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="settings-lead-minutes">Jeda Minimum Sebelum Jadwal (Menit)</Label>
-                                <Input
-                                    id="settings-lead-minutes"
-                                    type="number"
-                                    min={0}
-                                    max={10080}
-                                    value={form.data.min_booking_lead_minutes}
-                                    onChange={(e) => form.setData('min_booking_lead_minutes', parseNumericInput(e.target.value))}
-                                    aria-invalid={Boolean(form.errors.min_booking_lead_minutes)}
-                                    required
-                                />
-                                <p className="text-xs text-mute">
-                                    Contoh: 60 menit artinya pelanggan tidak bisa memesan kurang dari 1 jam sebelum jam mulai.
-                                </p>
-                                {form.errors.min_booking_lead_minutes && (
-                                    <p className="text-xs text-destructive">{form.errors.min_booking_lead_minutes}</p>
-                                )}
-                            </div>
+                        <div
+                            className={cn(
+                                'grid gap-4',
+                                businessConfig.settings.showLeadTimeMinutes ? 'sm:grid-cols-2' : 'sm:grid-cols-1'
+                            )}
+                        >
+                            {businessConfig.settings.showLeadTimeMinutes && (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="settings-lead-minutes">Jeda Minimum Sebelum Jadwal (Menit)</Label>
+                                    <Input
+                                        id="settings-lead-minutes"
+                                        type="number"
+                                        min={0}
+                                        max={10080}
+                                        value={form.data.min_booking_lead_minutes}
+                                        onChange={(e) => form.setData('min_booking_lead_minutes', parseNumericInput(e.target.value))}
+                                        aria-invalid={Boolean(form.errors.min_booking_lead_minutes)}
+                                        required
+                                    />
+                                    <p className="text-xs text-mute">
+                                        Contoh: 60 menit artinya pelanggan tidak bisa memesan kurang dari 1 jam sebelum jam mulai.
+                                    </p>
+                                    {form.errors.min_booking_lead_minutes && (
+                                        <p className="text-xs text-destructive">{form.errors.min_booking_lead_minutes}</p>
+                                    )}
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <Label htmlFor="settings-max-advance">Batas Maksimal Pemesanan (Hari ke Depan)</Label>
                                 <Input
@@ -707,63 +744,67 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
-                                <div>
-                                    <Label htmlFor="settings-reminder-h2" className="text-sm font-semibold text-ink">
-                                        Email Pengingat H-2 Jam
-                                    </Label>
-                                    <p className="mt-0.5 text-xs text-mute">
-                                        Kirim pengingat terakhir 2 jam sebelum jadwal dimulai agar pelanggan datang tepat waktu.
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="settings-reminder-h2"
-                                    checked={form.data.reminder_h2_enabled}
-                                    onCheckedChange={(val) => form.setData('reminder_h2_enabled', val)}
-                                />
-                            </div>
-
-                            <div className="space-y-3 rounded-sm border border-hairline-soft bg-bone/70 p-4">
-                                <div className="flex items-center justify-between gap-4">
+                            {businessConfig.settings.showReminderH2 && (
+                                <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
                                     <div>
-                                        <Label
-                                            htmlFor="settings-noshow-dp"
-                                            className="flex items-center gap-1.5 text-sm font-semibold text-ink"
-                                        >
-                                            <ShieldAlert className="size-4 text-ink" aria-hidden="true" />
-                                            Proteksi No-Show Otomatis (Wajib DP 100%)
+                                        <Label htmlFor="settings-reminder-h2" className="text-sm font-semibold text-ink">
+                                            Email Pengingat H-2 Jam
                                         </Label>
                                         <p className="mt-0.5 text-xs text-mute">
-                                            Jika pelanggan pernah tidak hadir (no-show) mencapai batas tertentu, sistem otomatis mewajibkan DP 100% pada reservasi online berikutnya.
+                                            Kirim pengingat terakhir 2 jam sebelum jadwal dimulai agar pelanggan datang tepat waktu.
                                         </p>
                                     </div>
                                     <Switch
-                                        id="settings-noshow-dp"
-                                        checked={form.data.no_show_require_full_dp}
-                                        onCheckedChange={(val) => form.setData('no_show_require_full_dp', val)}
+                                        id="settings-reminder-h2"
+                                        checked={form.data.reminder_h2_enabled}
+                                        onCheckedChange={(val) => form.setData('reminder_h2_enabled', val)}
                                     />
                                 </div>
-                                {form.data.no_show_require_full_dp && (
-                                    <div className="flex flex-wrap items-center gap-3 pt-1">
-                                        <Label htmlFor="settings-noshow-threshold" className="text-xs text-ink">
-                                            Berlaku mulai riwayat no-show:
-                                        </Label>
-                                        <Input
-                                            id="settings-noshow-threshold"
-                                            type="number"
-                                            min={1}
-                                            max={10}
-                                            value={form.data.no_show_dp_threshold}
-                                            onChange={(e) =>
-                                                form.setData('no_show_dp_threshold', parseNumericInput(e.target.value))
-                                            }
-                                            required
-                                            className="h-9 w-20 rounded-full bg-canvas text-center font-mono text-sm"
+                            )}
+
+                            {businessConfig.settings.showNoShowDp && (
+                                <div className="space-y-3 rounded-sm border border-hairline-soft bg-bone/70 p-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <Label
+                                                htmlFor="settings-noshow-dp"
+                                                className="flex items-center gap-1.5 text-sm font-semibold text-ink"
+                                            >
+                                                <ShieldAlert className="size-4 text-ink" aria-hidden="true" />
+                                                Proteksi No-Show Otomatis (Wajib DP 100%)
+                                            </Label>
+                                            <p className="mt-0.5 text-xs text-mute">
+                                                Jika pelanggan pernah tidak hadir (no-show) mencapai batas tertentu, sistem otomatis mewajibkan DP 100% pada {businessConfig.bookings.itemSingular.toLowerCase()} online berikutnya.
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            id="settings-noshow-dp"
+                                            checked={form.data.no_show_require_full_dp}
+                                            onCheckedChange={(val) => form.setData('no_show_require_full_dp', val)}
                                         />
-                                        <span className="text-xs text-mute">kali tidak hadir</span>
                                     </div>
-                                )}
-                            </div>
+                                    {form.data.no_show_require_full_dp && (
+                                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                                            <Label htmlFor="settings-noshow-threshold" className="text-xs text-ink">
+                                                Berlaku mulai riwayat no-show:
+                                            </Label>
+                                            <Input
+                                                id="settings-noshow-threshold"
+                                                type="number"
+                                                min={1}
+                                                max={10}
+                                                value={form.data.no_show_dp_threshold}
+                                                onChange={(e) =>
+                                                    form.setData('no_show_dp_threshold', parseNumericInput(e.target.value))
+                                                }
+                                                required
+                                                className="h-9 w-20 rounded-full bg-canvas text-center font-mono text-sm"
+                                            />
+                                            <span className="text-xs text-mute">kali tidak hadir</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -776,7 +817,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     Template Pesan WhatsApp 1-Klik
                                 </h2>
                                 <p className="mt-0.5 text-xs text-mute">
-                                    Kustomisasi pesan yang otomatis terisi saat Anda klik tombol WhatsApp di halaman Reservasi.
+                                    Kustomisasi pesan yang otomatis terisi saat Anda klik tombol WhatsApp di halaman {businessConfig.bookings.pageTitle}.
                                 </p>
                             </div>
                             <Button
@@ -792,8 +833,8 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Pilih jenis template WhatsApp">
-                            {WHATSAPP_TEMPLATE_META.map((item) => {
-                                const active = activeWaTab === item.key;
+                            {filteredWaMeta.map((item) => {
+                                const active = resolvedWaTab === item.key;
                                 return (
                                     <button
                                         key={item.key}
@@ -815,18 +856,18 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
                         <div className="space-y-2">
                             <Label htmlFor="wa-template-editor" className="text-xs text-mute">
-                                {WHATSAPP_TEMPLATE_META.find((m) => m.key === activeWaTab)?.description}
+                                {filteredWaMeta.find((m) => m.key === resolvedWaTab)?.description}
                             </Label>
                             <Textarea
                                 id="wa-template-editor"
                                 rows={5}
-                                value={form.data.whatsapp_templates[activeWaTab] ?? ''}
-                                onChange={(e) => updateWhatsappTemplate(activeWaTab, e.target.value)}
+                                value={form.data.whatsapp_templates[resolvedWaTab] ?? ''}
+                                onChange={(e) => updateWhatsappTemplate(resolvedWaTab, e.target.value)}
                                 className="font-sans text-base md:text-sm"
                             />
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                 <span className="text-xs font-medium text-mute">Sisipkan variabel:</span>
-                                {WHATSAPP_PLACEHOLDERS.map((p) => (
+                                {filteredWaPlaceholders.map((p) => (
                                     <button
                                         key={p.token}
                                         type="button"
@@ -845,14 +886,20 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 Pratinjau Pesan
                             </p>
                             <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-ink">
-                                {interpolateWhatsappTemplate(form.data.whatsapp_templates[activeWaTab] ?? '', {
+                                {interpolateWhatsappTemplate(form.data.whatsapp_templates[resolvedWaTab] ?? '', {
                                     customer_name: 'Budi Santoso',
                                     business_name: form.data.name || business.name,
-                                    service_name: 'Deep Clean Sepatu',
+                                    service_name:
+                                        business.business_type === 'dropoff'
+                                            ? 'Deep Clean Sepatu'
+                                            : business.business_type === 'space_booking'
+                                              ? 'Lapangan Padel Court A (1 Jam)'
+                                              : 'Signature Haircut & Wash',
                                     quantity: 2,
-                                    staff_name: 'Raka',
+                                    unit_label: 'pasang',
+                                    staff_name: business.business_type === 'staff_appointment' ? 'Raka' : null,
                                     date: 'Sabtu, 21 Nov 2026',
-                                    time: 'Drop-off (Jam Buka)',
+                                    time: business.business_type === 'dropoff' ? 'Drop-off (Jam Buka)' : '14:00',
                                     estimated_ready_date: 'Senin, 23 Nov 2026',
                                     booking_code: 'JNJ-8A2F1C',
                                     dp_amount: 25000,
@@ -873,7 +920,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     Notifikasi Instan Telegram Bot
                                 </h2>
                                 <p className="mt-0.5 text-xs text-mute">
-                                    Terima notifikasi real-time gratis di HP Anda setiap kali ada reservasi baru atau bukti DP diunggah.
+                                    Terima notifikasi real-time gratis di HP Anda setiap kali ada {businessConfig.bookings.itemSingular.toLowerCase()} baru atau bukti DP diunggah.
                                 </p>
                             </div>
                             <Switch
@@ -1194,7 +1241,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 Hapus Bisnis
                             </h2>
                             <p className="mt-1 text-sm leading-relaxed text-body">
-                                Menghapus bisnis akan menghapus permanen seluruh layanan, staff, jadwal, pelanggan, dan riwayat reservasi yang terhubung. Tindakan ini tidak dapat dibatalkan.
+                                Menghapus bisnis akan menghapus permanen seluruh layanan, tim, jadwal, pelanggan, dan riwayat {businessConfig.bookings.itemSingular.toLowerCase()} yang terhubung. Tindakan ini tidak dapat dibatalkan.
                             </p>
                         </div>
 
@@ -1275,6 +1322,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                 businessName={form.data.name || business.name}
                 businessCategory={form.data.category || business.category}
                 businessSlug={form.data.slug || business.slug}
+                businessType={business.business_type}
                 businessAddress={form.data.address || business.address}
                 qrSubtitle={business.qr_poster_subtitle}
                 canSaveSubtitle

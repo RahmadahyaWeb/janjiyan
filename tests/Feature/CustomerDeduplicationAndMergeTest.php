@@ -27,6 +27,8 @@ class CustomerDeduplicationAndMergeTest extends TestCase
 
     private Business $business;
 
+    private Business $dropoffBusiness;
+
     private Business $otherBusiness;
 
     private Service $slotService;
@@ -50,9 +52,10 @@ class CustomerDeduplicationAndMergeTest extends TestCase
 
         $this->business = Business::create([
             'owner_id' => $this->owner->id,
-            'name' => 'Barbershop & Shoe Care',
-            'slug' => 'barbershop-shoe-care',
+            'name' => 'Barbershop Raka',
+            'slug' => 'barbershop-raka',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'phone' => '081234567890',
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
@@ -89,10 +92,28 @@ class CustomerDeduplicationAndMergeTest extends TestCase
         ]);
         $this->slotService->staff()->attach([$this->staff->id]);
 
+        $this->dropoffBusiness = Business::create([
+            'owner_id' => $this->owner->id,
+            'name' => 'Shoe Care Raka',
+            'slug' => 'shoe-care-raka',
+            'category' => 'Cuci Sepatu & Care',
+            'business_type' => Business::TYPE_DROPOFF,
+            'phone' => '081234567890',
+            'timezone' => 'Asia/Jakarta',
+            'dp_expiry_minutes' => 120,
+            'is_active' => true,
+        ]);
+        $this->dropoffBusiness->users()->attach($this->owner->id, [
+            'role' => 'owner',
+            'permissions' => json_encode(['*']),
+        ]);
+        $this->dropoffBusiness->seedDefaultOperatingHours();
+
         $this->dropoffService = Service::create([
-            'business_id' => $this->business->id,
+            'business_id' => $this->dropoffBusiness->id,
             'name' => 'Deep Clean Sneakers',
             'booking_mode' => 'dropoff',
+            'unit_label' => 'pasang',
             'price' => 65000,
             'duration_minutes' => 60,
             'buffer_minutes' => 0,
@@ -118,6 +139,7 @@ class CustomerDeduplicationAndMergeTest extends TestCase
             'name' => 'Salon Sebelah',
             'slug' => 'salon-sebelah',
             'category' => 'Salon',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);
@@ -186,24 +208,34 @@ class CustomerDeduplicationAndMergeTest extends TestCase
         $this->assertSame($customer->id, $secondBooking->customer_id);
         $this->assertSame('Andi Anak Pak Budi', $secondBooking->booked_customer_name);
 
-        // Third booking (dropoff mode) using 62812... format and another name ("Budi S.")
-        $this->post(route('public.booking.store', $this->business->slug), [
+        // Third & fourth bookings (dropoff business) using 62812... and +62 formats across different names
+        $this->post(route('public.booking.store', $this->dropoffBusiness->slug), [
             'service_id' => $this->dropoffService->id,
             'date' => $day2,
             'quantity' => 2,
             'fulfillment_type' => 'dropoff',
-            'customer_name' => 'Budi S.',
+            'customer_name' => 'Budi Santoso',
             'customer_phone' => '6281234567899',
         ])->assertRedirect();
 
-        $this->assertSame(1, Customer::where('business_id', $this->business->id)->count());
-        $customer->refresh();
-        $this->assertSame('Budi Santoso', $customer->name);
-        $this->assertSame(['Andi Anak Pak Budi', 'Budi S.'], $customer->name_aliases);
+        $this->post(route('public.booking.store', $this->dropoffBusiness->slug), [
+            'service_id' => $this->dropoffService->id,
+            'date' => $day2,
+            'quantity' => 1,
+            'fulfillment_type' => 'dropoff',
+            'customer_name' => 'Budi S.',
+            'customer_phone' => '+62 812-3456-7899',
+        ])->assertRedirect();
 
-        $thirdBooking = Booking::where('business_id', $this->business->id)->latest('id')->firstOrFail();
-        $this->assertSame($customer->id, $thirdBooking->customer_id);
-        $this->assertSame('Budi S.', $thirdBooking->booked_customer_name);
+        $this->assertSame(1, Customer::where('business_id', $this->dropoffBusiness->id)->count());
+        $dropoffCustomer = Customer::where('business_id', $this->dropoffBusiness->id)->firstOrFail();
+        $this->assertSame('Budi Santoso', $dropoffCustomer->name);
+        $this->assertSame(['Budi S.'], $dropoffCustomer->name_aliases);
+
+        $dropoffBooking = Booking::where('business_id', $this->dropoffBusiness->id)->latest('id')->firstOrFail();
+        $this->assertSame($dropoffCustomer->id, $dropoffBooking->customer_id);
+        $this->assertSame('Budi S.', $dropoffBooking->booked_customer_name);
+        $this->assertSame('pasang', $dropoffBooking->unit_label);
     }
 
     public function test_customer_lookup_returns_scoped_matches_and_never_leaks_cross_tenant_customers(): void

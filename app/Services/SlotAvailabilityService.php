@@ -184,6 +184,7 @@ class SlotAvailabilityService
      *     reason: string|null,
      *     remaining_capacity: int,
      *     total_capacity: int,
+     *     unit_label: string,
      *     open_time: string|null,
      *     close_time: string|null,
      *     estimated_ready_date: string|null,
@@ -203,12 +204,14 @@ class SlotAvailabilityService
         $now = CarbonImmutable::now($timezone);
         $totalCapacity = max(1, (int) $service->capacity);
         $turnaroundDays = max(0, (int) ($service->turnaround_days ?? 1));
+        $unitLabel = $service->resolvedUnitLabel();
 
         $unavailable = fn (string $reason): array => [
             'available' => false,
             'reason' => $reason,
             'remaining_capacity' => 0,
             'total_capacity' => $totalCapacity,
+            'unit_label' => $unitLabel,
             'open_time' => null,
             'close_time' => null,
             'estimated_ready_date' => null,
@@ -263,6 +266,7 @@ class SlotAvailabilityService
             'reason' => $remainingCapacity > 0 ? null : 'Kuota harian untuk layanan ini sudah penuh pada tanggal tersebut.',
             'remaining_capacity' => $remainingCapacity,
             'total_capacity' => $totalCapacity,
+            'unit_label' => $unitLabel,
             'open_time' => substr((string) $operatingHour->open_time, 0, 5),
             'close_time' => substr((string) $operatingHour->close_time, 0, 5),
             'estimated_ready_date' => $estimatedReadyDate->toDateString(),
@@ -352,6 +356,7 @@ class SlotAvailabilityService
                 'booked_customer_email' => $prepared['booked_customer_email'],
                 'booking_mode' => 'time_slot',
                 'quantity' => 1,
+                'unit_label' => $service->resolvedUnitLabel(),
                 'fulfillment_type' => 'dropoff',
                 'booking_code' => $this->generateBookingCode(),
                 'invoice_number' => $this->generateInvoiceNumber(),
@@ -390,8 +395,10 @@ class SlotAvailabilityService
         ?UploadedFile $dpProofFile = null,
         bool $allowImmediateToday = false
     ): Booking {
+        $unit = $service->resolvedUnitLabel();
+
         if ($quantity < 1 || $quantity > 50) {
-            throw new RuntimeException('Jumlah item harus antara 1 sampai 50.');
+            throw new RuntimeException("Jumlah {$unit} harus antara 1 sampai 50.");
         }
 
         return DB::transaction(function () use (
@@ -432,7 +439,8 @@ class SlotAvailabilityService
                     throw new RuntimeException('Kuota harian untuk layanan ini sudah penuh pada tanggal yang dipilih.');
                 }
 
-                throw new RuntimeException("Sisa kuota pada tanggal tersebut hanya {$remaining} item.");
+                $unit = $service->resolvedUnitLabel();
+                throw new RuntimeException("Sisa kuota pada tanggal tersebut hanya {$remaining} {$unit}.");
             }
 
             $resolvedFulfillment = ($service->supports_pickup && $fulfillmentType === 'pickup') ? 'pickup' : 'dropoff';
@@ -468,6 +476,7 @@ class SlotAvailabilityService
                 'booked_customer_email' => $prepared['booked_customer_email'],
                 'booking_mode' => 'dropoff',
                 'quantity' => $quantity,
+                'unit_label' => $service->resolvedUnitLabel(),
                 'fulfillment_type' => $resolvedFulfillment,
                 'pickup_session' => $resolvedSession,
                 'pickup_address' => $resolvedAddress !== '' ? $resolvedAddress : null,
@@ -513,11 +522,17 @@ class SlotAvailabilityService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $business = Business::whereKey($lockedBooking->business_id)->lockForUpdate()->firstOrFail();
+
             if (! in_array($lockedBooking->reservation_status, ['pending', 'confirmed'], true)) {
-                throw new RuntimeException('Hanya reservasi berstatus Menunggu atau Dikonfirmasi yang dapat dijadwalkan ulang.');
+                $noun = match ($business->resolvedBusinessType()) {
+                    Business::TYPE_DROPOFF => 'pesanan',
+                    Business::TYPE_SPACE_BOOKING => 'booking',
+                    default => 'reservasi',
+                };
+                throw new RuntimeException("Hanya {$noun} berstatus Menunggu atau Dikonfirmasi yang dapat dijadwalkan ulang.");
             }
 
-            $business = Business::whereKey($lockedBooking->business_id)->lockForUpdate()->firstOrFail();
             $service = $lockedBooking->service()->firstOrFail();
             $timezone = $business->timezone ?: 'Asia/Jakarta';
 
@@ -538,7 +553,8 @@ class SlotAvailabilityService
                 $qty = max(1, (int) $lockedBooking->quantity);
 
                 if ($qty > $remaining) {
-                    throw new RuntimeException("Sisa kuota harian pada tanggal tersebut ({$remaining}) tidak mencukupi untuk {$qty} item.");
+                    $unit = $lockedBooking->resolvedUnitLabel();
+                    throw new RuntimeException("Sisa kuota harian pada tanggal tersebut ({$remaining}) tidak mencukupi untuk {$qty} {$unit}.");
                 }
 
                 [$startLocal, $endLocal] = $this->resolveDropoffWindow(
@@ -569,7 +585,8 @@ class SlotAvailabilityService
             }
 
             if (! $timeString) {
-                throw new RuntimeException('Jam reservasi wajib dipilih.');
+                $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
+                throw new RuntimeException($timePrompt);
             }
 
             $startLocal = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$dateString} {$timeString}", $timezone);
@@ -843,7 +860,12 @@ class SlotAvailabilityService
             ->first();
 
         if ($customer && ! $allowImmediateToday && $customer->is_blocked) {
-            throw new RuntimeException('Maaf, reservasi online untuk nomor ini sedang dibatasi. Silakan hubungi kami langsung melalui WhatsApp.');
+            $noun = match ($business->resolvedBusinessType()) {
+                Business::TYPE_DROPOFF => 'pemesanan',
+                Business::TYPE_SPACE_BOOKING => 'booking',
+                default => 'reservasi',
+            };
+            throw new RuntimeException("Maaf, {$noun} online untuk nomor ini sedang dibatasi. Silakan hubungi kami langsung melalui WhatsApp.");
         }
 
         if (! $customer) {
@@ -899,6 +921,7 @@ class SlotAvailabilityService
 
         if (
             ! $allowImmediateToday
+            && ! $business->isDropoff()
             && $business->no_show_require_full_dp
             && (int) ($business->no_show_dp_threshold ?? 0) > 0
             && $totalPrice > 0

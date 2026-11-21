@@ -79,6 +79,17 @@ class ProductionHardeningTest extends TestCase
             'email_verified_at' => now(),
         ]);
         $subscription = app(PlanLimitService::class)->ensureTrialSubscription($owner);
+        $business = Business::create([
+            'owner_id' => $owner->id,
+            'name' => 'Billing Studio',
+            'slug' => 'billing-studio',
+            'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
+            'timezone' => 'Asia/Jakarta',
+            'is_active' => true,
+        ]);
+        $business->users()->attach($owner->id, ['role' => 'owner', 'permissions' => json_encode(['*'])]);
+        $owner->update(['active_business_id' => $business->id]);
         $plan = SubscriptionPlan::where('slug', 'professional')->firstOrFail();
 
         $existing = SubscriptionInvoice::create([
@@ -183,6 +194,7 @@ class ProductionHardeningTest extends TestCase
             'name' => 'RBAC Studio',
             'slug' => 'rbac-studio',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);
@@ -253,6 +265,7 @@ class ProductionHardeningTest extends TestCase
             'name' => 'Active Salon',
             'slug' => 'active-salon',
             'category' => 'Salon',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
         ]);
@@ -262,6 +275,7 @@ class ProductionHardeningTest extends TestCase
             'name' => 'Suspended Salon',
             'slug' => 'suspended-salon',
             'category' => 'Salon',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'is_active' => true,
             'suspended_at' => now(),
@@ -379,6 +393,7 @@ class ProductionHardeningTest extends TestCase
             'name' => 'TG Studio',
             'slug' => 'tg-studio',
             'category' => 'Studio',
+            'business_type' => Business::TYPE_SPACE_BOOKING,
             'timezone' => 'Asia/Jakarta',
             'telegram_notifications_enabled' => true,
             'telegram_bot_token' => '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',

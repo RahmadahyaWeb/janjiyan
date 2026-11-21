@@ -9,5 +9,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(SubscriptionPlanSeeder::class);
+
+        if (! app()->isProduction()) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }

@@ -1,7 +1,9 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatBookingScheduleShort, formatDateIndo, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import type { BusinessType } from '@/types';
 
 export interface CalendarBookingItem {
     id: number;
@@ -14,6 +16,7 @@ export interface CalendarBookingItem {
     service_assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
+    unit_label?: string;
     fulfillment_type?: 'dropoff' | 'pickup';
     pickup_session?: string | null;
     staff_id: number | null;
@@ -53,6 +56,7 @@ export interface CalendarPayload {
 
 interface BookingCalendarViewProps {
     calendar: CalendarPayload;
+    businessType?: BusinessType;
     onSelectDate: (date: string) => void;
     onSelectBooking: (booking: CalendarBookingItem) => void;
 }
@@ -77,16 +81,23 @@ function statusPillClasses(status: string): string {
 
 export function BookingCalendarView({
     calendar,
+    businessType,
     onSelectDate,
     onSelectBooking,
 }: BookingCalendarViewProps) {
+    const config = getBusinessTypeConfig(businessType);
+    const isSpaceBooking = config.type === 'space_booking';
     const todayString = new Date().toISOString().slice(0, 10);
     const hasUnassignedBookings = calendar.bookings.some((b) => b.staff_id === null);
 
     const columns: Array<{ id: number | null; name: string; title: string | null }> = [
         ...calendar.staff_columns,
         ...(hasUnassignedBookings || calendar.staff_columns.length === 0
-            ? [{ id: null, name: 'Umum / Kapasitas', title: 'Tanpa staff khusus' }]
+            ? [
+                  isSpaceBooking
+                      ? { id: null, name: 'Jadwal / Sesi', title: 'Semua fasilitas & paket' }
+                      : { id: null, name: 'Jadwal / Sesi', title: 'Belum ditetapkan ke staff' },
+              ]
             : []),
     ];
 
@@ -177,10 +188,10 @@ export function BookingCalendarView({
             {calendar.bookings.length === 0 ? (
                 <div className="rounded-md bg-bone p-12 text-center">
                     <p className="text-base font-semibold text-ink">
-                        Tidak ada jadwal reservasi aktif pada {formatDateIndo(calendar.selected_date)}.
+                        Tidak ada {config.bookings.itemSingular.toLowerCase()} aktif pada {formatDateIndo(calendar.selected_date)}.
                     </p>
                     <p className="mt-1 text-sm text-mute">
-                        Pilih tanggal lain di kalender mingguan di atas atau tambahkan booking manual.
+                        Pilih tanggal lain di kalender mingguan di atas atau buat {config.bookings.itemSingular.toLowerCase()} manual.
                     </p>
                 </div>
             ) : (
@@ -229,7 +240,9 @@ export function BookingCalendarView({
                                                 <p className="mt-1 text-sm font-semibold">{b.customer_name}</p>
                                                 <p className="text-xs">
                                                     {b.service_name}
-                                                    {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1 ? ` · ${b.quantity} item` : ''}
+                                                    {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
+                                                        ? ` · ${b.quantity} ${b.unit_label ?? 'item'}`
+                                                        : ''}
                                                 </p>
                                             </button>
                                         ))

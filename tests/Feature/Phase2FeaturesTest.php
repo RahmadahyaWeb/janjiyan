@@ -38,8 +38,6 @@ class Phase2FeaturesTest extends TestCase
 
         $response = $this->post(route('register.store'), [
             'name' => 'Merchant Baru',
-            'business_name' => 'Klinik Sehat',
-            'business_category' => 'Klinik & Kesehatan',
             'email' => 'baru@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
@@ -49,6 +47,8 @@ class Phase2FeaturesTest extends TestCase
 
         $user = User::where('email', 'baru@example.com')->firstOrFail();
         $this->assertNull($user->email_verified_at);
+        $this->assertNull($user->active_business_id);
+        $this->assertSame(0, $user->businesses()->count());
         Notification::assertSentTo($user, VerifyEmail::class);
 
         $this->actingAs($user)
@@ -63,15 +63,14 @@ class Phase2FeaturesTest extends TestCase
 
         $this->post(route('register.store'), [
             'name' => 'Merchant Mail Rusak',
-            'business_name' => 'Salon Cantik',
-            'business_category' => 'Salon & Kecantikan',
             'email' => 'mailrusak@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ])->assertRedirect(route('verification.notice'));
 
         $user = User::where('email', 'mailrusak@example.com')->firstOrFail();
-        $this->assertNotNull($user->active_business_id);
+        $this->assertNull($user->active_business_id);
+        $this->assertSame(0, $user->businesses()->count());
         $this->assertAuthenticatedAs($user);
 
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('SMTP down'));
@@ -125,6 +124,18 @@ class Phase2FeaturesTest extends TestCase
         ]);
         app(PlanLimitService::class)->ensureTrialSubscription($user);
 
+        $business = Business::create([
+            'owner_id' => $user->id,
+            'name' => 'Bisnis Profil',
+            'slug' => 'bisnis-profil',
+            'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
+            'timezone' => 'Asia/Jakarta',
+            'is_active' => true,
+        ]);
+        $business->users()->attach($user->id, ['role' => 'owner', 'permissions' => json_encode(['*'])]);
+        $user->update(['active_business_id' => $business->id]);
+
         $this->actingAs($user)->get(route('dashboard.profile'))->assertOk();
 
         // Change password
@@ -174,6 +185,7 @@ class Phase2FeaturesTest extends TestCase
             'name' => 'Studio Uji',
             'slug' => 'studio-uji',
             'category' => 'Studio Foto',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'qris_path' => $qrisPath,
             'is_active' => true,
@@ -257,6 +269,7 @@ class Phase2FeaturesTest extends TestCase
             'name' => 'Barber Kuota',
             'slug' => 'barber-kuota',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_SPACE_BOOKING,
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
             'is_active' => true,

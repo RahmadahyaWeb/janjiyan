@@ -12,15 +12,30 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { BusinessType } from '@/types';
 
 const DEFAULT_SUBTITLE = 'Scan QR untuk Booking Online';
 
-const SUBTITLE_PRESETS = [
-    'Scan QR untuk Booking Online',
-    'Scan QR untuk Order & Drop-off',
-    'Scan QR untuk Cek Layanan & Harga',
-    'Scan QR untuk Reservasi Jadwal',
-];
+const SUBTITLE_PRESETS_BY_TYPE: Record<BusinessType, string[]> = {
+    staff_appointment: [
+        'Scan QR untuk Booking Online',
+        'Scan QR untuk Buat Janji Temu',
+        'Scan QR untuk Cek Layanan & Harga',
+        'Scan QR untuk Reservasi Jadwal',
+    ],
+    space_booking: [
+        'Scan QR untuk Booking Online',
+        'Scan QR untuk Cek Jadwal & Sesi',
+        'Scan QR untuk Sewa Tempat / Paket',
+        'Scan QR untuk Cek Fasilitas & Harga',
+    ],
+    dropoff: [
+        'Scan QR untuk Order & Drop-off',
+        'Scan QR untuk Booking Online',
+        'Scan QR untuk Cek Layanan & Tarif',
+        'Scan QR untuk Lacak Status Pesanan',
+    ],
+};
 
 interface QrPosterDialogProps {
     open: boolean;
@@ -28,6 +43,7 @@ interface QrPosterDialogProps {
     businessName: string;
     businessCategory: string;
     businessSlug: string;
+    businessType?: BusinessType;
     businessAddress?: string | null;
     qrSubtitle?: string | null;
     canSaveSubtitle?: boolean;
@@ -102,10 +118,16 @@ export function QrPosterDialog({
     businessName,
     businessCategory,
     businessSlug,
+    businessType = 'staff_appointment',
     businessAddress,
     qrSubtitle,
     canSaveSubtitle = false,
 }: QrPosterDialogProps) {
+    const subtitlePresets = SUBTITLE_PRESETS_BY_TYPE[businessType] ?? SUBTITLE_PRESETS_BY_TYPE.staff_appointment;
+    const footerTagline =
+        businessType === 'dropoff'
+            ? 'Pemesanan & Pelacakan Online didukung oleh Janjiyan'
+            : 'Booking Online Real-Time didukung oleh Janjiyan';
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
     const [downloading, setDownloading] = useState(false);
     const [subtitle, setSubtitle] = useState<string>(qrSubtitle?.trim() || DEFAULT_SUBTITLE);
@@ -295,7 +317,7 @@ export function QrPosterDialog({
             // Footer brand
             ctx.fillStyle = '#8a8a8a';
             ctx.font = '500 23px Inter, system-ui, -apple-system, sans-serif';
-            ctx.fillText('Reservasi Real-Time didukung oleh Janjiyan', width / 2, 1485);
+            ctx.fillText(footerTagline, width / 2, 1485);
 
             const posterUrl = canvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -348,7 +370,7 @@ export function QrPosterDialog({
     <div class="qr-wrap"><img src="${qrDataUrl}" alt="QR Code Booking ${escapeHtml(businessName)}" /></div>
     <div><span class="url">${escapeHtml(displayUrl)}</span></div>
     ${businessAddress ? `<p class="addr">${escapeHtml(businessAddress)}</p>` : ''}
-    <p class="foot">Reservasi Real-Time didukung oleh Janjiyan</p>
+    <p class="foot">${escapeHtml(footerTagline)}</p>
   </div>
   <script>window.onload = () => { window.print(); };</script>
 </body>
@@ -395,7 +417,7 @@ export function QrPosterDialog({
                         className="h-10 bg-canvas text-base md:text-sm"
                     />
                     <div className="flex flex-wrap gap-1.5">
-                        {SUBTITLE_PRESETS.map((preset) => (
+                        {subtitlePresets.map((preset) => (
                             <button
                                 key={preset}
                                 type="button"

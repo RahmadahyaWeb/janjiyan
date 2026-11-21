@@ -14,8 +14,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -33,32 +33,18 @@ class BookingController extends Controller
         $filters = $this->listFilters($request);
         $search = $filters['search'];
 
-        $modes = $business ? $this->bookingModes($business) : collect(['time_slot']);
-        $hasBothModes = $modes->count() > 1;
-        $requestedMode = in_array($request->string('mode')->toString(), ['time_slot', 'dropoff'], true)
-            ? $request->string('mode')->toString()
-            : null;
-
-        // Per-mode result counts under the current filters, so the toggle shows where bookings are.
-        $modeCounts = null;
-        if ($business && $hasBothModes) {
-            $modeCounts = collect(['time_slot', 'dropoff'])->mapWithKeys(fn (string $m) => [
-                $m => $this->applyListFilters($business->bookings(), $filters, $m, true)->count(),
-            ])->all();
-        }
-
-        $mode = $hasBothModes
-            ? ($requestedMode ?? (($modeCounts['time_slot'] === 0 && $modeCounts['dropoff'] > 0) ? 'dropoff' : 'time_slot'))
-            : ($modes->first() ?? 'time_slot');
+        $mode = $business ? $business->serviceBookingMode() : 'time_slot';
+        $isDropoff = $business ? $business->isDropoff() : false;
+        $isStaffAppointment = $business ? $business->isStaffAppointment() : true;
         $statusFilter = $this->sanitizeStatus($filters['status'], $mode);
 
         $todayDate = CarbonImmutable::now($tz)->toDateString();
-        $viewMode = $request->string('view')->toString() === 'calendar' && $mode === 'time_slot' ? 'calendar' : 'list';
+        $viewMode = ($request->string('view')->toString() === 'calendar' && ! $isDropoff) ? 'calendar' : 'list';
         $calendarDateString = $this->sanitizeDateString($request->string('calendar_date')->toString())
             ?? $todayDate;
 
         $dropoffStageCounts = null;
-        if ($business && ($mode === 'dropoff' || $modes->contains('dropoff'))) {
+        if ($business && $isDropoff) {
             $activeDropoffWorkStatuses = $business->bookings()
                 ->where('booking_mode', 'dropoff')
                 ->whereIn('reservation_status', ['pending', 'confirmed'])
@@ -91,6 +77,7 @@ class BookingController extends Controller
             'service_assignment_mode' => $b->service->assignment_mode,
             'booking_mode' => $b->booking_mode ?? 'time_slot',
             'quantity' => (int) ($b->quantity ?? 1),
+            'unit_label' => $b->resolvedUnitLabel(),
             'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
             'pickup_session' => $b->pickup_session,
             'pickup_address' => $b->pickup_address,
@@ -114,7 +101,7 @@ class BookingController extends Controller
             'rescheduled_count' => (int) ($b->rescheduled_count ?? 0),
         ];
 
-        $isDropoffActiveQueue = $mode === 'dropoff'
+        $isDropoffActiveQueue = $isDropoff
             && in_array($statusFilter, ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup'], true);
 
         $paginatedBookings = $business
@@ -126,7 +113,7 @@ class BookingController extends Controller
                         'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
                     ]),
                 ])
-                ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode, $hasBothModes))
+                ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode))
                 ->when(
                     $isDropoffActiveQueue,
                     fn ($q) => $q
@@ -160,7 +147,6 @@ class BookingController extends Controller
                 ])
                 ->whereBookingDateBetween($weekStart->toDateString(), $weekEnd->toDateString())
                 ->whereNotIn('reservation_status', ['cancelled'])
-                ->when($hasBothModes, fn ($q) => $this->whereMode($q, 'time_slot'))
                 ->orderBy('start_at')
                 ->get()
             : collect();
@@ -184,7 +170,7 @@ class BookingController extends Controller
             ->map($mapBooking)
             ->values();
 
-        $staffColumns = $business
+        $staffColumns = ($business && $isStaffAppointment)
             ? $business->staff()
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -229,8 +215,6 @@ class BookingController extends Controller
                 'view' => $viewMode,
                 'calendar_date' => $calendarDateString,
             ],
-            'hasBothModes' => $hasBothModes,
-            'modeCounts' => $modeCounts,
             'dropoffStageCounts' => $dropoffStageCounts,
             'todayDate' => $todayDate,
             'calendar' => [
@@ -244,7 +228,9 @@ class BookingController extends Controller
             ],
             'businessName' => $business?->name ?? 'Janjiyan',
             'businessAddress' => $business?->address ?? '',
-            'whatsappTemplates' => $business ? $business->resolvedWhatsappTemplates() : Business::defaultWhatsappTemplates(),
+            'whatsappTemplates' => $business
+                ? $business->resolvedWhatsappTemplates()
+                : Business::defaultWhatsappTemplates(),
             'canExportCsv' => $business ? $planLimitService->canExportCsv($business->owner) : false,
         ]);
     }
@@ -278,12 +264,13 @@ class BookingController extends Controller
                 'service_assignment_mode' => $booking->service?->assignment_mode ?? 'staff',
                 'booking_mode' => $booking->booking_mode ?? ($booking->service?->booking_mode ?? 'time_slot'),
                 'quantity' => (int) ($booking->quantity ?? 1),
+                'unit_label' => $booking->resolvedUnitLabel(),
                 'customer_name' => $booking->customer?->name ?? 'Pelanggan',
                 'staff_id' => $booking->staff_id,
                 'booking_date' => $booking->booking_date->toDateString(),
                 'start_time_local' => $booking->start_at?->setTimezone($tz)->format('H:i') ?? '09:00',
             ],
-            'staffOptions' => $booking->service
+            'staffOptions' => $business->isStaffAppointment() && $booking->service
                 ? $booking->service->staff->map(fn ($st) => [
                     'id' => $st->id,
                     'name' => $st->name,
@@ -311,6 +298,7 @@ class BookingController extends Controller
                 'booking_date' => $booking->booking_date->toDateString(),
                 'booking_mode' => $booking->booking_mode ?? 'time_slot',
                 'quantity' => (int) ($booking->quantity ?? 1),
+                'unit_label' => $booking->resolvedUnitLabel(),
                 'start_time_local' => $booking->start_at?->setTimezone($tz)->format('H:i') ?? '',
             ],
         ]);
@@ -325,9 +313,11 @@ class BookingController extends Controller
             return collect();
         }
 
+        $isStaffAppointment = $business->isStaffAppointment();
+
         return $business->services()
             ->where('is_active', true)
-            ->with(['staff' => fn ($sq) => $sq->where('staff.is_active', true)])
+            ->when($isStaffAppointment, fn ($q) => $q->with(['staff' => fn ($sq) => $sq->where('staff.is_active', true)]))
             ->orderBy('name')
             ->get()
             ->map(fn (Service $s) => [
@@ -338,14 +328,17 @@ class BookingController extends Controller
                 'capacity' => $s->capacity,
                 'assignment_mode' => $s->assignment_mode,
                 'booking_mode' => $s->booking_mode ?? 'time_slot',
+                'unit_label' => $s->resolvedUnitLabel(),
                 'turnaround_days' => (int) ($s->turnaround_days ?? 1),
                 'supports_pickup' => (bool) ($s->supports_pickup ?? false),
                 'dp_amount' => $s->calculateDpAmount(),
-                'staff' => $s->staff->map(fn ($st) => [
-                    'id' => $st->id,
-                    'name' => $st->name,
-                    'title' => $st->title,
-                ])->values(),
+                'staff' => $isStaffAppointment
+                    ? $s->staff->map(fn ($st) => [
+                        'id' => $st->id,
+                        'name' => $st->name,
+                        'title' => $st->title,
+                    ])->values()
+                    : [],
             ])
             ->values();
     }
@@ -514,11 +507,13 @@ class BookingController extends Controller
             $booking->reservation_status === 'confirmed' ? 'confirmed' : 'created'
         );
 
-        $flashMessage = $service->isDropoff()
+        $flashMessage = $business->isDropoff()
             ? "Pesanan manual {$booking->booking_code} berhasil dibuat."
-            : "Reservasi manual {$booking->booking_code} berhasil dibuat.";
+            : ($business->isSpaceBooking()
+                ? "Booking manual {$booking->booking_code} berhasil dibuat."
+                : "Reservasi manual {$booking->booking_code} berhasil dibuat.");
 
-        return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', $flashMessage);
+        return to_route('dashboard.bookings')->with('success', $flashMessage);
     }
 
     public function reschedule(
@@ -562,7 +557,7 @@ class BookingController extends Controller
             ? "Tanggal drop-off {$updated->booking_code} berhasil diubah ke {$validated['date']}."
             : "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.";
 
-        return to_route('dashboard.bookings', ['mode' => $updated->booking_mode ?? 'time_slot'])->with('success', $message);
+        return to_route('dashboard.bookings')->with('success', $message);
     }
 
     public function updateStatus(
@@ -584,6 +579,12 @@ class BookingController extends Controller
 
         if (isset($validated['payment_status']) && in_array($validated['payment_status'], ['dp_verified', 'settled'], true)) {
             abort_unless($user->hasBusinessPermission($business, 'verify_payments'), 403);
+        }
+
+        if ($booking->isDropoff() && ($validated['reservation_status'] ?? null) === 'no_show') {
+            throw ValidationException::withMessages([
+                'reservation_status' => 'Status Tidak Hadir (No-Show) tidak berlaku untuk layanan Drop-off.',
+            ]);
         }
 
         if ($booking->isDropoff()) {
@@ -610,11 +611,13 @@ class BookingController extends Controller
             $notificationService->notifyCustomerStatusChanged($booking, $newStatus);
         }
 
+        $noun = $booking->isDropoff() ? 'pesanan' : ($business->isSpaceBooking() ? 'booking' : 'reservasi');
+
         if ($request->boolean('redirect_to_index')) {
-            return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
+            return to_route('dashboard.bookings')->with('success', "Status {$noun} {$booking->booking_code} diperbarui.");
         }
 
-        return back()->with('success', "Status reservasi {$booking->booking_code} diperbarui.");
+        return back()->with('success', "Status {$noun} {$booking->booking_code} diperbarui.");
     }
 
     public function verifyDp(
@@ -668,19 +671,14 @@ class BookingController extends Controller
         }
 
         $filters = $this->listFilters($request);
-        $modes = $this->bookingModes($business);
-        $hasBothModes = $modes->count() > 1;
-        $mode = $hasBothModes
-            ? ($request->string('mode')->toString() === 'dropoff' ? 'dropoff' : 'time_slot')
-            : ($modes->first() ?? 'time_slot');
+        $mode = $business->serviceBookingMode();
         $filters['status'] = $this->sanitizeStatus($filters['status'], $mode);
         $filters['search'] = '';
 
         $bookingsQuery = $this->applyListFilters(
             $business->bookings()->with(['service', 'staff', 'customer']),
             $filters,
-            $mode,
-            $hasBothModes
+            $mode
         )
             ->orderByDesc('booking_date')
             ->orderByDesc('start_at')
@@ -690,7 +688,7 @@ class BookingController extends Controller
 
         return response()->streamDownload(function () use ($bookingsQuery, $tz) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jadwal / Jam', 'Jumlah', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'DP', 'Status Reservasi', 'Status Pembayaran']);
+            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jadwal / Jam', 'Jumlah', 'Satuan', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'DP', 'Status Reservasi', 'Status Pembayaran']);
             foreach ($bookingsQuery->lazy(500) as $b) {
                 fputcsv($handle, CsvHelper::sanitizeRow([
                     $b->invoice_number ?? '-',
@@ -698,6 +696,7 @@ class BookingController extends Controller
                     $b->booking_date->toDateString(),
                     $b->scheduleDisplayLabel($tz),
                     (int) ($b->quantity ?? 1),
+                    $b->resolvedUnitLabel(),
                     $b->customer->name,
                     $b->customer->phone,
                     $b->service->name,
@@ -712,10 +711,10 @@ class BookingController extends Controller
         }, "janjiyan-bookings-{$business->slug}.csv");
     }
 
-    /** Status tabs each booking mode shows on the reservations page. */
+    /** Status tabs each booking mode shows on the bookings page. */
     private const MODE_STATUS_TABS = [
         'time_slot' => ['active', 'pending', 'confirmed', 'completed', 'no_show', 'cancelled', 'all'],
-        'dropoff' => ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup', 'completed', 'no_show', 'cancelled', 'all'],
+        'dropoff' => ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup', 'completed', 'cancelled', 'all'],
     ];
 
     /**
@@ -752,35 +751,13 @@ class BookingController extends Controller
         return in_array($status, self::MODE_STATUS_TABS[$mode], true) ? $status : 'active';
     }
 
-    /**
-     * Modes this business uses, from all services (active or not) and existing bookings, so
-     * switching a service off never hides its open orders.
-     *
-     * @return Collection<int, string>
-     */
-    private function bookingModes(Business $business)
-    {
-        return $business->services()->distinct()->pluck('booking_mode')
-            ->merge($business->bookings()->distinct()->pluck('booking_mode'))
-            ->unique()
-            ->sort()
-            ->reverse() // time_slot first
-            ->values();
-    }
-
-    private function whereMode($query, string $mode)
-    {
-        return $query->where('booking_mode', $mode);
-    }
-
     /** Expects an already-sanitized status (see sanitizeStatus). */
-    private function applyListFilters($query, array $filters, string $mode, bool $filterMode)
+    private function applyListFilters($query, array $filters, string $mode)
     {
         $status = $this->sanitizeStatus($filters['status'], $mode);
         $search = $filters['search'];
 
         return $query
-            ->when($filterMode, fn ($q) => $this->whereMode($q, $mode))
             ->when(
                 in_array($status, ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup'], true),
                 fn ($q) => $q->whereIn('reservation_status', ['pending', 'confirmed'])

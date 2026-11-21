@@ -42,6 +42,10 @@ export interface ActiveSubscription {
     days_remaining: number;
 }
 
+export type BusinessType = 'staff_appointment' | 'space_booking' | 'dropoff';
+
+export type ServiceUnitLabel = 'item' | 'pasang' | 'kg' | 'pcs' | 'unit';
+
 export type BusinessPermission = 'manage_bookings' | 'verify_payments' | 'manage_services' | 'manage_staff' | 'manage_settings';
 
 export interface BusinessSummary {
@@ -49,7 +53,7 @@ export interface BusinessSummary {
     name: string;
     slug: string;
     category: string;
-    primary_booking_mode?: 'time_slot' | 'dropoff';
+    business_type: BusinessType;
     qr_poster_subtitle?: string | null;
     logo_url: string | null;
     role: 'owner' | 'admin' | 'staff';

@@ -31,6 +31,7 @@ class Booking extends Model
         'booked_customer_email',
         'booking_mode',
         'quantity',
+        'unit_label',
         'fulfillment_type',
         'pickup_session',
         'pickup_address',
@@ -76,9 +77,39 @@ class Booking extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Booking $booking): void {
+            $unit = is_string($booking->unit_label) ? trim($booking->unit_label) : '';
+            if (in_array($unit, Service::UNIT_LABELS, true)) {
+                $booking->unit_label = $unit;
+
+                return;
+            }
+
+            $serviceUnit = $booking->relationLoaded('service')
+                ? $booking->service?->resolvedUnitLabel()
+                : Service::whereKey($booking->service_id)->value('unit_label');
+
+            $booking->unit_label = is_string($serviceUnit) && in_array(trim($serviceUnit), Service::UNIT_LABELS, true)
+                ? trim($serviceUnit)
+                : Service::DEFAULT_UNIT_LABEL;
+        });
+    }
+
     public function isDropoff(): bool
     {
         return $this->booking_mode === 'dropoff';
+    }
+
+    public function resolvedUnitLabel(): string
+    {
+        $unit = is_string($this->unit_label) ? trim($this->unit_label) : '';
+        if (in_array($unit, Service::UNIT_LABELS, true)) {
+            return $unit;
+        }
+
+        return $this->service?->resolvedUnitLabel() ?? Service::DEFAULT_UNIT_LABEL;
     }
 
     public function scheduleDisplayLabel(string $timezone = 'Asia/Jakarta'): string

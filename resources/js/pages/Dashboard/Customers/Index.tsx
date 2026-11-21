@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { buildWhatsAppUrl, formatRupiah } from '@/lib/format';
 import type { PageProps } from '@/types';
 
@@ -46,8 +47,11 @@ export default function CustomersIndex({
     canExportCsv,
     duplicateCustomersCount,
 }: CustomersIndexProps) {
+    const activeBusiness = usePage<PageProps>().props.activeBusiness;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const itemLower = config.bookings.itemSingular.toLowerCase();
     // Billing is only open to owner/managers; staff get a plain hint instead of a link that 403s.
-    const canOpenBilling = usePage<PageProps>().props.activeBusiness?.can?.manage_settings ?? true;
+    const canOpenBilling = activeBusiness?.can?.manage_settings ?? true;
     const activeFilters = {
         search: filters?.search ?? initialSearch,
         segment: filters?.segment ?? 'all',
@@ -119,7 +123,9 @@ export default function CustomersIndex({
                             <option value="all">Semua Pelanggan</option>
                             <option value="vip">Pelanggan VIP</option>
                             <option value="repeat">Pelanggan Berulang (≥2x)</option>
-                            <option value="has_no_show">Pernah Tidak Hadir</option>
+                            {config.bookings.supportsNoShow && (
+                                <option value="has_no_show">Pernah Tidak Hadir</option>
+                            )}
                             <option value="blocked">Booking Online Diblokir</option>
                             <option value="duplicates">
                                 Potensi Nama Ganda{duplicateCustomersCount ? ` (${duplicateCustomersCount})` : ''}
@@ -133,7 +139,7 @@ export default function CustomersIndex({
                         >
                             <option value="latest">Terbaru Terdaftar</option>
                             <option value="top_spent">Transaksi Tertinggi</option>
-                            <option value="most_bookings">Kunjungan Terbanyak</option>
+                            <option value="most_bookings">{config.bookings.itemSingular} Terbanyak</option>
                         </NativeSelect>
                     </div>
 
@@ -249,7 +255,7 @@ export default function CustomersIndex({
 
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <Badge variant="secondary" className="tabular-nums">
-                                        {c.bookings_count}x reservasi
+                                        {c.bookings_count}x {itemLower}
                                     </Badge>
                                     {c.has_duplicate_name && <Badge variant="outline">Nama Serupa</Badge>}
                                     {c.no_show_count > 0 && (
@@ -358,7 +364,7 @@ export default function CustomersIndex({
                                         <td className="px-5 py-4">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <Badge variant="secondary" className="tabular-nums">
-                                                    {c.bookings_count}x reservasi
+                                                    {c.bookings_count}x {itemLower}
                                                 </Badge>
                                                 {c.no_show_count > 0 && (
                                                     <Badge variant="destructive" className="tabular-nums">

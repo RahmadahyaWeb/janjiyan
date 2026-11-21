@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatRupiah, formatTurnaroundLabel } from '@/lib/format';
+import type { PageProps, ServiceUnitLabel } from '@/types';
 
 interface ServiceRow {
     id: number;
@@ -21,6 +23,7 @@ interface ServiceRow {
     capacity: number;
     assignment_mode: 'staff' | 'capacity';
     booking_mode: 'time_slot' | 'dropoff';
+    unit_label?: ServiceUnitLabel | string;
     turnaround_days: number;
     supports_pickup: boolean;
     dp_type: 'none' | 'fixed' | 'percentage';
@@ -34,6 +37,8 @@ interface ServicesIndexProps {
 }
 
 export default function ServicesIndex({ services }: ServicesIndexProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const [searchQuery, setSearchQuery] = useState('');
     const [deletingService, setDeletingService] = useState<ServiceRow | null>(null);
 
@@ -47,8 +52,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                 duration_minutes: service.duration_minutes,
                 buffer_minutes: service.buffer_minutes,
                 capacity: service.capacity,
-                assignment_mode: service.assignment_mode,
-                booking_mode: service.booking_mode ?? 'time_slot',
+                unit_label: service.unit_label ?? 'item',
                 turnaround_days: service.turnaround_days ?? 1,
                 supports_pickup: Boolean(service.supports_pickup),
                 dp_type: service.dp_type,
@@ -66,17 +70,17 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
 
     return (
         <DashboardLayout
-            title="Daftar Layanan"
+            title={config.services.pageTitle}
             actions={
                 <Button asChild size="sm" className="h-10 px-4">
                     <Link href={route('dashboard.services.create')}>
                         <Plus className="size-4" aria-hidden="true" />
-                        Tambah Layanan
+                        {config.services.createButtonLabel}
                     </Link>
                 </Button>
             }
         >
-            <Head title="Layanan" />
+            <Head title={config.services.pageTitle} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
                 {services.length > 0 ? (
@@ -108,14 +112,16 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
 
             {services.length === 0 ? (
                 <div className="space-y-3 rounded-md bg-bone p-12 text-center">
-                    <p className="text-base font-semibold text-ink">Belum ada layanan tersedia.</p>
+                    <p className="text-base font-semibold text-ink">
+                        Belum ada {config.services.pageTitle.toLowerCase()} tersedia.
+                    </p>
                     <p className="text-sm text-mute">
-                        Tambahkan layanan pertama Anda untuk mulai menerima booking dari pelanggan.
+                        Tambahkan item pertama Anda agar pelanggan bisa langsung memesan dari portal publik.
                     </p>
                     <Button asChild size="sm">
                         <Link href={route('dashboard.services.create')}>
                             <Plus className="size-4" aria-hidden="true" />
-                            Tambah Layanan
+                            {config.services.createButtonLabel}
                         </Link>
                     </Button>
                 </div>
@@ -147,19 +153,21 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                     <h2 className="text-lg font-semibold break-words text-ink">{s.name}</h2>
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         {!s.is_active && <Badge variant="danger">Nonaktif</Badge>}
-                                        {s.booking_mode === 'dropoff' ? (
+                                        {config.type === 'dropoff' ? (
                                             <>
                                                 <Badge variant="outline" className="tabular-nums">
-                                                    Drop-off · Maks {s.capacity} item/hari
+                                                    Drop-off · Maks {s.capacity} {s.unit_label ?? 'item'}/hari
                                                 </Badge>
                                                 {s.supports_pickup && (
                                                     <Badge variant="secondary">Jemput-Antar</Badge>
                                                 )}
                                             </>
-                                        ) : (
-                                            <Badge variant={s.assignment_mode === 'staff' ? 'secondary' : 'outline'}>
-                                                {s.assignment_mode === 'staff' ? 'Per staff' : `Maks ${s.capacity} orang/sesi`}
+                                        ) : config.type === 'space_booking' ? (
+                                            <Badge variant="outline" className="tabular-nums">
+                                                Maks {s.capacity} orang/sesi
                                             </Badge>
+                                        ) : (
+                                            <Badge variant="secondary">Per staff</Badge>
                                         )}
                                     </div>
                                 </div>
@@ -167,9 +175,10 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                 <div className="mt-4 flex flex-wrap gap-2 text-xs text-mute">
                                     <span className="rounded-full bg-bone px-3 py-1 font-semibold tabular-nums text-ink">
                                         {formatRupiah(s.price)}
+                                        {config.type === 'dropoff' ? ` / ${s.unit_label ?? 'item'}` : ''}
                                     </span>
                                     <span className="rounded-full bg-bone px-3 py-1 tabular-nums">
-                                        {s.booking_mode === 'dropoff'
+                                        {config.type === 'dropoff'
                                             ? formatTurnaroundLabel(s.turnaround_days)
                                             : s.buffer_minutes > 0
                                               ? `${s.duration_minutes} mnt + ${s.buffer_minutes} mnt jeda`

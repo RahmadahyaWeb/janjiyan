@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
+use App\Models\Business;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -59,14 +60,21 @@ class SendTelegramBookingAlertJob implements ShouldQueue
                 .'–'
                 .$booking->end_at->setTimezone($tz)->format('H:i');
 
+        $businessType = $business->resolvedBusinessType();
+
         $header = $this->eventType === 'dp_uploaded'
             ? '🧾 <b>Bukti DP Baru Diunggah</b>'
-            : ($booking->isDropoff() ? '👟 <b>Order Drop-off Baru Masuk</b>' : '📅 <b>Reservasi Baru Masuk</b>');
+            : match ($businessType) {
+                Business::TYPE_DROPOFF => '📦 <b>Pesanan Drop-off Baru Masuk</b>',
+                Business::TYPE_SPACE_BOOKING => '🏟️ <b>Booking Tempat / Sesi Baru</b>',
+                default => '📅 <b>Reservasi Baru Masuk</b>',
+            };
 
         $esc = static fn (?string $val): string => htmlspecialchars((string) ($val ?? '-'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
+        $unitLabel = $booking->resolvedUnitLabel();
         $serviceLabel = $booking->isDropoff()
-            ? $esc($booking->service?->name).' ('.$booking->quantity.' item)'
+            ? $esc($booking->service?->name).' ('.$booking->quantity.' '.$esc($unitLabel).')'
             : $esc($booking->service?->name);
 
         $lines = [
@@ -76,9 +84,13 @@ class SendTelegramBookingAlertJob implements ShouldQueue
             '<b>Kode:</b> <code>'.$esc($booking->booking_code).'</code>',
             '<b>Pelanggan:</b> '.$esc($booking->customer?->name).' (+'.$esc($booking->customer?->phone).')',
             '<b>Layanan:</b> '.$serviceLabel,
-            '<b>Staff:</b> '.$esc($booking->staff?->name ?? ($booking->isDropoff() ? 'Tim Operasional' : 'Siapa saja')),
-            '<b>Jadwal:</b> '.$esc($dateLabel).' · '.$esc($timeLabel),
         ];
+
+        if ($business->isStaffAppointment()) {
+            $lines[] = '<b>Staff:</b> '.$esc($booking->staff?->name ?? 'Siapa saja');
+        }
+
+        $lines[] = '<b>Jadwal:</b> '.$esc($dateLabel).' · '.$esc($timeLabel);
 
         if ($booking->isDropoff() && $booking->estimated_ready_date) {
             $lines[] = '<b>Est. Selesai:</b> '.$esc($booking->estimated_ready_date->format('d M Y'));

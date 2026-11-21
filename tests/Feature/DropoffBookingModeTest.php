@@ -41,6 +41,7 @@ class DropoffBookingModeTest extends TestCase
             'name' => 'Soklenn Shoe Care',
             'slug' => 'soklenn-shoe-care',
             'category' => 'Cuci Sepatu & Care',
+            'business_type' => Business::TYPE_DROPOFF,
             'phone' => '6281234567890',
             'address' => 'Jl. Melati No. 10',
             'timezone' => 'Asia/Jakarta',
@@ -64,6 +65,7 @@ class DropoffBookingModeTest extends TestCase
             'capacity' => 5,
             'assignment_mode' => 'capacity',
             'booking_mode' => 'dropoff',
+            'unit_label' => 'pasang',
             'turnaround_days' => 2,
             'supports_pickup' => true,
             'dp_type' => 'fixed',
@@ -107,68 +109,43 @@ class DropoffBookingModeTest extends TestCase
         ], $attrs));
     }
 
-    public function test_bookings_index_splits_time_slot_and_dropoff_modes(): void
+    public function test_dropoff_business_bookings_index_filters_work_statuses_and_exports_csv(): void
     {
-        $slotService = Service::create([
-            'business_id' => $this->business->id,
-            'name' => 'Express Clean On-Site',
-            'price' => 40000,
-            'duration_minutes' => 30,
-            'buffer_minutes' => 0,
-            'capacity' => 1,
-            'assignment_mode' => 'capacity',
-            'booking_mode' => 'time_slot',
-            'dp_type' => 'none',
-            'dp_value' => 0,
-            'is_active' => true,
-        ]);
-
-        $this->makeBooking($slotService, 'JNY-SLOT1');
-        $this->makeBooking($slotService, 'JNY-SLOT2');
         $this->makeBooking($this->dropoffService, 'JNY-DROP1', ['work_status' => 'awaiting_dropoff']);
         $this->makeBooking($this->dropoffService, 'JNY-DROP2', ['work_status' => 'ready_for_pickup']);
 
         $codes = fn ($res) => collect($res->viewData('page')['props']['bookings'])->pluck('booking_code')->sort()->values()->all();
 
-        // Default: Janji Temu, with per-mode counts exposed.
         $res = $this->actingAs($this->owner)->get(route('dashboard.bookings'))->assertOk();
         $props = $res->viewData('page')['props'];
-        $this->assertTrue($props['hasBothModes']);
-        $this->assertSame('time_slot', $props['filters']['mode']);
-        $this->assertSame(['time_slot' => 2, 'dropoff' => 2], $props['modeCounts']);
-        $this->assertSame(['JNY-SLOT1', 'JNY-SLOT2'], $codes($res));
+        $this->assertArrayNotHasKey('hasBothModes', $props);
+        $this->assertArrayNotHasKey('modeCounts', $props);
+        $this->assertSame('dropoff', $props['filters']['mode']);
+        $this->assertSame(['JNY-DROP1', 'JNY-DROP2'], $codes($res));
 
         // Drop-off tab filters by work status.
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'ready_for_pickup']));
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['status' => 'ready_for_pickup']));
         $this->assertSame(['JNY-DROP2'], $codes($res));
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'awaiting_dropoff']));
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['status' => 'awaiting_dropoff']));
         $this->assertSame(['JNY-DROP1'], $codes($res));
 
-        $this->makeBooking($this->dropoffService, 'JNY-DROP3', ['reservation_status' => 'no_show']);
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'no_show']));
-        $this->assertSame(['JNY-DROP3'], $codes($res));
+        // Invalid/non-dropoff status (like no_show) sanitizes back to active.
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['status' => 'no_show']));
+        $this->assertSame('active', $res->viewData('page')['props']['filters']['status']);
+        $this->assertSame(['JNY-DROP1', 'JNY-DROP2'], $codes($res));
 
-        // Export follows the same mode + work-status filter as the list.
+        // Export follows the same work-status filter and includes Satuan snapshot.
         $csv = $this->actingAs($this->owner)
-            ->get(route('dashboard.bookings.export', ['mode' => 'dropoff', 'status' => 'ready_for_pickup']))
+            ->get(route('dashboard.bookings.export', ['status' => 'ready_for_pickup']))
             ->assertOk()
             ->streamedContent();
+        $this->assertStringContainsString('Satuan', $csv);
+        $this->assertStringContainsString('pasang', $csv);
         $this->assertStringContainsString('JNY-DROP2', $csv);
         $this->assertStringNotContainsString('JNY-DROP1', $csv);
-        $this->assertStringNotContainsString('JNY-SLOT1', $csv);
-
-        // A status from the other mode falls back to active instead of an empty list.
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'time_slot', 'status' => 'ready_for_pickup']));
-        $this->assertSame('active', $res->viewData('page')['props']['filters']['status']);
-        $this->assertSame(['JNY-SLOT1', 'JNY-SLOT2'], $codes($res));
-
-        // Search for a drop-off code without a mode lands on the drop-off list.
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['search' => 'JNY-DROP2']));
-        $this->assertSame('dropoff', $res->viewData('page')['props']['filters']['mode']);
-        $this->assertSame(['JNY-DROP2'], $codes($res));
 
         // Drop-off mode never renders the calendar.
-        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['mode' => 'dropoff', 'view' => 'calendar']));
+        $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['view' => 'calendar']));
         $this->assertSame('list', $res->viewData('page')['props']['filters']['view']);
     }
 
@@ -178,9 +155,10 @@ class DropoffBookingModeTest extends TestCase
 
         $res = $this->actingAs($this->owner)->get(route('dashboard.bookings', ['status' => 'in_progress']))->assertOk();
         $props = $res->viewData('page')['props'];
-        $this->assertFalse($props['hasBothModes']);
-        $this->assertNull($props['modeCounts']);
+        $this->assertArrayNotHasKey('hasBothModes', $props);
+        $this->assertArrayNotHasKey('modeCounts', $props);
         $this->assertSame('dropoff', $props['filters']['mode']);
+        $this->assertSame('pasang', $props['bookings'][0]['unit_label']);
         $this->assertSame(['JNY-DROP1'], collect($props['bookings'])->pluck('booking_code')->all());
     }
 
@@ -190,10 +168,10 @@ class DropoffBookingModeTest extends TestCase
             'name' => 'Unyellowing Midsole',
             'description' => 'Treatment sol menguning',
             'price' => 75000,
-            'booking_mode' => 'dropoff',
             'turnaround_days' => 3,
             'supports_pickup' => true,
             'capacity' => 12,
+            'unit_label' => 'pasang',
             'dp_type' => 'none',
             'dp_value' => 0,
         ]);
@@ -202,6 +180,7 @@ class DropoffBookingModeTest extends TestCase
 
         $service = Service::where('name', 'Unyellowing Midsole')->firstOrFail();
         $this->assertSame('dropoff', $service->booking_mode);
+        $this->assertSame('pasang', $service->unit_label);
         $this->assertSame(3, $service->turnaround_days);
         $this->assertTrue($service->supports_pickup);
         $this->assertSame(12, $service->capacity);
@@ -216,6 +195,7 @@ class DropoffBookingModeTest extends TestCase
         $availRes->assertOk()
             ->assertJsonPath('booking_mode', 'dropoff')
             ->assertJsonPath('dropoff.available', true)
+            ->assertJsonPath('dropoff.unit_label', 'pasang')
             ->assertJsonPath('dropoff.remaining_capacity', 5)
             ->assertJsonPath('dropoff.total_capacity', 5)
             ->assertJsonPath('slots', []);
@@ -236,6 +216,7 @@ class DropoffBookingModeTest extends TestCase
 
         $booking = Booking::where('business_id', $this->business->id)->latest('id')->firstOrFail();
         $this->assertSame('dropoff', $booking->booking_mode);
+        $this->assertSame('pasang', $booking->unit_label);
         $this->assertSame(3, $booking->quantity);
         $this->assertSame(150000, $booking->total_price);
         $this->assertSame(45000, $booking->dp_amount);
@@ -300,15 +281,28 @@ class DropoffBookingModeTest extends TestCase
     {
         $targetDate = $this->nextOpenWeekday(2);
 
+        $slotBusiness = Business::create([
+            'owner_id' => $this->owner->id,
+            'name' => 'Barber Express',
+            'slug' => 'barber-express',
+            'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
+            'timezone' => 'Asia/Jakarta',
+            'dp_expiry_minutes' => 120,
+            'is_active' => true,
+        ]);
+        $slotBusiness->users()->attach($this->owner->id, ['role' => 'owner', 'permissions' => json_encode(['*'])]);
+        $slotBusiness->seedDefaultOperatingHours();
+
         $staff = Staff::create([
-            'business_id' => $this->business->id,
+            'business_id' => $slotBusiness->id,
             'name' => 'Dimas',
             'is_active' => true,
         ]);
 
         $expressService = Service::create([
-            'business_id' => $this->business->id,
-            'name' => 'Express Clean On-Site',
+            'business_id' => $slotBusiness->id,
+            'name' => 'Express Haircut',
             'price' => 40000,
             'duration_minutes' => 30,
             'buffer_minutes' => 0,
@@ -335,9 +329,10 @@ class DropoffBookingModeTest extends TestCase
         $dropoffBooking = Booking::where('service_id', $this->dropoffService->id)->firstOrFail();
         $this->assertSame('confirmed', $dropoffBooking->reservation_status);
         $this->assertSame('awaiting_dropoff', $dropoffBooking->work_status);
+        $this->assertSame('pasang', $dropoffBooking->unit_label);
 
         // Time-slot service must still have slots available on the exact same day
-        $slotsRes = $this->getJson("/b/{$this->business->slug}/slots?service_id={$expressService->id}&date={$targetDate->toDateString()}");
+        $slotsRes = $this->getJson("/b/{$slotBusiness->slug}/slots?service_id={$expressService->id}&date={$targetDate->toDateString()}");
         $slotsRes->assertOk()->assertJsonStructure(['slots']);
         $this->assertNotEmpty($slotsRes->json('slots'));
 
@@ -427,58 +422,18 @@ class DropoffBookingModeTest extends TestCase
         );
     }
 
-    public function test_primary_booking_mode_detection_and_shared_inertia_prop(): void
+    public function test_dropoff_business_type_and_derived_modes_shared_in_inertia(): void
     {
-        // Only 1 active dropoff service -> primary_booking_mode is 'dropoff'
-        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
+        $fresh = $this->business->fresh();
+        $this->assertSame(Business::TYPE_DROPOFF, $fresh->resolvedBusinessType());
+        $this->assertSame('dropoff', $fresh->serviceBookingMode());
+        $this->assertSame('capacity', $fresh->serviceAssignmentMode());
+        $this->assertSame('dropoff', $fresh->primaryBookingMode());
 
         $res = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk();
         $activeBusinessProp = $res->viewData('page')['props']['activeBusiness'];
-        $this->assertSame('dropoff', $activeBusinessProp['primary_booking_mode']);
-
-        // Add 1 active time_slot service (1 dropoff vs 1 time_slot -> tie defaults to 'time_slot')
-        $slot1 = Service::create([
-            'business_id' => $this->business->id,
-            'name' => 'Potong Rambut',
-            'price' => 40000,
-            'duration_minutes' => 30,
-            'buffer_minutes' => 0,
-            'capacity' => 1,
-            'assignment_mode' => 'capacity',
-            'booking_mode' => 'time_slot',
-            'dp_type' => 'none',
-            'dp_value' => 0,
-            'is_active' => true,
-        ]);
-        $this->assertSame('time_slot', $this->business->fresh()->primaryBookingMode());
-
-        // Add a 2nd active dropoff service (2 dropoff vs 1 time_slot -> majority is 'dropoff')
-        $dropoff2 = Service::create([
-            'business_id' => $this->business->id,
-            'name' => 'Repaint Sepatu',
-            'price' => 150000,
-            'duration_minutes' => 60,
-            'buffer_minutes' => 0,
-            'capacity' => 5,
-            'assignment_mode' => 'capacity',
-            'booking_mode' => 'dropoff',
-            'turnaround_days' => 4,
-            'supports_pickup' => false,
-            'dp_type' => 'none',
-            'dp_value' => 0,
-            'is_active' => true,
-        ]);
-        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
-
-        // When all services are inactive, falls back to all services majority
-        Service::where('business_id', $this->business->id)->update(['is_active' => false]);
-        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
-
-        // When no services exist, falls back to 'time_slot'
-        $slot1->delete();
-        $dropoff2->delete();
-        $this->dropoffService->delete();
-        $this->assertSame('time_slot', $this->business->fresh()->primaryBookingMode());
+        $this->assertSame(Business::TYPE_DROPOFF, $activeBusinessProp['business_type']);
+        $this->assertArrayNotHasKey('primary_booking_mode', $activeBusinessProp);
     }
 
     public function test_dropoff_stage_counts_today_date_and_smart_fifo_sorting(): void

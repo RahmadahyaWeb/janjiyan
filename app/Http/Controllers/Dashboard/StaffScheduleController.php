@@ -21,7 +21,13 @@ class StaffScheduleController extends Controller
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
 
-        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless(
+            $business
+            && $business->supportsStaffScheduling()
+            && $staff->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'manage_staff'),
+            403
+        );
 
         return Inertia::render('Dashboard/Staff/Schedule', $this->buildSchedulePayload($business, $staff));
     }
@@ -31,7 +37,13 @@ class StaffScheduleController extends Controller
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
 
-        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless(
+            $business
+            && $business->supportsStaffScheduling()
+            && $staff->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'manage_staff'),
+            403
+        );
 
         return response()->json($this->buildSchedulePayload($business, $staff));
     }
@@ -99,7 +111,13 @@ class StaffScheduleController extends Controller
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
 
-        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless(
+            $business
+            && $business->supportsStaffScheduling()
+            && $staff->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'manage_staff'),
+            403
+        );
 
         if ($request->boolean('use_business_default')) {
             $staff->operatingHours()->delete();
@@ -190,7 +208,13 @@ class StaffScheduleController extends Controller
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
 
-        abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
+        abort_unless(
+            $business
+            && $business->supportsStaffScheduling()
+            && $staff->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'manage_staff'),
+            403
+        );
 
         $validated = $request->validate([
             'start_date' => ['required', 'date_format:Y-m-d'],
@@ -215,6 +239,7 @@ class StaffScheduleController extends Controller
 
         abort_unless(
             $business
+            && $business->supportsStaffScheduling()
             && $staff->business_id === $business->id
             && $timeOff->staff_id === $staff->id
             && $timeOff->business_id === $business->id

@@ -32,6 +32,7 @@ class PanelPermissionsTest extends TestCase
             'name' => 'Rapi Studio',
             'slug' => 'rapi-studio-perm',
             'category' => 'Barbershop',
+            'business_type' => Business::TYPE_STAFF_APPOINTMENT,
             'timezone' => 'Asia/Jakarta',
             'dp_expiry_minutes' => 120,
             'is_active' => true,

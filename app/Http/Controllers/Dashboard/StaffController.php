@@ -93,8 +93,12 @@ class StaffController extends Controller
             'commission_value' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000000'],
         ]);
 
-        $commissionType = $validated['commission_type'] ?? 'none';
-        $commissionValue = $this->normalizeCommissionValue($commissionType, (int) ($validated['commission_value'] ?? 0));
+        $commissionType = $business->supportsCommissions()
+            ? ($validated['commission_type'] ?? 'none')
+            : 'none';
+        $commissionValue = $business->supportsCommissions()
+            ? $this->normalizeCommissionValue($commissionType, (int) ($validated['commission_value'] ?? 0))
+            : 0;
 
         $normalizedEmail = ! empty($validated['email']) ? strtolower(trim($validated['email'])) : null;
 
@@ -178,7 +182,9 @@ class StaffController extends Controller
             }
         }
 
-        return to_route('dashboard.staff')->with('success', "Staff {$validated['name']} berhasil ditambahkan.");
+        $noun = $business->isStaffAppointment() ? 'Staff' : 'Anggota tim';
+
+        return to_route('dashboard.staff')->with('success', "{$noun} {$validated['name']} berhasil ditambahkan.");
     }
 
     public function update(Request $request, Staff $staff): RedirectResponse
@@ -199,12 +205,17 @@ class StaffController extends Controller
             'commission_value' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000000'],
         ]);
 
-        $commissionType = array_key_exists('commission_type', $validated)
-            ? $validated['commission_type']
-            : ($staff->commission_type ?: 'none');
-        $commissionValue = array_key_exists('commission_type', $validated) || array_key_exists('commission_value', $validated)
-            ? $this->normalizeCommissionValue($commissionType, (int) ($validated['commission_value'] ?? 0))
-            : (int) ($staff->commission_value ?? 0);
+        if ($business->supportsCommissions()) {
+            $commissionType = array_key_exists('commission_type', $validated)
+                ? $validated['commission_type']
+                : ($staff->commission_type ?: 'none');
+            $commissionValue = array_key_exists('commission_type', $validated) || array_key_exists('commission_value', $validated)
+                ? $this->normalizeCommissionValue($commissionType, (int) ($validated['commission_value'] ?? 0))
+                : (int) ($staff->commission_value ?? 0);
+        } else {
+            $commissionType = 'none';
+            $commissionValue = 0;
+        }
 
         $isFullActor = $user->hasBusinessPermission($business, '*');
         $targetPivot = $staff->user_id
@@ -293,6 +304,7 @@ class StaffController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless(
             $business
+            && $business->supportsStaffScheduling()
             && $staff->business_id === $business->id
             && ($user->hasBusinessPermission($business, 'manage_staff') || (int) $staff->user_id === (int) $user->id),
             403
@@ -343,6 +355,9 @@ class StaffController extends Controller
             ? $business->users()->where('users.id', $s->user_id)->first()
             : null;
 
+        $supportsCommissions = $business->supportsCommissions();
+        $supportsScheduling = $business->supportsStaffScheduling();
+
         return [
             'id' => $s->id,
             'name' => $s->name,
@@ -350,11 +365,11 @@ class StaffController extends Controller
             'email' => $s->email,
             'phone' => $s->phone,
             'is_active' => $s->is_active,
-            'commission_type' => $s->commission_type ?: 'none',
-            'commission_value' => (int) ($s->commission_value ?? 0),
+            'commission_type' => $supportsCommissions ? ($s->commission_type ?: 'none') : 'none',
+            'commission_value' => $supportsCommissions ? (int) ($s->commission_value ?? 0) : 0,
             'has_login' => $s->user_id !== null,
-            'has_custom_schedule' => (int) ($s->operating_hours_count ?? 0) > 0,
-            'upcoming_time_offs_count' => (int) ($s->upcoming_time_offs_count ?? 0),
+            'has_custom_schedule' => $supportsScheduling && (int) ($s->operating_hours_count ?? 0) > 0,
+            'upcoming_time_offs_count' => $supportsScheduling ? (int) ($s->upcoming_time_offs_count ?? 0) : 0,
             'role' => $membership?->pivot->role ?? null,
             'permissions' => $membership ? (json_decode((string) $membership->pivot->permissions, true) ?? []) : [],
         ];
