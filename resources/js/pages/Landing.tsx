@@ -6,9 +6,12 @@ import {
     Calendar,
     Check,
     ChevronDown,
+    MapPin,
+    Package,
     Pause,
     Play,
     QrCode,
+    Scissors,
     ShieldCheck,
     X,
 } from 'lucide-react';
@@ -42,135 +45,167 @@ const VERTICALS = [
     'Bengkel & Detailing',
 ];
 
+const BUSINESS_TYPE_SHOWCASE = [
+    {
+        icon: Scissors,
+        badge: 'Barber · Salon · Klinik · Grooming',
+        title: 'Janji Temu & Staff',
+        desc: 'Pelanggan pilih layanan, pilih kapster atau terapis favorit, lalu ambil jam yang masih kosong.',
+        points: [
+            'Kalender per staff, lengkap dengan shift dan cuti',
+            'Jeda antar tamu supaya jadwal tidak bentrok',
+            'Komisi staff (% atau nominal tetap) langsung direkap tiap selesai',
+        ],
+        flow: 'Layanan → Pilih Staff → Jam Datang → Uang Muka',
+    },
+    {
+        icon: MapPin,
+        badge: 'Padel · Studio · Kelas · Meeting',
+        title: 'Booking Tempat / Sesi',
+        desc: 'Pelanggan langsung pilih lapangan, ruangan, atau kelas, lalu lihat jam main dan sisa tempatnya.',
+        points: [
+            'Atur kapasitas per sesi tanpa perlu pilih staff',
+            'Jeda bersih-bersih atau persiapan di antara pemakaian',
+            'Cocok buat sewa lapangan, studio foto, sampai kelas rutin',
+        ],
+        flow: 'Fasilitas / Paket → Tanggal & Jam → Uang Muka',
+    },
+    {
+        icon: Package,
+        badge: 'Laundry · Sepatu · Servis · Bengkel',
+        title: 'Layanan Titip / Drop-off',
+        desc: 'Pelanggan pilih layanan (item, pasang, kg, pcs, atau unit), pilih tanggal titip atau jemput, lalu cek statusnya di link invoice.',
+        points: [
+            'Batas terima barang harian biar kerjaan tidak numpuk',
+            'Bisa antar langsung ke toko atau pilih jemput-antar',
+            'Progres dari Dikerjakan sampai Siap Diambil terlihat di invoice',
+        ],
+        flow: 'Layanan & Jumlah → Tanggal Titip → Pantau Invoice',
+    },
+];
+
 const OUTCOMES = [
     {
         icon: ShieldCheck,
         illustration: '/images/editorial-feature-dp.jpg',
-        illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran DP di smartphone',
-        title: 'Jadwal dan kuota terkunci, minim batal mendadak',
-        desc: 'Kunci setiap pesanan dengan DP lewat transfer rekening atau QRIS bisnis kamu. Kalau melewati batas bayar, slot atau kuota otomatis terbuka lagi untuk pelanggan lain. Pengingat email terkirim di H-1, ditambah H-2 jam untuk jadwal kunjungan dan sesi.',
-        highlights: ['Kunci jadwal dengan DP', 'Kuota dibuka lagi otomatis', 'Aturan DP penuh', 'Pengingat email otomatis'],
+        illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran uang muka di smartphone',
+        title: 'Lebih sedikit yang batal tanpa kabar',
+        desc: 'Pelanggan transfer uang muka langsung ke rekening atau QRIS kamu, tanpa potongan dari Janjiyan. Kalau lewat batas waktu belum dibayar, jam kosong atau kuota harinya otomatis terbuka lagi. Khusus janji temu dan booking tempat, pelanggan yang sering batal tanpa kabar bisa otomatis diminta bayar penuh di awal.',
+        highlights: ['Uang muka tanpa potongan', 'Jadwal dibuka lagi otomatis', 'Bayar penuh kalau sering batal', 'Pengingat email otomatis'],
     },
     {
         icon: QrCode,
         illustration: '/images/editorial-feature-qr.jpg',
         illustrationAlt: 'Ilustrasi pelanggan memindai poster QR booking di meja kasir studio',
-        title: 'Satu link di bio, satu QR di kasir',
-        desc: 'Bagikan link portal di Instagram atau cetak poster QR langsung dari dashboard untuk meja kasir. Pengunjung bisa melihat daftar layanan, memilih staff, fasilitas, atau layanan drop-off, lalu memesan tanpa download aplikasi.',
-        highlights: ['Link portal siap pakai', 'Poster QR siap cetak', 'Galeri portofolio', 'Tanpa install aplikasi'],
+        title: 'Satu link untuk Instagram dan meja kasir',
+        desc: 'Taruh link halaman toko di bio Instagram, atau cetak poster QR dari dashboard buat meja kasir. Tampilannya pakai warna khas usaha kamu sendiri, lengkap dengan foto tempat dan galeri hasil kerja. Pelanggan bisa pesan sekaligus cek status invoice lewat browser, tanpa install aplikasi.',
+        highlights: ['Link toko & warna merek sendiri', 'Poster QR siap cetak', 'Cek status di invoice', 'Tanpa install aplikasi'],
     },
     {
         icon: Calendar,
         illustration: '/images/editorial-feature-calendar.jpg',
         illustrationAlt: 'Ilustrasi tim memantau papan jadwal harian dan menerima notifikasi booking di smartphone',
-        title: 'Kalender slot hingga antrean kerja dalam satu layar',
-        desc: 'Pantau jadwal staff, kapasitas sesi ruangan, atau antrean status pengerjaan drop-off dari satu tempat. Setiap ada pesanan baru atau bukti DP masuk, notifikasi langsung dikirim ke Telegram, lengkap dengan template WhatsApp siap kirim.',
-        highlights: ['Kalender & antrean kerja', 'Kuota harian satuan custom', 'Notif Telegram', 'Template WhatsApp'],
+        title: 'Semua jadwal dan titipan dalam satu layar',
+        desc: 'Lihat jadwal harian tiap staff, sisa kapasitas sesi, sampai daftar titipan yang lagi dikerjakan. Begitu ada pesanan baru atau bukti transfer masuk, kabarnya langsung dikirim ke Telegram dan email—lengkap dengan tombol chat WhatsApp yang pesannya sudah terisi otomatis.',
+        highlights: ['Kalender & daftar titipan', 'Kuota harian per satuan', 'Notif Telegram & email', 'Template chat WhatsApp'],
     },
     {
         icon: BadgePercent,
         illustration: '/images/editorial-feature-commission.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis dan tim melihat grafik rekap komisi bulanan otomatis di laptop',
-        title: 'Tim terkelola, komisi staff terhitung otomatis',
-        desc: 'Berikan akses kasir atau admin untuk semua tipe bisnis, atau aktifkan jadwal shift dan komisi otomatis khusus untuk bisnis janji temu. Catatan pelanggan, riwayat transaksi, hingga manajemen hingga 10 cabang tetap terpisah rapi.',
-        highlights: ['Akses kasir & admin', 'Komisi persen / nominal', 'Export CSV (Professional+)', 'Hingga 10 cabang'],
+        title: 'Data pelanggan rapi, tim dan komisi gampang dicek',
+        desc: 'Simpan riwayat order, catatan khusus pelanggan, sampai gabungkan profil ganda kalau ada nama yang sama atau nomornya ganti. Kamu bisa bikin akun kasir atau admin di semua tipe usaha, hitung komisi staff janji temu otomatis, dan pegang sampai 10 cabang (paket Enterprise).',
+        highlights: ['Catatan & gabung profil ganda', 'Akun kasir & admin', 'Komisi staff otomatis', 'Multi-cabang (hingga 10)'],
     },
 ];
 
 const INCLUDED_IN_ALL_PLANS = [
-    'Pembayaran DP via rekening atau QRIS sendiri',
+    'Uang muka langsung ke rekening atau QRIS, tanpa potongan',
+    'Wajib bayar penuh buat yang sering batal (Janji Temu & Tempat)',
     'Jadwal staff, sesi tempat, atau kuota drop-off',
-    'Pengingat email otomatis untuk pelanggan',
-    'Poster QR booking siap cetak',
-    'Template chat WhatsApp adaptif siap klik',
-    'Notifikasi pesanan baru via Telegram',
-    'Akses tim kasir & admin (plus komisi staff)',
-    'Simpan ke Google & Apple Calendar',
+    'Email pengingat H-1 (plus H-2 jam untuk jadwal/sesi)',
+    'Halaman toko kustom & poster QR siap cetak',
+    'Notifikasi Telegram & template chat WhatsApp',
+    'Akun login tim kasir & admin (plus komisi staff)',
+    'Simpan jadwal ke Google & Apple Calendar',
 ];
 
 const PLAN_TAGLINES: Record<string, string> = {
-    basic: 'Pas untuk bisnis yang baru mulai merapikan booking dan antrean harian.',
-    professional: 'Pas untuk tim dengan admin, kasir, atau beberapa staff dengan rekap otomatis.',
-    enterprise: 'Pas untuk bisnis jasa yang sudah punya banyak cabang.',
+    basic: 'Cocok kalau kamu baru mulai merapikan pesanan atau masih melayani sendiri.',
+    professional: 'Cocok kalau kamu sudah punya admin, kasir, atau beberapa staff dengan rekap komisi.',
+    enterprise: 'Cocok kalau kamu punya lebih dari satu cabang.',
 };
 
 const STEPS = [
     {
         title: 'Pilih tipe bisnis & lengkapi profil',
-        desc: 'Daftar akun, pilih tipe operasional bisnismu (Janji Temu, Tempat/Sesi, atau Drop-off), lalu lengkapi rekening atau QRIS pembayaran.',
+        desc: 'Daftar akun, pilih alur usaha kamu (Janji Temu, Booking Tempat, atau Drop-off), lalu isi rekening atau QRIS untuk terima pembayaran.',
         illustration: '/images/editorial-step-1.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis menyiapkan profil bisnis dan rekening/QRIS di laptop',
     },
     {
         title: 'Atur layanan, tarif & kuota',
-        desc: 'Masukkan daftar layanan atau fasilitas beserta harga, aturan DP, durasi sesi, jadwal staff, atau kuota harian sesuai tipe bisnismu.',
+        desc: 'Masukkan daftar layanan atau paket beserta harga, nominal uang muka, durasi sesi atau kuota harian, dan jadwal tim.',
         illustration: '/images/editorial-step-2.jpg',
         illustrationAlt: 'Ilustrasi pengelola bisnis menyusun blok jadwal layanan dan kuota harian di papan kalender',
     },
     {
         title: 'Pasang link bio & QR kasir',
-        desc: 'Pasang link di bio media sosial atau cetak poster QR untuk meja kasir agar pelanggan bisa langsung memesan.',
+        desc: 'Taruh link di bio Instagram/TikTok atau cetak poster QR buat meja kasir supaya pelanggan bisa langsung pesan sendiri.',
         illustration: '/images/editorial-step-3.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis meletakkan poster QR di meja kasir saat pelanggan datang membawa smartphone',
     },
 ];
 
-const TESTIMONIALS = [
+interface TestimonialItem {
+    name: string;
+    role: string;
+    quote: string;
+    initials?: string;
+}
+
+const TESTIMONIALS: TestimonialItem[] = [
     {
-        name: 'Raka Pratama',
-        role: 'Founder, Barber Rapi Studio',
-        quote: 'Dulu admin sering kewalahan balas DM satu-satu. Sekarang pelanggan tinggal pilih kapster dan jam kosong sendiri lewat link di bio, rekap komisi bulanan juga langsung beres.',
-    },
-    {
-        name: 'drg. Nadia Kusuma',
-        role: 'Klinik Gigi Senopati',
-        quote: 'Jeda 15 menit antar pasien bikin jadwal dokter tidak pernah bentrok lagi. Email pengingat H-1 dan 2 jam sebelumnya juga bikin pasien jarang lupa jadwal kontrol.',
-    },
-    {
-        name: 'Bima Santoso',
-        role: 'Pengelola Arena Padel Kemang',
-        quote: 'Begitu penyewa mengunggah bukti DP untuk sewa lapangan, notifnya langsung masuk ke grup Telegram admin. Tidak perlu cek chat dan mutasi satu per satu di WhatsApp lagi.',
-    },
-    {
-        name: 'Sinta Larasati',
-        role: 'Owner, Soklenn Cuci Sepatu & Laundry',
-        quote: 'Pelanggan sekarang bisa pilih layanan per pasang atau per kilo, tentukan tanggal antar atau jemput, dan cek status pesanannya sudah siap diambil langsung dari link invoice.',
+        name: 'Soklenn Cuci Sepatu',
+        initials: 'SK',
+        role: 'Layanan Cuci Sepatu & Tas',
+        quote: 'Pelanggan sekarang tinggal pilih layanan cuci per pasang atau tas, pilih tanggal antar atau jemput, lalu cek sendiri di link invoice kalau cuciannya sudah siap diambil.',
     },
 ];
 
 const FAQS = [
     {
-        q: 'Bagaimana sistem pembayaran DP di Janjiyan?',
-        a: 'Pembayaran DP dilakukan lewat transfer ke rekening atau QRIS yang kamu pasang di profil bisnis, lalu bukti bayarnya diunggah di halaman invoice untuk kamu verifikasi.',
+        q: 'Apakah Janjiyan mengambil potongan dari uang muka pelanggan?',
+        a: 'Tidak sama sekali. Pelanggan transfer uang muka langsung ke rekening atau QRIS usaha kamu, lalu kirim bukti bayar di halaman invoice untuk kamu verifikasi. Uangnya tidak melewati Janjiyan.',
     },
     {
-        q: 'Bisnis apa saja yang cocok memakai Janjiyan?',
-        a: 'Janjiyan mendukung tiga tipe operasional: Janji Temu & Staff (barbershop, salon, klinik), Booking Tempat/Sesi (lapangan olahraga, studio foto, kelas, ruang meeting), dan Layanan Titip/Drop-off (laundry kiloan, cuci sepatu, servis elektronik, bengkel).',
+        q: 'Usaha apa saja yang cocok memakai Janjiyan?',
+        a: 'Usaha jasa yang pakai jadwal, sewa tempat, atau titipan barang bisa pakai. Kamu tinggal pilih alurnya saat daftar: Janji Temu & Staff (barbershop, salon, klinik), Booking Tempat / Sesi (lapangan olahraga, studio foto, kelas, ruang meeting), atau Layanan Titip / Drop-off (laundry, cuci sepatu, servis elektronik, bengkel).',
     },
     {
-        q: 'Apakah pelanggan harus download aplikasi dulu?',
-        a: 'Tidak perlu. Pelanggan cukup buka link atau scan poster QR, pilih layanan beserta jadwal atau jumlah unit, lalu isi nama dan nomor WhatsApp.',
+        q: 'Apakah pelanggan harus install aplikasi atau bikin akun dulu?',
+        a: 'Tidak perlu. Pelanggan cukup buka link di bio atau scan poster QR di kasir, pilih layanan dan jadwal atau jumlah pesanannya, lalu isi nama serta nomor WhatsApp (dan email jika ingin menerima pengingat otomatis).',
     },
     {
-        q: 'Bagaimana cara Janjiyan mencegah pembatalan mendadak dan antrean menumpuk?',
-        a: 'Setiap pesanan bisa dikunci dengan DP dan batas waktu bayar. Jika lewat batas waktu, slot atau kuota harian otomatis terbuka lagi. Ada juga pengingat email otomatis sebelum jadwal serta batas kuota harian agar pengerjaan drop-off tetap terukur.',
+        q: 'Bagaimana cara Janjiyan mencegah pelanggan batal mendadak atau kerjaan menumpuk?',
+        a: 'Setiap pesanan bisa dikunci dengan uang muka dan batas waktu bayar. Kalau lewat batas waktu, jam kosong atau kuota harinya otomatis terbuka lagi. Untuk janji temu dan booking tempat, pelanggan yang sudah beberapa kali tidak datang bisa otomatis diminta bayar penuh di awal. Di layanan drop-off, kamu juga bisa membatasi kuota harian per satuan.',
     },
     {
-        q: 'Apakah tersedia akses admin, jadwal tim, dan komisi staff?',
-        a: 'Semua tipe bisnis dapat membuat akun login untuk admin atau kasir. Khusus bisnis Janji Temu & Staff, tersedia juga pengaturan shift kerja, cuti, dan rekap komisi otomatis per staff.',
+        q: 'Bisa bikin akun login buat admin, kasir, dan hitung komisi staff?',
+        a: 'Bisa. Semua tipe usaha bisa bikin akun login terpisah untuk admin atau kasir sesuai hak akses menu yang kamu pilih. Khusus tipe Janji Temu & Staff, tersedia juga pengaturan shift kerja, cuti, dan rekap komisi otomatis per staff dalam persen atau nominal tetap.',
     },
     {
         q: 'Notifikasi pesanan baru dikirim ke mana?',
-        a: 'Langsung ke Telegram dan email kamu atau tim setiap ada pesanan baru maupun bukti transfer yang masuk. Untuk follow up ke pelanggan, sudah tersedia template WhatsApp adaptif di daftar pesanan.',
+        a: 'Langsung ke email dan grup/chat Telegram kamu lewat bot Telegram yang kamu hubungkan di Pengaturan, setiap ada pesanan baru atau bukti transfer masuk. Untuk follow up ke pelanggan, sudah tersedia tombol chat WhatsApp yang pesannya terisi otomatis.',
     },
     {
-        q: 'Bisa dipakai untuk lebih dari satu cabang?',
-        a: 'Bisa, hingga 10 cabang dalam satu akun. Link booking, layanan, data pelanggan, dan rekening tiap cabang tetap terpisah rapi.',
+        q: 'Satu akun bisa dipakai untuk beberapa cabang?',
+        a: 'Bisa—paket Professional mendukung hingga 3 cabang, dan paket Enterprise hingga 10 cabang dalam satu akun. Link halaman toko, daftar layanan, data pelanggan, dan rekening tiap cabang tetap terpisah rapi.',
     },
 ];
 
 export default function Landing({ plans }: LandingProps) {
-    const { auth } = usePage<PageProps>().props;
+    const { auth, activeBusiness } = usePage<PageProps>().props;
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [marqueePaused, setMarqueePaused] = useState(false);
@@ -179,8 +214,30 @@ export default function Landing({ plans }: LandingProps) {
     const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
     const pageRef = useRef<HTMLDivElement>(null);
 
+    const basicPlan = plans.find((plan) => plan.slug === 'basic') ?? plans[0];
+    const basicMonthlyPrice = basicPlan?.price_monthly ?? 49000;
     const monthlyLoss = servicePrice * noShowsPerMonth;
-    const breakEvenBookings = Math.max(1, Math.ceil(49000 / servicePrice));
+    const breakEvenBookings = Math.max(1, Math.ceil(basicMonthlyPrice / servicePrice));
+    const dashboardHref = auth.user
+        ? (auth.user.is_superadmin ? route('admin.index') : route('dashboard'))
+        : route('register');
+    const primaryCtaLabel = auth.user
+        ? (auth.user.is_superadmin ? 'Buka Panel Superadmin' : 'Buka Dashboard')
+        : 'Coba gratis 14 hari';
+    const pricingCtaHref = !auth.user
+        ? route('register')
+        : auth.user.is_superadmin
+            ? route('admin.index')
+            : activeBusiness?.can?.manage_settings
+                ? route('dashboard.billing')
+                : route('dashboard');
+    const pricingCtaLabel = !auth.user
+        ? 'Coba gratis'
+        : auth.user.is_superadmin
+            ? 'Buka Panel Superadmin'
+            : activeBusiness?.can?.manage_settings
+                ? 'Lihat langganan'
+                : 'Buka Dashboard';
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
@@ -206,6 +263,7 @@ export default function Landing({ plans }: LandingProps) {
             });
 
             const staggerGroups = [
+                { selector: '[data-business-type-card]', trigger: '#tipe-bisnis' },
                 { selector: '[data-outcome-card]', trigger: '#fitur' },
                 { selector: '[data-pricing-card]', trigger: '#harga' },
                 { selector: '[data-testimonial-card]', trigger: '[data-testimonials-grid]' },
@@ -233,11 +291,11 @@ export default function Landing({ plans }: LandingProps) {
 
     return (
         <div ref={pageRef} className="min-h-screen bg-canvas text-ink">
-            <Head title="Sistem booking, DP, dan pesanan untuk bisnis jasa">
+            <Head title="Sistem booking, uang muka, dan pesanan untuk bisnis jasa">
                 <meta
                     head-key="description"
                     name="description"
-                    content="Kelola janji temu, booking ruang atau lapangan, hingga pesanan laundry dan cuci sepatu lewat satu link. Atur DP, pengingat otomatis, dan kuota harian tanpa balas chat satu per satu. Gratis 14 hari."
+                    content="Kelola janji temu, sewa lapangan atau studio, sampai titipan laundry lewat satu link. Uang muka langsung masuk ke rekening kamu tanpa potongan, plus pengingat sebelum jadwal. Coba gratis 14 hari."
                 />
             </Head>
 
@@ -266,6 +324,9 @@ export default function Landing({ plans }: LandingProps) {
                     </Link>
 
                     <div className="hidden items-center gap-6 text-sm font-semibold md:flex">
+                        <a href="#tipe-bisnis" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                            Tipe bisnis
+                        </a>
                         <a href="#fitur" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             Fitur
                         </a>
@@ -283,7 +344,7 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="flex items-center gap-1.5 sm:gap-2">
                         {auth.user ? (
                             <Button asChild size="sm">
-                                <Link href={auth.user.is_superadmin ? route('admin.index') : route('dashboard')}>
+                                <Link href={dashboardHref}>
                                     {auth.user.is_superadmin ? 'Panel Superadmin' : 'Dashboard'}
                                 </Link>
                             </Button>
@@ -309,7 +370,7 @@ export default function Landing({ plans }: LandingProps) {
                             data-hero-item
                             className="mb-5 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
                         >
-                            <span>Untuk janji temu, booking tempat, dan layanan drop-off</span>
+                            <span>Untuk barbershop, salon, klinik, lapangan, sampai laundry</span>
                         </div>
 
                         <h1
@@ -325,19 +386,19 @@ export default function Landing({ plans }: LandingProps) {
                             data-hero-item
                             className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-mute sm:mt-5 sm:text-lg text-pretty"
                         >
-                            Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pelanggan bisa pilih layanan, cek slot atau kuota harian, lalu kirim DP sendiri tanpa harus bolak-balik tanya lewat chat.
+                            Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pelanggan bisa lihat jam kosong atau kuota harian, lalu transfer uang muka langsung ke rekening kamu tanpa potongan.
                         </p>
 
                         <div
                             data-hero-item
                             className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row"
                         >
-                            <Button asChild size="lg" className="w-full max-w-[240px] sm:w-auto">
-                                <Link href={auth.user ? (auth.user.is_superadmin ? route('admin.index') : route('dashboard')) : route('register')}>
-                                    {auth.user?.is_superadmin ? 'Buka Panel Superadmin' : 'Coba gratis 14 hari'}
+                            <Button asChild size="lg" className="min-h-14 h-auto w-full max-w-[260px] py-3 whitespace-normal text-center sm:w-auto sm:max-w-none">
+                                <Link href={dashboardHref}>
+                                    {primaryCtaLabel}
                                 </Link>
                             </Button>
-                            <Button asChild variant="outline" size="lg" className="w-full max-w-[240px] sm:w-auto">
+                            <Button asChild variant="outline" size="lg" className="min-h-14 h-auto w-full max-w-[260px] py-3 sm:w-auto sm:max-w-none">
                                 <a href="#fitur">
                                     Lihat fiturnya
                                 </a>
@@ -348,7 +409,7 @@ export default function Landing({ plans }: LandingProps) {
                             data-hero-item
                             className="mt-3 text-xs font-medium text-mute"
                         >
-                            Coba gratis 14 hari. Bisa dibatalkan kapan saja.
+                            Gratis 14 hari. Uang muka masuk utuh ke rekening kamu.
                         </p>
                     </div>
 
@@ -371,9 +432,9 @@ export default function Landing({ plans }: LandingProps) {
                 {/* Clean Monochrome Verticals Marquee */}
                 <section aria-label="Kategori bisnis yang didukung" className="overflow-hidden py-8">
                     <div className="marquee-mask overflow-hidden">
-                        <div className="animate-marquee flex gap-3" data-paused={marqueePaused ? 'true' : 'false'}>
+                        <ul className="animate-marquee flex gap-3" data-paused={marqueePaused ? 'true' : 'false'}>
                             {[...VERTICALS, ...VERTICALS].map((name, idx) => (
-                                <div
+                                <li
                                     key={`${name}-${idx}`}
                                     aria-hidden={idx >= VERTICALS.length}
                                     className={cn(
@@ -382,9 +443,9 @@ export default function Landing({ plans }: LandingProps) {
                                     )}
                                 >
                                     {name}
-                                </div>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     </div>
                     <div className="mt-3 flex justify-center motion-reduce:hidden">
                         <button
@@ -408,20 +469,81 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
+                {/* 3 Locked Business Types Showcase */}
+                <section id="tipe-bisnis" aria-labelledby="heading-tipe-bisnis" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mx-auto mb-12 max-w-2xl text-center">
+                        <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
+                            Tiga alur usaha
+                        </span>
+                        <h2 id="heading-tipe-bisnis" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Beda usaha, beda cara terima pesanannya
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Pilih sekali saat daftar. Menu dashboard sampai halaman pesan pelanggan otomatis ikut alur usaha kamu.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-6 lg:grid-cols-3">
+                        {BUSINESS_TYPE_SHOWCASE.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div
+                                    key={item.title}
+                                    data-business-type-card
+                                    className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-7"
+                                >
+                                    <div>
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
+                                                <Icon className="size-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="max-w-full rounded-full bg-bone px-3 py-1 text-start text-xs font-semibold text-mute">
+                                                {item.badge}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl">
+                                            {item.title}
+                                        </h3>
+
+                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                            {item.desc}
+                                        </p>
+
+                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                            {item.points.map((point) => (
+                                                <li key={point} className="flex items-start gap-2.5">
+                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <div className="mt-6 rounded-sm bg-bone px-3.5 py-2.5 text-xs text-body">
+                                        <span className="font-semibold text-ink">Alur tamu: </span>
+                                        <span>{item.flow}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
                 {/* Cost of no-show — 2-Column Editorial Story Banner + Simulator */}
-                <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+                <section aria-labelledby="heading-simulasi-bayar" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
-                        {/* Editorial 2-Column Header inspired by "Break the bad habit" */}
-                        <div className="grid items-center gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
-                            <div className="text-center md:col-span-7 md:text-start">
+                        {/* Editorial 2-Column Header */}
+                        <div className="grid items-start gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
+                            <div className="min-w-0 text-center md:col-span-7 md:text-start">
                                 <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
-                                    Kenapa booking perlu dikunci DP?
+                                    Kenapa pesanan perlu uang muka?
                                 </span>
-                                <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
-                                    Satu orang batal mendadak, satu slot kosong terbuang.
+                                <h2 id="heading-simulasi-bayar" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
+                                    Satu orang batal tanpa kabar, satu jadwal terbuang.
                                 </h2>
                                 <p className="mt-3.5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
-                                    Staff, lapangan, atau kuota harian sudah disiapkan, pelanggan lain terpaksa ditolak karena penuh, lalu pemesan malah batal tanpa kabar. Geser simulasi di bawah untuk melihat dampaknya setiap bulan.
+                                    Misalnya tarif layanan kamu Rp75.000, lalu ada pelanggan yang pesan tapi tidak datang padahal orang lain sudah terlanjur ditolak. Geser angka di bawah untuk hitung perkiraan ruginya tiap bulan.
                                 </p>
                             </div>
 
@@ -457,8 +579,9 @@ export default function Landing({ plans }: LandingProps) {
                                         max={500000}
                                         step={5000}
                                         value={servicePrice}
+                                        aria-valuetext={formatRupiah(servicePrice)}
                                         onChange={(e) => setServicePrice(Number(e.target.value))}
-                                        className="absolute inset-0 h-11 w-full cursor-pointer rounded-full bg-transparent accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                        className="absolute inset-0 h-11 w-full cursor-pointer appearance-none rounded-full bg-transparent focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-ink [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ink"
                                     />
                                 </div>
                                 <div className="flex justify-between text-xs tabular-nums text-mute">
@@ -485,8 +608,9 @@ export default function Landing({ plans }: LandingProps) {
                                         max={40}
                                         step={1}
                                         value={noShowsPerMonth}
+                                        aria-valuetext={`${noShowsPerMonth} kali`}
                                         onChange={(e) => setNoShowsPerMonth(Number(e.target.value))}
-                                        className="absolute inset-0 h-11 w-full cursor-pointer rounded-full bg-transparent accent-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                        className="absolute inset-0 h-11 w-full cursor-pointer appearance-none rounded-full bg-transparent focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-ink [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ink"
                                     />
                                 </div>
                                 <div className="flex justify-between text-xs tabular-nums text-mute">
@@ -500,7 +624,7 @@ export default function Landing({ plans }: LandingProps) {
                             <div className="flex min-w-0 flex-col justify-between rounded-sm bg-bone p-4 sm:p-6">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-mute">
-                                        Potensi pendapatan hilang
+                                        Perkiraan pendapatan hilang
                                     </p>
                                     <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                         <span className="text-2xl font-semibold tabular-nums text-ink sm:text-4xl">
@@ -510,47 +634,47 @@ export default function Landing({ plans }: LandingProps) {
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-body">
-                                    Hitungan dari {noShowsPerMonth} jadwal × {formatRupiah(servicePrice)}, belum termasuk tamu lain yang sempat ditolak karena jamnya terisi.
+                                    Hitungan dari {noShowsPerMonth} pesanan × {formatRupiah(servicePrice)}, belum termasuk pelanggan lain yang sempat ditolak karena jadwalnya penuh.
                                 </p>
                             </div>
 
                             <div className="flex min-w-0 flex-col justify-between rounded-sm bg-dark p-4 text-on-dark sm:p-6">
                                 <div>
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
                                         <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
                                             Paket Basic Janjiyan
                                         </p>
                                         <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-on-dark">
-                                            Balik modal dari {breakEvenBookings} booking
+                                            Balik modal: {breakEvenBookings} pesanan
                                         </span>
                                     </div>
                                     <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                         <span className="text-2xl font-semibold tabular-nums text-on-dark sm:text-4xl">
-                                            Rp49.000
+                                            {formatRupiah(basicMonthlyPrice)}
                                         </span>
                                         <span className="text-sm text-on-dark-mute">/ bulan</span>
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-on-dark-mute">
-                                    Kunci jadwal dengan DP dan kirim pengingat otomatis sebelum tamu datang.
+                                    Kunci pesanan dengan uang muka langsung ke rekening kamu dan kirim pengingat otomatis sebelum jadwal.
                                 </p>
                             </div>
                         </div>
 
                         <p className="mt-5 text-center text-xs text-mute">
-                            Angka di atas hanya simulasi. Hitungannya tentu berbeda di tiap bisnis.
+                            Angka di atas hanya simulasi. Hitungan aslinya beda di tiap usaha.
                         </p>
                     </div>
                 </section>
 
                 {/* 4 Outcome Cards (Grid 2x2 with Editorial Character Scenes) */}
-                <section id="fitur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                <section id="fitur" aria-labelledby="heading-fitur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
-                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Yang beres otomatis pakai Janjiyan
+                        <h2 id="heading-fitur" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Yang dikerjakan Janjiyan untuk usaha kamu
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Dari atur slot atau kuota harian, kunci DP, pengingat otomatis, sampai laporan tim di akhir bulan.
+                            Mulai dari pelanggan pesan, transfer uang muka ke rekening kamu, diingatkan sebelum datang, sampai rekap tim di akhir bulan.
                         </p>
                     </div>
 
@@ -574,8 +698,8 @@ export default function Landing({ plans }: LandingProps) {
                                             />
                                         </div>
 
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-[30%] bg-bone text-ink">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
                                                 <Icon className="size-4" aria-hidden="true" />
                                             </div>
                                             <h3 className="text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
@@ -605,13 +729,13 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* How to start — 3 Editorial Story Cards */}
-                <section id="cara-mulai" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                <section id="cara-mulai" aria-labelledby="heading-cara-mulai" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto max-w-2xl text-center">
-                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                        <h2 id="heading-cara-mulai" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Tiga langkah, langsung jalan
                         </h2>
                         <p className="mx-auto mt-3 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Tidak perlu setting teknis yang rumit. Siapkan sekali di awal, lalu biarkan link booking bekerja untuk bisnismu.
+                            Sekali isi layanan dan rekening pembayaran di awal, link toko kamu langsung siap dipakai terima pesanan.
                         </p>
                     </div>
 
@@ -619,7 +743,7 @@ export default function Landing({ plans }: LandingProps) {
                         {STEPS.map((step, idx) => (
                             <li
                                 key={step.title}
-                                className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline"
+                                className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline"
                             >
                                 <div>
                                     <div className="flex h-44 items-end justify-center overflow-hidden pb-2">
@@ -631,11 +755,11 @@ export default function Landing({ plans }: LandingProps) {
                                         />
                                     </div>
 
-                                    <div className="mt-4 flex items-center gap-3">
+                                    <div className="mt-4 flex items-start gap-3">
                                         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
                                             {idx + 1}
                                         </span>
-                                        <h3 className="text-lg font-semibold text-ink">
+                                        <h3 className="text-lg font-semibold leading-snug text-ink">
                                             {step.title}
                                         </h3>
                                     </div>
@@ -649,20 +773,20 @@ export default function Landing({ plans }: LandingProps) {
                     </ol>
 
                     <div className="mt-10 flex justify-center">
-                        <Button asChild size="lg">
-                            <Link href={auth.user ? route('dashboard') : route('register')}>Coba gratis 14 hari</Link>
+                        <Button asChild size="lg" className="min-h-14 h-auto py-3 whitespace-normal text-center">
+                            <Link href={dashboardHref}>{primaryCtaLabel}</Link>
                         </Button>
                     </div>
                 </section>
 
                 {/* Pricing Section */}
-                <section id="harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+                <section id="harga" aria-labelledby="heading-harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
                     <div className="text-center">
-                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Pilih paket yang pas buat bisnismu
+                        <h2 id="heading-harga" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Pilih paket sesuai ukuran usaha kamu
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Coba gratis 14 hari untuk semua paket. Fitur DP, pengingat otomatis, dan proteksi no-show sudah aktif sejak paket Basic.
+                            Semua paket bisa dicoba gratis 14 hari. Fitur uang muka tanpa potongan, pengingat email, dan aturan bayar penuh buat yang sering batal sudah aktif sejak paket Basic.
                         </p>
 
                         {/* Segmented Control */}
@@ -672,7 +796,7 @@ export default function Landing({ plans }: LandingProps) {
                                 aria-pressed={billingCycle === 'monthly'}
                                 onClick={() => setBillingCycle('monthly')}
                                 className={cn(
-                                    'min-h-10 cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-5',
+                                    'min-h-10 cursor-pointer rounded-full px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-5',
                                     billingCycle === 'monthly' ? 'bg-canvas text-ink' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -683,7 +807,7 @@ export default function Landing({ plans }: LandingProps) {
                                 aria-pressed={billingCycle === 'yearly'}
                                 onClick={() => setBillingCycle('yearly')}
                                 className={cn(
-                                    'flex min-h-10 cursor-pointer flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-5',
+                                    'flex min-h-10 cursor-pointer flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-5',
                                     billingCycle === 'yearly' ? 'bg-canvas text-ink' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -708,7 +832,7 @@ export default function Landing({ plans }: LandingProps) {
                                     )}
                                 >
                                     <div>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
                                             <h3 className="text-2xl font-semibold text-charcoal">{plan.name}</h3>
                                             {isPopular && <Badge variant="popular">Rekomendasi</Badge>}
                                         </div>
@@ -727,37 +851,37 @@ export default function Landing({ plans }: LandingProps) {
                                         )}
 
                                         <ul className="mt-6 space-y-3 text-sm text-body">
-                                            <li className="flex items-center gap-2.5">
-                                                <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
                                                 <span>{plan.max_businesses ?? 'Unlimited'} Bisnis / cabang</span>
                                             </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
                                                 <span>{plan.max_services_per_business ?? 'Unlimited'} Layanan per bisnis</span>
                                             </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                <span>{plan.max_staff_per_business ?? 'Unlimited'} Staff</span>
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                <span>{plan.max_staff_per_business ?? 'Unlimited'} Akun tim / staff</span>
                                             </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                <span>{plan.max_bookings_per_month ?? 'Unlimited'} Booking per bulan</span>
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                <span>{plan.max_bookings_per_month ?? 'Unlimited'} Pesanan per bulan</span>
                                             </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
                                                 <span>{plan.max_customers_per_business?.toLocaleString('id-ID') ?? 'Unlimited'} Data pelanggan</span>
                                             </li>
-                                            <li className="flex items-center gap-2.5">
+                                            <li className="flex items-start gap-2.5">
                                                 {plan.can_export_csv ? (
                                                     <>
-                                                        <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                        <span className="text-body">Export CSV (Booking, CRM &amp; Komisi)</span>
+                                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                        <span className="text-body">Export CSV (Pesanan, Pelanggan &amp; Komisi)</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <X className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                                                        <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
                                                         <span className="text-mute line-through">
-                                                            Export CSV (Booking, CRM &amp; Komisi)
+                                                            Export CSV (Pesanan, Pelanggan &amp; Komisi)
                                                         </span>
                                                         <span className="sr-only">(Tidak tersedia di paket ini)</span>
                                                     </>
@@ -768,9 +892,9 @@ export default function Landing({ plans }: LandingProps) {
 
                                     <div className="mt-8">
                                         <Button asChild variant={isPopular ? 'default' : 'outline'} className="w-full">
-                                            <Link href={auth.user ? route('dashboard.billing') : route('register')}>
-                                                Coba gratis
-                                                <span className="sr-only"> paket {plan.name}</span>
+                                            <Link href={pricingCtaHref}>
+                                                {pricingCtaLabel}
+                                                {!auth.user && <span className="sr-only"> paket {plan.name}</span>}
                                             </Link>
                                         </Button>
                                     </div>
@@ -796,26 +920,45 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* Testimonials */}
-                <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                <section aria-labelledby="heading-testimoni" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-12 text-center">
-                        <h2 className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Kata mereka yang sudah pakai Janjiyan
+                        <h2 id="heading-testimoni" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Cerita dari pengguna Janjiyan
                         </h2>
                     </div>
 
-                    <div data-testimonials-grid className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div
+                        data-testimonials-grid
+                        className={cn(
+                            'grid gap-4',
+                            TESTIMONIALS.length === 1 && 'mx-auto max-w-2xl grid-cols-1',
+                            TESTIMONIALS.length === 2 && 'mx-auto max-w-4xl sm:grid-cols-2',
+                            TESTIMONIALS.length === 3 && 'sm:grid-cols-2 lg:grid-cols-3',
+                            TESTIMONIALS.length >= 4 && 'sm:grid-cols-2 lg:grid-cols-4'
+                        )}
+                    >
                         {TESTIMONIALS.map((t) => (
                             <div
                                 key={t.name}
                                 data-testimonial-card
-                                className="flex min-w-0 flex-col justify-between rounded-sm border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
+                                className={cn(
+                                    'flex min-w-0 flex-col justify-between rounded-sm border border-hairline-soft bg-canvas transition-colors hover:border-hairline',
+                                    TESTIMONIALS.length === 1 ? 'p-6 sm:p-8' : 'p-5 sm:p-6'
+                                )}
                             >
-                                <p className="text-sm leading-relaxed text-ink text-pretty">“{t.quote}”</p>
-                                <div className="mt-6 flex items-center gap-3">
-                                    <div className="flex size-9 items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink">
-                                        {t.name.slice(0, 2).toUpperCase()}
+                                <p
+                                    className={cn(
+                                        'leading-relaxed text-ink text-pretty',
+                                        TESTIMONIALS.length === 1 ? 'text-base sm:text-lg' : 'text-sm'
+                                    )}
+                                >
+                                    “{t.quote}”
+                                </p>
+                                <div className="mt-6 flex items-start gap-3">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink">
+                                        {t.initials ?? t.name.slice(0, 2).toUpperCase()}
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="text-sm font-semibold text-ink">{t.name}</p>
                                         <p className="text-xs text-mute">{t.role}</p>
                                     </div>
@@ -826,8 +969,8 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
 
                 {/* FAQ */}
-                <section id="faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
-                    <h2 className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                <section id="faq" aria-labelledby="heading-faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
+                    <h2 id="heading-faq" className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                         Yang sering ditanyakan
                     </h2>
 
@@ -845,13 +988,13 @@ export default function Landing({ plans }: LandingProps) {
                                             aria-expanded={isOpen}
                                             aria-controls={panelId}
                                             onClick={() => setOpenFaq(isOpen ? null : idx)}
-                                            className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-xs text-start text-base font-semibold text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                            className="flex w-full cursor-pointer items-start justify-between gap-4 rounded-xs text-start text-base font-semibold text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                                         >
                                             <span>{item.q}</span>
                                             <ChevronDown
                                                 aria-hidden="true"
                                                 className={cn(
-                                                    'size-4 shrink-0 text-mute motion-safe:transition-transform',
+                                                    'mt-1 size-4 shrink-0 text-mute motion-safe:transition-transform',
                                                     isOpen && 'rotate-180'
                                                 )}
                                             />
@@ -859,7 +1002,6 @@ export default function Landing({ plans }: LandingProps) {
                                     </h3>
                                     <div
                                         id={panelId}
-                                        role="region"
                                         aria-labelledby={buttonId}
                                         aria-hidden={!isOpen}
                                         className={cn(
@@ -884,22 +1026,22 @@ export default function Landing({ plans }: LandingProps) {
             <footer className="mt-16 rounded-t-md bg-dark px-6 py-16 text-on-dark sm:px-12 sm:py-20">
                 <div className="mx-auto max-w-6xl">
                     {/* Closing CTA Band */}
-                    <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
-                        <div>
+                    <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-start">
+                        <div className="min-w-0">
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
-                                Cobain dulu 14 hari, gratis.
+                                Coba dulu 14 hari, gratis.
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
-                                Buat link booking pertamamu hari ini, lalu lihat sendiri apakah cocok untuk jadwal harianmu.
+                                Buat halaman toko pertama kamu hari ini, lalu lihat sendiri apakah cocok untuk kerja harian tim kamu.
                             </p>
                         </div>
                         <Button
                             asChild
                             size="lg"
-                            className="shrink-0 bg-canvas text-ink hover:bg-bone focus-visible:ring-on-dark focus-visible:ring-offset-dark"
+                            className="min-h-14 h-auto shrink-0 py-3 whitespace-normal bg-canvas text-center text-ink hover:bg-bone focus-visible:ring-on-dark focus-visible:ring-offset-dark"
                         >
-                            <Link href={auth.user ? route('dashboard') : route('register')}>
-                                Coba gratis 14 hari
+                            <Link href={dashboardHref}>
+                                {primaryCtaLabel}
                             </Link>
                         </Button>
                     </div>
@@ -909,7 +1051,7 @@ export default function Landing({ plans }: LandingProps) {
                         <div>
                             <JanjiyanLogo dark size="lg" />
                             <p className="mt-4 max-w-md text-lg text-on-dark-mute">
-                                Jadwal rapi, pesanan pasti.
+                                Untuk janji temu dan pesanan yang ditepati.
                             </p>
                         </div>
 
@@ -917,6 +1059,7 @@ export default function Landing({ plans }: LandingProps) {
                             <div className="space-y-2.5">
                                 <p className="font-semibold text-on-dark">Produk</p>
                                 <ul className="space-y-1">
+                                    <li><a href="#tipe-bisnis" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Tipe bisnis</a></li>
                                     <li><a href="#fitur" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Fitur</a></li>
                                     <li><a href="#harga" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Harga</a></li>
                                     <li><a href="#faq" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">FAQ</a></li>
@@ -925,8 +1068,18 @@ export default function Landing({ plans }: LandingProps) {
                             <div className="space-y-2.5">
                                 <p className="font-semibold text-on-dark">Akun</p>
                                 <ul className="space-y-1">
-                                    <li><Link href={route('login')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Masuk</Link></li>
-                                    <li><Link href={route('register')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Coba gratis</Link></li>
+                                    {auth.user ? (
+                                        <li>
+                                            <Link href={dashboardHref} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">
+                                                {auth.user.is_superadmin ? 'Panel Superadmin' : 'Dashboard'}
+                                            </Link>
+                                        </li>
+                                    ) : (
+                                        <>
+                                            <li><Link href={route('login')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Masuk</Link></li>
+                                            <li><Link href={route('register')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Coba gratis</Link></li>
+                                        </>
+                                    )}
                                 </ul>
                             </div>
                             <div className="space-y-2.5">
