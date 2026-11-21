@@ -67,6 +67,7 @@ export default function DashboardIndex({
     topServices,
 }: DashboardIndexProps) {
     const { activeBusiness } = usePage<PageProps>().props;
+    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
     const [copied, setCopied] = useState(false);
     const [trendMetric, setTrendMetric] = useState<'bookings' | 'revenue'>('bookings');
 
@@ -241,7 +242,9 @@ export default function DashboardIndex({
                     className={kpiCardClass}
                 >
                     <div className="flex items-center justify-between text-mute">
-                        <span className="text-xs font-semibold">Reservasi Hari Ini</span>
+                        <span className="text-xs font-semibold">
+                            {isDropoffPrimary ? 'Pesanan Hari Ini' : 'Reservasi Hari Ini'}
+                        </span>
                         <Calendar className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </div>
                     <div className="mt-3 flex items-baseline justify-between gap-2">
@@ -313,7 +316,7 @@ export default function DashboardIndex({
                             <h2 className="text-lg font-semibold text-ink">Tren 7 Hari Terakhir</h2>
                             <p className="text-xs tabular-nums text-mute">
                                 {trendMetric === 'bookings'
-                                    ? `Total ${totalWeeklyBookings} reservasi dalam 7 hari terakhir`
+                                    ? `Total ${totalWeeklyBookings} ${isDropoffPrimary ? 'pesanan' : 'reservasi'} dalam 7 hari terakhir`
                                     : `Total omzet terverifikasi ${formatRupiah(totalWeeklyRevenue)} dalam 7 hari terakhir`}
                             </p>
                         </div>
@@ -333,7 +336,7 @@ export default function DashboardIndex({
                                         trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
-                                Reservasi
+                                {isDropoffPrimary ? 'Pesanan' : 'Reservasi'}
                             </button>
                             <button
                                 type="button"
@@ -402,7 +405,7 @@ export default function DashboardIndex({
                                             })}
                                             aria-label={`${day.label} ${day.full_label}: ${
                                                 trendMetric === 'bookings'
-                                                    ? `${day.bookings_count} reservasi`
+                                                    ? `${day.bookings_count} ${isDropoffPrimary ? 'pesanan' : 'reservasi'}`
                                                     : formatRupiah(day.revenue ?? 0)
                                             }`}
                                             className="group flex min-w-0 flex-col items-center rounded-xl px-1 pt-1 pb-2 transition-colors hover:bg-bone/50 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-2"
@@ -458,7 +461,9 @@ export default function DashboardIndex({
                 {/* Recent Bookings */}
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-ink">Reservasi Terbaru</h2>
+                        <h2 className="text-lg font-semibold text-ink">
+                            {isDropoffPrimary ? 'Pesanan Terbaru' : 'Reservasi Terbaru'}
+                        </h2>
                         <Link
                             href={route('dashboard.bookings', { status: 'all' })}
                             className="inline-flex min-h-7 items-center rounded-sm text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -469,7 +474,9 @@ export default function DashboardIndex({
 
                     {recentBookings.length === 0 ? (
                         <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
-                            Belum ada reservasi masuk. Bagikan link booking Anda!
+                            {isDropoffPrimary
+                                ? 'Belum ada pesanan masuk. Bagikan link booking Anda!'
+                                : 'Belum ada reservasi masuk. Bagikan link booking Anda!'}
                         </p>
                     ) : (
                         <div className="divide-y divide-divider">
@@ -526,7 +533,7 @@ export default function DashboardIndex({
                                         <p className="text-xs tabular-nums text-mute">{formatRupiah(s.price)}</p>
                                     </div>
                                     <Badge variant="secondary" className="shrink-0 tabular-nums">
-                                        {s.bookings_count} reservasi
+                                        {s.bookings_count} {isDropoffPrimary ? 'pesanan' : 'reservasi'}
                                     </Badge>
                                 </div>
                             ))}

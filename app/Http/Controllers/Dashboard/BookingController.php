@@ -52,9 +52,25 @@ class BookingController extends Controller
             : ($modes->first() ?? 'time_slot');
         $statusFilter = $this->sanitizeStatus($filters['status'], $mode);
 
+        $todayDate = CarbonImmutable::now($tz)->toDateString();
         $viewMode = $request->string('view')->toString() === 'calendar' && $mode === 'time_slot' ? 'calendar' : 'list';
         $calendarDateString = $this->sanitizeDateString($request->string('calendar_date')->toString())
-            ?? CarbonImmutable::now($tz)->toDateString();
+            ?? $todayDate;
+
+        $dropoffStageCounts = null;
+        if ($business && ($mode === 'dropoff' || $modes->contains('dropoff'))) {
+            $activeDropoffWorkStatuses = $business->bookings()
+                ->where('booking_mode', 'dropoff')
+                ->whereIn('reservation_status', ['pending', 'confirmed'])
+                ->pluck('work_status');
+
+            $dropoffStageCounts = [
+                'active' => $activeDropoffWorkStatuses->count(),
+                'awaiting_dropoff' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === null || $ws === 'awaiting_dropoff')->count(),
+                'in_progress' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === 'in_progress')->count(),
+                'ready_for_pickup' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === 'ready_for_pickup')->count(),
+            ];
+        }
 
         $mapBooking = fn (Booking $b): array => [
             'id' => $b->id,
@@ -98,6 +114,9 @@ class BookingController extends Controller
             'rescheduled_count' => (int) ($b->rescheduled_count ?? 0),
         ];
 
+        $isDropoffActiveQueue = $mode === 'dropoff'
+            && in_array($statusFilter, ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup'], true);
+
         $paginatedBookings = $business
             ? $business->bookings()
                 ->with([
@@ -108,9 +127,18 @@ class BookingController extends Controller
                     ]),
                 ])
                 ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode, $hasBothModes))
-                ->orderByDesc('booking_date')
-                ->orderByDesc('start_at')
-                ->orderByDesc('id')
+                ->when(
+                    $isDropoffActiveQueue,
+                    fn ($q) => $q
+                        ->orderByRaw('CASE WHEN estimated_ready_date IS NULL THEN 1 ELSE 0 END ASC')
+                        ->orderBy('estimated_ready_date', 'asc')
+                        ->orderBy('booking_date', 'asc')
+                        ->orderBy('id', 'asc'),
+                    fn ($q) => $q
+                        ->orderByDesc('booking_date')
+                        ->orderByDesc('start_at')
+                        ->orderByDesc('id')
+                )
                 ->paginate(20)
                 ->withQueryString()
                 ->through($mapBooking)
@@ -203,6 +231,8 @@ class BookingController extends Controller
             ],
             'hasBothModes' => $hasBothModes,
             'modeCounts' => $modeCounts,
+            'dropoffStageCounts' => $dropoffStageCounts,
+            'todayDate' => $todayDate,
             'calendar' => [
                 'selected_date' => $calendarDateString,
                 'days' => $calendarDays,
@@ -395,6 +425,7 @@ class BookingController extends Controller
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_notes' => ['nullable', 'string', 'max:500'],
             'initial_payment_status' => ['required', 'in:unpaid,dp_verified,settled'],
+            'start_in_progress' => ['nullable', 'boolean'],
         ]);
 
         if ($validated['initial_payment_status'] !== 'unpaid') {
@@ -467,12 +498,27 @@ class BookingController extends Controller
             ]);
         }
 
+        if (
+            $service->isDropoff()
+            && $request->boolean('start_in_progress')
+            && ($validated['fulfillment_type'] ?? 'dropoff') === 'dropoff'
+        ) {
+            $booking->update([
+                'work_status' => 'in_progress',
+                'reservation_status' => 'confirmed',
+            ]);
+        }
+
         $notificationService->notifyCustomerStatusChanged(
             $booking,
             $booking->reservation_status === 'confirmed' ? 'confirmed' : 'created'
         );
 
-        return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', "Reservasi manual {$booking->booking_code} berhasil dibuat.");
+        $flashMessage = $service->isDropoff()
+            ? "Pesanan manual {$booking->booking_code} berhasil dibuat."
+            : "Reservasi manual {$booking->booking_code} berhasil dibuat.";
+
+        return to_route('dashboard.bookings', ['mode' => $booking->booking_mode ?? 'time_slot'])->with('success', $flashMessage);
     }
 
     public function reschedule(

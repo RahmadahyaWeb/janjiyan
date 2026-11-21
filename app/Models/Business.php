@@ -149,6 +149,27 @@ class Business extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function primaryBookingMode(): string
+    {
+        $services = $this->relationLoaded('services')
+            ? $this->services
+            : $this->services()->get(['booking_mode', 'is_active']);
+
+        if ($services->isEmpty()) {
+            return 'time_slot';
+        }
+
+        $pool = $services->where('is_active', true);
+        if ($pool->isEmpty()) {
+            $pool = $services;
+        }
+
+        $dropoffCount = $pool->where('booking_mode', 'dropoff')->count();
+        $timeSlotCount = $pool->count() - $dropoffCount;
+
+        return $dropoffCount > $timeSlotCount ? 'dropoff' : 'time_slot';
+    }
+
     public function seedDefaultOperatingHours(): void
     {
         for ($day = 0; $day <= 6; $day++) {

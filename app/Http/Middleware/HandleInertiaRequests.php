@@ -31,6 +31,7 @@ class HandleInertiaRequests extends Middleware
         if ($shouldLoadTenantContext) {
             $active = $user->resolveActiveBusiness();
             $businesses = $user->businesses()
+                ->with(['services:id,business_id,booking_mode,is_active'])
                 ->get()
                 ->map(fn ($b) => [
                     'id' => $b->id,
@@ -43,12 +44,14 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => json_decode((string) $b->pivot->permissions, true) ?? [],
                     'is_suspended' => $b->isSuspended(),
                     'suspension_reason' => $b->suspension_reason,
+                    'primary_booking_mode' => $b->primaryBookingMode(),
                 ])
                 ->values()
                 ->all();
 
             if ($active) {
                 $activeBusiness = collect($businesses)->firstWhere('id', $active->id);
+                $activeBusiness['primary_booking_mode'] = $activeBusiness['primary_booking_mode'] ?? $active->primaryBookingMode();
                 // Resolved server-side so the UI hides exactly what the controllers would refuse.
                 $activeBusiness['can'] = collect(User::BUSINESS_PERMISSIONS)
                     ->mapWithKeys(fn (string $p) => [$p => $user->hasBusinessPermission($active, $p)])

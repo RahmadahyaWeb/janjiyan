@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -35,7 +36,9 @@ interface BookingCreateProps {
 }
 
 export default function BookingCreate({ services }: BookingCreateProps) {
-    const canManageServices = usePage<PageProps>().props.activeBusiness?.can?.manage_services ?? true;
+    const { activeBusiness } = usePage<PageProps>().props;
+    const canManageServices = activeBusiness?.can?.manage_services ?? true;
+    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
     const [timeError, setTimeError] = useState('');
     const formRef = useRef<HTMLFormElement>(null);
     const todayString = new Date().toISOString().slice(0, 10);
@@ -48,6 +51,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
         fulfillment_type: 'dropoff' as 'dropoff' | 'pickup',
         pickup_session: 'anytime' as 'morning' | 'afternoon' | 'evening' | 'anytime',
         pickup_address: '',
+        start_in_progress: true as boolean,
         staff_id: '',
         customer_name: '',
         customer_phone: '',
@@ -115,6 +119,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
         form.transform((data) => ({
             ...data,
             quantity: Math.max(1, Number(data.quantity || 1)),
+            start_in_progress: isDropoff && data.fulfillment_type === 'dropoff' ? Boolean(data.start_in_progress) : false,
         }));
         form.post(route('dashboard.bookings.store'), {
             onError: () => scrollToFirstInvalid(formRef.current),
@@ -122,7 +127,13 @@ export default function BookingCreate({ services }: BookingCreateProps) {
     };
 
     return (
-        <DashboardLayout title="Tambah Booking Manual" back={{ href: route('dashboard.bookings'), label: 'Kembali ke Daftar Reservasi' }}>
+        <DashboardLayout
+            title="Tambah Booking Manual"
+            back={{
+                href: route('dashboard.bookings'),
+                label: isDropoffPrimary || isDropoff ? 'Kembali ke Daftar Pesanan' : 'Kembali ke Daftar Reservasi',
+            }}
+        >
             <Head title="Tambah Booking Manual" />
 
 
@@ -154,6 +165,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 form.setData((prev) => ({
                                     ...prev,
                                     service_id: e.target.value,
+                                    fulfillment_type: 'dropoff',
                                     staff_id: '',
                                     time: '',
                                 }));
@@ -295,6 +307,27 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                         value={form.data.pickup_address}
                                         onChange={(e) => form.setData('pickup_address', e.target.value)}
                                         aria-invalid={Boolean(form.errors.pickup_address)}
+                                    />
+                                </div>
+                            )}
+
+                            {form.data.fulfillment_type === 'dropoff' && (
+                                <div className="flex items-center justify-between gap-4 rounded-sm border border-hairline-soft bg-bone/50 px-4 py-3">
+                                    <div className="min-w-0 space-y-0.5">
+                                        <Label
+                                            htmlFor="manual-start-in-progress"
+                                            className="cursor-pointer text-sm font-semibold text-ink"
+                                        >
+                                            Barang sudah diterima di toko
+                                        </Label>
+                                        <p className="text-xs text-mute">
+                                            Langsung masukkan ke tahap Sedang Dikerjakan tanpa perlu klik Terima &amp; Proses lagi.
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="manual-start-in-progress"
+                                        checked={form.data.start_in_progress}
+                                        onCheckedChange={(checked) => form.setData('start_in_progress', checked)}
                                     />
                                 </div>
                             )}
@@ -456,7 +489,11 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                             <Link href={route('dashboard.bookings')}>Batal</Link>
                         </Button>
                         <Button type="submit" disabled={form.processing}>
-                            {form.processing ? 'Menyimpan…' : 'Simpan Reservasi Manual'}
+                            {form.processing
+                                ? 'Menyimpan…'
+                                : isDropoff
+                                  ? 'Simpan Pesanan Manual'
+                                  : 'Simpan Reservasi Manual'}
                         </Button>
                     </div>
                 </form>

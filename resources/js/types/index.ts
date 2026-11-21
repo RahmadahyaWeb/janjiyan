@@ -49,6 +49,7 @@ export interface BusinessSummary {
     name: string;
     slug: string;
     category: string;
+    primary_booking_mode?: 'time_slot' | 'dropoff';
     qr_poster_subtitle?: string | null;
     logo_url: string | null;
     role: 'owner' | 'admin' | 'staff';

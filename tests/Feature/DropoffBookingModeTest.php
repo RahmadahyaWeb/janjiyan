@@ -426,4 +426,147 @@ class DropoffBookingModeTest extends TestCase
             $templates['ready_for_pickup']
         );
     }
+
+    public function test_primary_booking_mode_detection_and_shared_inertia_prop(): void
+    {
+        // Only 1 active dropoff service -> primary_booking_mode is 'dropoff'
+        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
+
+        $res = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk();
+        $activeBusinessProp = $res->viewData('page')['props']['activeBusiness'];
+        $this->assertSame('dropoff', $activeBusinessProp['primary_booking_mode']);
+
+        // Add 1 active time_slot service (1 dropoff vs 1 time_slot -> tie defaults to 'time_slot')
+        $slot1 = Service::create([
+            'business_id' => $this->business->id,
+            'name' => 'Potong Rambut',
+            'price' => 40000,
+            'duration_minutes' => 30,
+            'buffer_minutes' => 0,
+            'capacity' => 1,
+            'assignment_mode' => 'capacity',
+            'booking_mode' => 'time_slot',
+            'dp_type' => 'none',
+            'dp_value' => 0,
+            'is_active' => true,
+        ]);
+        $this->assertSame('time_slot', $this->business->fresh()->primaryBookingMode());
+
+        // Add a 2nd active dropoff service (2 dropoff vs 1 time_slot -> majority is 'dropoff')
+        $dropoff2 = Service::create([
+            'business_id' => $this->business->id,
+            'name' => 'Repaint Sepatu',
+            'price' => 150000,
+            'duration_minutes' => 60,
+            'buffer_minutes' => 0,
+            'capacity' => 5,
+            'assignment_mode' => 'capacity',
+            'booking_mode' => 'dropoff',
+            'turnaround_days' => 4,
+            'supports_pickup' => false,
+            'dp_type' => 'none',
+            'dp_value' => 0,
+            'is_active' => true,
+        ]);
+        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
+
+        // When all services are inactive, falls back to all services majority
+        Service::where('business_id', $this->business->id)->update(['is_active' => false]);
+        $this->assertSame('dropoff', $this->business->fresh()->primaryBookingMode());
+
+        // When no services exist, falls back to 'time_slot'
+        $slot1->delete();
+        $dropoff2->delete();
+        $this->dropoffService->delete();
+        $this->assertSame('time_slot', $this->business->fresh()->primaryBookingMode());
+    }
+
+    public function test_dropoff_stage_counts_today_date_and_smart_fifo_sorting(): void
+    {
+        $day = $this->nextOpenWeekday(1);
+
+        // Create active drop-off bookings across stages and estimated_ready_dates
+        $this->makeBooking($this->dropoffService, 'JNY-LATER', [
+            'booking_date' => $day->toDateString(),
+            'estimated_ready_date' => $day->addDays(4)->toDateString(),
+            'work_status' => 'in_progress',
+            'reservation_status' => 'confirmed',
+        ]);
+        $this->makeBooking($this->dropoffService, 'JNY-URGENT', [
+            'booking_date' => $day->addDay()->toDateString(),
+            'estimated_ready_date' => $day->toDateString(),
+            'work_status' => 'awaiting_dropoff',
+            'reservation_status' => 'pending',
+        ]);
+        $this->makeBooking($this->dropoffService, 'JNY-READY', [
+            'booking_date' => $day->toDateString(),
+            'estimated_ready_date' => $day->addDays(1)->toDateString(),
+            'work_status' => 'ready_for_pickup',
+            'reservation_status' => 'confirmed',
+        ]);
+        $this->makeBooking($this->dropoffService, 'JNY-DONE', [
+            'booking_date' => $day->toDateString(),
+            'estimated_ready_date' => $day->toDateString(),
+            'work_status' => 'picked_up',
+            'reservation_status' => 'completed',
+        ]);
+
+        $res = $this->actingAs($this->owner)
+            ->get(route('dashboard.bookings', ['mode' => 'dropoff', 'status' => 'active']))
+            ->assertOk();
+
+        $props = $res->viewData('page')['props'];
+
+        $this->assertNotEmpty($props['todayDate']);
+        $this->assertSame([
+            'active' => 3,
+            'awaiting_dropoff' => 1,
+            'in_progress' => 1,
+            'ready_for_pickup' => 1,
+        ], $props['dropoffStageCounts']);
+
+        // Active queue must be ordered FIFO by earliest estimated_ready_date first
+        $orderedCodes = collect($props['bookings'])->pluck('booking_code')->all();
+        $this->assertSame(['JNY-URGENT', 'JNY-READY', 'JNY-LATER'], $orderedCodes);
+    }
+
+    public function test_manual_walkin_dropoff_supports_start_in_progress_direct_intake(): void
+    {
+        $targetDate = $this->nextOpenWeekday(1);
+
+        // Walk-in direct intake (start_in_progress = true, fulfillment_type = dropoff)
+        $res = $this->actingAs($this->owner)->post('/dashboard/bookings', [
+            'service_id' => $this->dropoffService->id,
+            'date' => $targetDate->toDateString(),
+            'quantity' => 2,
+            'fulfillment_type' => 'dropoff',
+            'start_in_progress' => true,
+            'customer_name' => 'Walkin Customer',
+            'customer_phone' => '081234567800',
+            'initial_payment_status' => 'unpaid',
+        ]);
+
+        $res->assertRedirect();
+        $booking = Booking::where('business_id', $this->business->id)->latest('id')->firstOrFail();
+        $this->assertSame('in_progress', $booking->work_status);
+        $this->assertSame('confirmed', $booking->reservation_status);
+        $res->assertSessionHas('success', "Pesanan manual {$booking->booking_code} berhasil dibuat.");
+
+        // Pickup orders ignore start_in_progress and remain awaiting_dropoff
+        $this->actingAs($this->owner)->post('/dashboard/bookings', [
+            'service_id' => $this->dropoffService->id,
+            'date' => $targetDate->toDateString(),
+            'quantity' => 1,
+            'fulfillment_type' => 'pickup',
+            'pickup_session' => 'morning',
+            'pickup_address' => 'Jl. Kenanga No. 12',
+            'start_in_progress' => true,
+            'customer_name' => 'Pickup Customer',
+            'customer_phone' => '081234567801',
+            'initial_payment_status' => 'unpaid',
+        ])->assertRedirect();
+
+        $pickupBooking = Booking::where('business_id', $this->business->id)->latest('id')->firstOrFail();
+        $this->assertSame('awaiting_dropoff', $pickupBooking->work_status);
+    }
 }

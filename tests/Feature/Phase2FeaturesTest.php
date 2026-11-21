@@ -293,7 +293,11 @@ class Phase2FeaturesTest extends TestCase
             ->assertSessionHasErrors(['hours.1.close_time', 'hours.2.break_end']);
 
         // Manual walk-in booking creates first customer and marks DP verified
-        $date = now('Asia/Jakarta')->addDay()->toDateString();
+        $candidate = now('Asia/Jakarta')->addDay();
+        if ($candidate->isSunday()) {
+            $candidate = $candidate->addDay();
+        }
+        $date = $candidate->toDateString();
         $this->actingAs($owner)
             ->getJson(route('dashboard.bookings.slots', ['service_id' => $service->id, 'date' => $date]))
             ->assertOk();

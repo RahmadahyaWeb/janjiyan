@@ -132,11 +132,12 @@ const STATUS_TABS: Record<BookingMode, { value: string; label: string }[]> = {
         { value: 'in_progress', label: 'Dikerjakan' },
         { value: 'ready_for_pickup', label: 'Siap Diambil' },
         { value: 'completed', label: 'Selesai' },
-        { value: 'no_show', label: 'Tidak Hadir' },
         { value: 'cancelled', label: 'Dibatalkan' },
         { value: 'all', label: 'Semua' },
     ],
 };
+
+const DROPOFF_COUNTER_TABS = new Set(['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup']);
 
 interface BookingsIndexProps {
     bookings: BookingRow[];
@@ -157,6 +158,8 @@ interface BookingsIndexProps {
     };
     hasBothModes: boolean;
     modeCounts: Record<BookingMode, number> | null;
+    dropoffStageCounts?: Record<string, number> | null;
+    todayDate?: string;
     calendar: CalendarPayload;
     businessName: string;
     businessAddress?: string;
@@ -172,6 +175,8 @@ export default function BookingsIndex({
     filters,
     hasBothModes,
     modeCounts,
+    dropoffStageCounts,
+    todayDate,
     calendar,
     businessName,
     businessAddress = '',
@@ -179,6 +184,12 @@ export default function BookingsIndex({
     canExportCsv,
 }: BookingsIndexProps) {
     const { pendingBookingsCount = 0, activeBusiness } = usePage<PageProps>().props;
+    const isDropoffMode = filters.mode === 'dropoff';
+    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff' || (!hasBothModes && isDropoffMode);
+    const nounTitle = isDropoffMode || isDropoffPrimary ? 'Pesanan' : 'Reservasi';
+    const nounLower = isDropoffMode || isDropoffPrimary ? 'pesanan' : 'reservasi';
+    const todayStr = todayDate || new Date().toISOString().slice(0, 10);
+
     // Verifying DP and marking paid need verify_payments on the server.
     const canVerifyPayments = activeBusiness?.can?.verify_payments ?? true;
     const canOpenBilling = activeBusiness?.can?.manage_settings ?? true;
@@ -366,7 +377,7 @@ export default function BookingsIndex({
 
     return (
         <DashboardLayout
-            title="Manajemen Reservasi"
+            title={`Manajemen ${nounTitle}`}
             actions={
                 services.length > 0 ? (
                     <Button
@@ -377,7 +388,7 @@ export default function BookingsIndex({
                         <Link href={route('dashboard.bookings.create')}>
                             <Plus className="size-4" aria-hidden="true" />
                             <span className="sm:hidden">Baru</span>
-                            <span className="hidden sm:inline">Tambah Reservasi</span>
+                            <span className="hidden sm:inline">Tambah {nounTitle}</span>
                         </Link>
                     </Button>
                 ) : (
@@ -389,12 +400,12 @@ export default function BookingsIndex({
                     >
                         <Plus className="size-4" aria-hidden="true" />
                         <span className="sm:hidden">Baru</span>
-                        <span className="hidden sm:inline">Tambah Reservasi</span>
+                        <span className="hidden sm:inline">Tambah {nounTitle}</span>
                     </Button>
                 )
             }
         >
-            <Head title="Reservasi" />
+            <Head title={nounTitle} />
 
             {/* Toolbar */}
             <div className="space-y-3">
@@ -482,7 +493,7 @@ export default function BookingsIndex({
                                 size="sm"
                                 className="size-9 px-0 sm:h-10 sm:w-auto sm:px-4"
                             >
-                                <a href={exportUrl} aria-label="Export CSV reservasi">
+                                <a href={exportUrl} aria-label={`Export CSV ${nounLower}`}>
                                     <Download className="size-4" aria-hidden="true" />
                                     <span className="hidden sm:inline">Export CSV</span>
                                 </a>
@@ -528,7 +539,7 @@ export default function BookingsIndex({
                         {/* Quick Status Tabs */}
                         <HorizontalScrollContainer
                             role="group"
-                            ariaLabel="Filter cepat status reservasi"
+                            ariaLabel={`Filter cepat status ${nounLower}`}
                             wrapperClassName="-mx-4 sm:mx-0"
                             fadeBreakpointClass="sm:hidden"
                             className="flex gap-1.5 px-4 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
@@ -537,6 +548,11 @@ export default function BookingsIndex({
                                 const active = currentStatus === tab.value;
                                 // Global count spans both modes, so only show it when there is one mode.
                                 const showPendingBadge = !hasBothModes && tab.value === 'pending' && pendingBookingsCount > 0;
+                                const stageCount =
+                                    isDropoffMode && dropoffStageCounts && DROPOFF_COUNTER_TABS.has(tab.value)
+                                        ? (dropoffStageCounts[tab.value] ?? 0)
+                                        : 0;
+                                const showStageBadge = stageCount > 0;
                                 return (
                                     <button
                                         key={tab.value}
@@ -561,6 +577,20 @@ export default function BookingsIndex({
                                                 {pendingBookingsCount}
                                             </span>
                                         )}
+                                        {showStageBadge && (
+                                            <span
+                                                className={cn(
+                                                    'inline-flex min-w-4 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums leading-none',
+                                                    active
+                                                        ? 'bg-canvas text-ink'
+                                                        : tab.value === 'awaiting_dropoff'
+                                                          ? 'bg-electric text-canvas'
+                                                          : 'bg-bone text-ink'
+                                                )}
+                                            >
+                                                {stageCount}
+                                            </span>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -570,7 +600,7 @@ export default function BookingsIndex({
                         <div className="flex items-center gap-2 md:hidden">
                             <div className="relative flex min-w-0 flex-1 items-center">
                                 <label htmlFor="bookings-search-mobile" className="sr-only">
-                                    Cari reservasi berdasarkan kode, nama, atau WhatsApp
+                                    Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
                                 </label>
                                 <Search className="pointer-events-none absolute left-3.5 size-4 text-ash" aria-hidden="true" />
                                 <Input
@@ -716,7 +746,7 @@ export default function BookingsIndex({
                             <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
                                 <div className="relative flex min-w-0 items-center">
                                     <label htmlFor="bookings-search" className="sr-only">
-                                        Cari reservasi berdasarkan kode, nama, atau WhatsApp
+                                        Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
                                     </label>
                                     <Search className="pointer-events-none absolute top-4 left-4 size-4 text-ash" aria-hidden="true" />
                                     <Input
@@ -835,17 +865,17 @@ export default function BookingsIndex({
                 <div className="space-y-3 rounded-md bg-bone p-10 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         {hasActiveFilter
-                            ? 'Tidak ada reservasi yang cocok dengan filter saat ini.'
+                            ? `Tidak ada ${nounLower} yang cocok dengan filter saat ini.`
                             : currentStatus === 'active'
-                              ? 'Tidak ada reservasi aktif saat ini.'
-                              : 'Belum ada reservasi masuk.'}
+                              ? `Tidak ada ${nounLower} aktif saat ini.`
+                              : `Belum ada ${nounLower} masuk.`}
                     </p>
                     <p className="text-sm text-mute">
                         {hasActiveFilter
-                            ? 'Ubah kata kunci pencarian atau reset filter untuk melihat reservasi lainnya.'
+                            ? `Ubah kata kunci pencarian atau reset filter untuk melihat ${nounLower} lainnya.`
                             : currentStatus === 'active'
-                              ? 'Belum ada reservasi yang menunggu konfirmasi atau sedang berjalan. Anda dapat melihat seluruh riwayat atau membuat reservasi manual.'
-                              : 'Bagikan link portal booking bisnis Anda atau tambahkan reservasi walk-in secara manual.'}
+                              ? `Belum ada ${nounLower} yang menunggu konfirmasi atau sedang berjalan. Anda dapat melihat seluruh riwayat atau membuat ${nounLower} manual.`
+                              : `Bagikan link portal booking bisnis Anda atau tambahkan ${nounLower} walk-in secara manual.`}
                     </p>
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                         {hasActiveFilter ? (
@@ -861,14 +891,14 @@ export default function BookingsIndex({
                                         size="sm"
                                         onClick={() => applyFilters({ status: 'all' })}
                                     >
-                                        Lihat Semua Reservasi
+                                        Lihat Semua {nounTitle}
                                     </Button>
                                 )}
                                 {services.length > 0 && (
                                     <Button asChild size="sm">
                                         <Link href={route('dashboard.bookings.create')}>
                                             <Plus className="size-4" aria-hidden="true" />
-                                            Tambah Reservasi Manual
+                                            Tambah {nounTitle} Manual
                                         </Link>
                                     </Button>
                                 )}
@@ -880,6 +910,13 @@ export default function BookingsIndex({
                 <div className="space-y-3">
                     {bookings.map((b) => {
                         const isDropoff = b.booking_mode === 'dropoff';
+                        const isDropoffActive =
+                            isDropoff && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
+                        const showSlaWarning =
+                            isDropoffActive &&
+                            !!b.estimated_ready_date &&
+                            b.work_status !== 'picked_up' &&
+                            b.work_status !== 'ready_for_pickup';
                         // Once a drop-off item is in the shop, rescheduling or no-show no longer apply.
                         const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
                         const canReschedule =
@@ -919,12 +956,30 @@ export default function BookingsIndex({
                                                     {b.customer_name}
                                                 </Link>
                                             </p>
-                                             <p className="mt-0.5 text-sm font-medium text-ink">
-                                                {formatDateShortIndo(b.booking_date)}{' '}
-                                                <span className="whitespace-nowrap tabular-nums text-mute">
-                                                    · {b.schedule_label ?? formatBookingScheduleShort(b)}
-                                                </span>
-                                            </p>
+                                            {isDropoff ? (
+                                                <p className="mt-0.5 text-sm font-medium tabular-nums text-ink">
+                                                    Masuk {formatDateShortIndo(b.booking_date)}{' '}
+                                                    <span className="whitespace-nowrap text-mute">
+                                                        · {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                    </span>
+                                                    {b.estimated_ready_date && (
+                                                        <span className="whitespace-nowrap text-mute">
+                                                            {' '}
+                                                            · Target selesai{' '}
+                                                            <span className={cn(isDropoffActive && 'font-semibold text-ink')}>
+                                                                {formatDateShortIndo(b.estimated_ready_date)}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            ) : (
+                                                <p className="mt-0.5 text-sm font-medium text-ink">
+                                                    {formatDateShortIndo(b.booking_date)}{' '}
+                                                    <span className="whitespace-nowrap tabular-nums text-mute">
+                                                        · {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                    </span>
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="shrink-0 text-right md:hidden">
@@ -941,10 +996,7 @@ export default function BookingsIndex({
 
                                     <p className="text-xs text-mute">
                                         <span className="font-medium text-body">{b.service_name}</span>
-                                        {b.booking_mode === 'dropoff' ? ` · ${b.quantity ?? 1} item` : ''}
-                                        {b.booking_mode === 'dropoff' && b.estimated_ready_date
-                                            ? ` · Est. selesai ${formatDateShortIndo(b.estimated_ready_date)}`
-                                            : ''}
+                                        {isDropoff ? ` · ${b.quantity ?? 1} item` : ''}
                                         {b.staff_name ? ` · ${b.staff_name}` : ''}
                                     </p>
 
@@ -955,6 +1007,12 @@ export default function BookingsIndex({
                                             </Badge>
                                         ) : (
                                             reservationBadge(b.reservation_status)
+                                        )}
+                                        {showSlaWarning && b.estimated_ready_date! < todayStr && (
+                                            <Badge variant="danger">Lewat Tenggat</Badge>
+                                        )}
+                                        {showSlaWarning && b.estimated_ready_date! === todayStr && (
+                                            <Badge variant="warning">Tenggat Hari Ini</Badge>
                                         )}
                                         {paymentBadge(b.payment_status)}
                                         {(b.rescheduled_count ?? 0) > 0 && (
@@ -1130,7 +1188,7 @@ export default function BookingsIndex({
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon-sm"
-                                                        aria-label={`Aksi lainnya untuk reservasi ${b.booking_code}`}
+                                                        aria-label={`Aksi lainnya untuk ${b.booking_mode === 'dropoff' ? 'pesanan' : 'reservasi'} ${b.booking_code}`}
                                                     >
                                                         <MoreHorizontal className="size-4" aria-hidden="true" />
                                                     </Button>
@@ -1179,7 +1237,7 @@ export default function BookingsIndex({
                                                             >
                                                                 <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
                                                                     <X className="mr-2 size-4" aria-hidden="true" />
-                                                                    Batalkan Reservasi
+                                                                    Batalkan {b.booking_mode === 'dropoff' ? 'Pesanan' : 'Reservasi'}
                                                                 </Link>
                                                             </DropdownMenuItem>
                                                         </>

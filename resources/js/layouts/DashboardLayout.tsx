@@ -12,6 +12,7 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    Package,
     Plus,
     QrCode,
     Scissors,
@@ -73,8 +74,13 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
     const [qrOpen, setQrOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
     const can = activeBusiness?.can;
+    const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
     // No active business yet (new account): nothing to restrict.
-    const navItems = NAV_ITEMS.filter((item) => !can || !item.need || item.need.some((p) => can[p]));
+    const navItems = NAV_ITEMS.filter((item) => !can || !item.need || item.need.some((p) => can[p])).map((item) =>
+        item.routeName === 'dashboard.bookings' && isDropoffPrimary
+            ? { ...item, label: 'Pesanan', icon: Package }
+            : item
+    );
     // Bottom bar holds 5 slots: show everything when it fits, else 4 items plus "Lainnya".
     const orderedNav = [
         ...navItems.filter((item) => PRIMARY_NAV.includes(item.routeName)),
@@ -332,7 +338,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 </span>
                                 {showQueueCount && (
                                     <span
-                                        aria-label={`${pendingBookingsCount} reservasi menunggu tindak lanjut`}
+                                        aria-label={`${pendingBookingsCount} ${isDropoffPrimary ? 'pesanan' : 'reservasi'} menunggu tindak lanjut`}
                                         className={cn(
                                             'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
                                             isActive ? 'bg-canvas text-ink' : 'bg-electric text-canvas'
@@ -450,7 +456,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     <Icon className="size-[18px]" aria-hidden="true" />
                                     {showQueueCount && (
                                         <span
-                                            aria-label={`${pendingBookingsCount} reservasi menunggu tindak lanjut`}
+                                            aria-label={`${pendingBookingsCount} ${isDropoffPrimary ? 'pesanan' : 'reservasi'} menunggu tindak lanjut`}
                                             className="absolute -top-1 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-electric px-1 text-[10px] leading-4 font-semibold text-canvas tabular-nums"
                                         >
                                             {pendingBookingsCount}

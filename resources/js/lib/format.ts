@@ -116,3 +116,13 @@ export function getLocalDayOfWeek(dateString: string): number {
     if (!y || !m || !d) return new Date().getDay();
     return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
+
+export function getDropoffDeadlineStatus(
+    estimatedReadyDate: string | null | undefined,
+    todayDate: string
+): 'overdue' | 'due_today' | 'upcoming' | null {
+    if (!estimatedReadyDate || !todayDate) return null;
+    if (estimatedReadyDate < todayDate) return 'overdue';
+    if (estimatedReadyDate === todayDate) return 'due_today';
+    return 'upcoming';
+}
