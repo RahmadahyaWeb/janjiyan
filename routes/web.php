@@ -141,6 +141,7 @@ Route::middleware(['auth', 'verified', 'merchant'])->prefix('dashboard')->group(
     Route::get('/commissions', [CommissionController::class, 'index'])->name('dashboard.commissions');
     Route::get('/schedule', [ScheduleController::class, 'index'])->name('dashboard.schedule');
     Route::get('/customers', [CustomerController::class, 'index'])->name('dashboard.customers');
+    Route::get('/customers/lookup', [CustomerController::class, 'lookup'])->name('dashboard.customers.lookup');
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('dashboard.customers.show');
     Route::get('/settings', [SettingsController::class, 'index'])->name('dashboard.settings');
 
@@ -181,6 +182,7 @@ Route::middleware(['auth', 'verified', 'merchant'])->prefix('dashboard')->group(
         Route::delete('/schedule/holidays/{holiday}', [ScheduleController::class, 'destroyHoliday'])->name('dashboard.schedule.holidays.destroy');
 
         Route::patch('/customers/{customer}', [CustomerController::class, 'update'])->name('dashboard.customers.update');
+        Route::post('/customers/{customer}/merge', [CustomerController::class, 'merge'])->name('dashboard.customers.merge');
         Route::get('/customers/export/csv', [CustomerController::class, 'exportCsv'])
             ->middleware('throttle:dashboard-export')
             ->name('dashboard.customers.export');

@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronRight, Download, MessageCircle, Search, StickyNote, X } from 'lucide-react';
+import { ChevronRight, Download, MessageCircle, Search, StickyNote, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import type { PageProps } from '@/types';
 interface CustomerRow {
     id: number;
     name: string;
+    name_aliases?: string[];
+    has_duplicate_name?: boolean;
     phone: string;
     email: string | null;
     notes: string | null;
@@ -33,6 +35,7 @@ interface CustomersIndexProps {
         sort: string;
     };
     canExportCsv: boolean;
+    duplicateCustomersCount?: number;
 }
 
 export default function CustomersIndex({
@@ -41,6 +44,7 @@ export default function CustomersIndex({
     search: initialSearch,
     filters,
     canExportCsv,
+    duplicateCustomersCount,
 }: CustomersIndexProps) {
     // Billing is only open to owner/managers; staff get a plain hint instead of a link that 403s.
     const canOpenBilling = usePage<PageProps>().props.activeBusiness?.can?.manage_settings ?? true;
@@ -117,6 +121,9 @@ export default function CustomersIndex({
                             <option value="repeat">Pelanggan Berulang (≥2x)</option>
                             <option value="has_no_show">Pernah Tidak Hadir</option>
                             <option value="blocked">Booking Online Diblokir</option>
+                            <option value="duplicates">
+                                Potensi Nama Ganda{duplicateCustomersCount ? ` (${duplicateCustomersCount})` : ''}
+                            </option>
                         </NativeSelect>
 
                         <NativeSelect
@@ -171,6 +178,25 @@ export default function CustomersIndex({
                         )}
                     </div>
                 </div>
+
+                {(duplicateCustomersCount ?? 0) > 0 && activeFilters.segment !== 'duplicates' && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline-soft bg-bone/70 px-4 py-3 text-xs text-ink">
+                        <div className="flex items-center gap-2">
+                            <Users className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                            <span>
+                                Terdeteksi {duplicateCustomersCount} profil pelanggan dengan nama yang sama tapi nomor WhatsApp berbeda.
+                            </span>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => applyFilters({ segment: 'duplicates' })}
+                        >
+                            Lihat Potensi Duplikat
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {customers.length === 0 ? (
@@ -210,6 +236,11 @@ export default function CustomersIndex({
                                         </Link>
                                         <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">+{c.phone}</p>
                                         {c.email && <p className="truncate text-xs text-mute">{c.email}</p>}
+                                        {c.name_aliases && c.name_aliases.length > 0 && (
+                                            <p className="mt-0.5 truncate text-xs text-mute">
+                                                Alias booking: {c.name_aliases.join(', ')}
+                                            </p>
+                                        )}
                                     </div>
                                     <p className="shrink-0 text-right text-sm font-semibold tabular-nums text-ink">
                                         {formatRupiah(Number(c.total_spent ?? 0))}
@@ -220,6 +251,7 @@ export default function CustomersIndex({
                                     <Badge variant="secondary" className="tabular-nums">
                                         {c.bookings_count}x reservasi
                                     </Badge>
+                                    {c.has_duplicate_name && <Badge variant="outline">Nama Serupa</Badge>}
                                     {c.no_show_count > 0 && (
                                         <Badge variant="destructive" className="tabular-nums">
                                             {c.no_show_count}x no-show
@@ -287,6 +319,11 @@ export default function CustomersIndex({
                                                 >
                                                     {c.name}
                                                 </Link>
+                                                {c.has_duplicate_name && (
+                                                    <Badge variant="outline">
+                                                        Nama Serupa
+                                                    </Badge>
+                                                )}
                                                 {c.is_blocked && (
                                                     <Badge variant="destructive">
                                                         Diblokir
@@ -311,6 +348,11 @@ export default function CustomersIndex({
                                                 )}
                                             </div>
                                             {c.email && <p className="text-xs font-normal text-mute">{c.email}</p>}
+                                            {c.name_aliases && c.name_aliases.length > 0 && (
+                                                <p className="mt-0.5 text-xs font-normal text-mute">
+                                                    Alias booking: {c.name_aliases.join(', ')}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-5 py-4 font-mono text-xs tabular-nums text-ink">+{c.phone}</td>
                                         <td className="px-5 py-4">

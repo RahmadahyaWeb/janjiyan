@@ -348,6 +348,7 @@ class SlotAvailabilityService
                 'service_id' => $service->id,
                 'staff_id' => $assignedStaffId,
                 'customer_id' => $prepared['customer']->id,
+                'booked_customer_name' => $prepared['booked_customer_name'],
                 'booking_mode' => 'time_slot',
                 'quantity' => 1,
                 'fulfillment_type' => 'dropoff',
@@ -462,6 +463,7 @@ class SlotAvailabilityService
                 'service_id' => $service->id,
                 'staff_id' => null,
                 'customer_id' => $prepared['customer']->id,
+                'booked_customer_name' => $prepared['booked_customer_name'],
                 'booking_mode' => 'dropoff',
                 'quantity' => $quantity,
                 'fulfillment_type' => $resolvedFulfillment,
@@ -810,6 +812,7 @@ class SlotAvailabilityService
      *
      * @return array{
      *     customer: Customer,
+     *     booked_customer_name: string,
      *     total_price: int,
      *     dp_amount: int,
      *     commission_amount: int,
@@ -829,6 +832,7 @@ class SlotAvailabilityService
         ?UploadedFile $dpProofFile,
         bool $allowImmediateToday
     ): array {
+        $customerName = trim($customerName);
         $normalizedPhone = $this->normalizePhone($customerPhone);
 
         $customer = Customer::where('business_id', $business->id)
@@ -849,18 +853,48 @@ class SlotAvailabilityService
                     'business_id' => $business->id,
                     'phone' => $normalizedPhone,
                     'name' => $customerName,
+                    'name_aliases' => [],
                     'email' => $customerEmail,
                 ]);
             } catch (UniqueConstraintViolationException) {
                 $customer = Customer::where('business_id', $business->id)
                     ->where('phone', $normalizedPhone)
                     ->firstOrFail();
+
+                $mergedAliases = Customer::mergeAliases(
+                    $customer->name,
+                    $customer->name_aliases ?? [],
+                    [$customerName]
+                );
+
+                $updates = [];
+                if ($mergedAliases !== ($customer->name_aliases ?? [])) {
+                    $updates['name_aliases'] = $mergedAliases;
+                }
+                if ($customerEmail && $customer->email !== $customerEmail) {
+                    $updates['email'] = $customerEmail;
+                }
+                if (! empty($updates)) {
+                    $customer->update($updates);
+                }
             }
-        } elseif ($customer->name !== $customerName || ($customerEmail && $customer->email !== $customerEmail)) {
-            $customer->update([
-                'name' => $customerName,
-                'email' => $customerEmail ?: $customer->email,
-            ]);
+        } else {
+            $mergedAliases = Customer::mergeAliases(
+                $customer->name,
+                $customer->name_aliases ?? [],
+                [$customerName]
+            );
+
+            $updates = [];
+            if ($mergedAliases !== ($customer->name_aliases ?? [])) {
+                $updates['name_aliases'] = $mergedAliases;
+            }
+            if ($customerEmail && $customer->email !== $customerEmail) {
+                $updates['email'] = $customerEmail;
+            }
+            if (! empty($updates)) {
+                $customer->update($updates);
+            }
         }
 
         $totalPrice = (int) $service->price * $quantity;
@@ -908,6 +942,7 @@ class SlotAvailabilityService
 
         return [
             'customer' => $customer,
+            'booked_customer_name' => $customerName,
             'total_price' => $totalPrice,
             'dp_amount' => $dpAmount,
             'commission_amount' => $commissionAmount,

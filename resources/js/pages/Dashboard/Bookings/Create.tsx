@@ -1,5 +1,6 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,8 +32,32 @@ interface ServiceOption {
     staff: Array<{ id: number; name: string; title: string | null }>;
 }
 
+interface CustomerSuggestion {
+    id: number;
+    name: string;
+    name_aliases?: string[];
+    phone: string;
+    email: string | null;
+    tags?: string[];
+    is_blocked?: boolean;
+    bookings_count: number;
+    no_show_count: number;
+    total_spent?: number;
+}
+
 interface BookingCreateProps {
     services: ServiceOption[];
+}
+
+function normalizePhoneForComparison(phone: string): string {
+    const digits = phone.replace(/\D+/g, '');
+    if (digits.startsWith('0')) {
+        return `62${digits.slice(1)}`;
+    }
+    if (digits.startsWith('8')) {
+        return `62${digits}`;
+    }
+    return digits;
 }
 
 export default function BookingCreate({ services }: BookingCreateProps) {
@@ -40,7 +65,12 @@ export default function BookingCreate({ services }: BookingCreateProps) {
     const canManageServices = activeBusiness?.can?.manage_services ?? true;
     const isDropoffPrimary = activeBusiness?.primary_booking_mode === 'dropoff';
     const [timeError, setTimeError] = useState('');
+    const [lookupQuery, setLookupQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerSuggestion | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
+    const customerLookupRef = useRef<HTMLDivElement>(null);
     const todayString = new Date().toISOString().slice(0, 10);
 
     const form = useForm({
@@ -93,6 +123,85 @@ export default function BookingCreate({ services }: BookingCreateProps) {
             }
         },
     });
+
+    useEffect(() => {
+        const trimmed = lookupQuery.trim();
+        if (trimmed.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => {
+            const url = `${route('dashboard.customers.lookup')}?q=${encodeURIComponent(trimmed)}`;
+            fetch(url, {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal,
+            })
+                .then((res) => (res.ok ? res.json() : { customers: [] }))
+                .then((data: { customers?: CustomerSuggestion[] } | CustomerSuggestion[]) => {
+                    if (controller.signal.aborted) return;
+                    const list = Array.isArray(data)
+                        ? data
+                        : Array.isArray(data?.customers)
+                          ? data.customers
+                          : [];
+                    setSuggestions(list);
+                })
+                .catch(() => {
+                    if (controller.signal.aborted) return;
+                    setSuggestions([]);
+                });
+        }, 250);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [lookupQuery]);
+
+    useEffect(() => {
+        const handleDocumentMouseDown = (event: MouseEvent) => {
+            if (
+                customerLookupRef.current &&
+                event.target instanceof Node &&
+                !customerLookupRef.current.contains(event.target)
+            ) {
+                setShowSuggestions(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleDocumentMouseDown);
+        return () => document.removeEventListener('mousedown', handleDocumentMouseDown);
+    }, []);
+
+    const handleSelectCustomer = (c: CustomerSuggestion) => {
+        const localPhone = c.phone.startsWith('62') ? '0' + c.phone.slice(2) : c.phone;
+        form.setData((prev) => ({
+            ...prev,
+            customer_name: c.name,
+            customer_phone: localPhone,
+            customer_email: c.email ?? '',
+        }));
+        setSelectedCustomer(c);
+        setShowSuggestions(false);
+        setSuggestions([]);
+        setLookupQuery('');
+    };
+
+    const handleClearSelectedCustomer = () => {
+        setSelectedCustomer(null);
+        setShowSuggestions(false);
+        setSuggestions([]);
+        setLookupQuery('');
+        form.setData((prev) => ({
+            ...prev,
+            customer_name: '',
+            customer_phone: '',
+            customer_email: '',
+        }));
+        document.getElementById('manual-customer-name')?.focus();
+    };
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -393,43 +502,150 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         </div>
                     )}
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="manual-customer-name">Nama Pelanggan *</Label>
-                            <Input
-                                id="manual-customer-name"
-                                placeholder="Budi Santoso"
-                                value={form.data.customer_name}
-                                onChange={(e) => form.setData('customer_name', e.target.value)}
-                                aria-invalid={Boolean(form.errors.customer_name)}
-                                aria-describedby={form.errors.customer_name ? 'manual-name-error' : undefined}
-                                required
-                            />
-                            {form.errors.customer_name && (
-                                <p id="manual-name-error" className="text-xs text-destructive">
-                                    {form.errors.customer_name}
+                    <div ref={customerLookupRef} className="space-y-2.5">
+                        {selectedCustomer && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-hairline-soft bg-bone px-3.5 py-2.5 text-xs">
+                                <p className="font-medium text-ink">
+                                    Terhubung ke pelanggan terdaftar: <span className="font-semibold">{selectedCustomer.name}</span> (+{selectedCustomer.phone}) · {selectedCustomer.bookings_count}x riwayat kunjungan
                                 </p>
-                            )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleClearSelectedCustomer}
+                                >
+                                    Ganti / Input Baru
+                                </Button>
+                            </div>
+                        )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="manual-customer-name">Nama Pelanggan *</Label>
+                                <Input
+                                    id="manual-customer-name"
+                                    placeholder="Budi Santoso"
+                                    autoComplete="off"
+                                    value={form.data.customer_name}
+                                    onFocus={() => {
+                                        if (form.data.customer_name.trim().length >= 2) {
+                                            setLookupQuery(form.data.customer_name.trim());
+                                            setShowSuggestions(true);
+                                        }
+                                    }}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        form.setData('customer_name', val);
+                                        setLookupQuery(val.trim());
+                                        setShowSuggestions(true);
+                                    }}
+                                    aria-invalid={Boolean(form.errors.customer_name)}
+                                    aria-describedby={form.errors.customer_name ? 'manual-name-error' : undefined}
+                                    required
+                                />
+                                {form.errors.customer_name && (
+                                    <p id="manual-name-error" className="text-xs text-destructive">
+                                        {form.errors.customer_name}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="manual-customer-phone">Nomor WhatsApp *</Label>
+                                <Input
+                                    id="manual-customer-phone"
+                                    type="tel"
+                                    inputMode="tel"
+                                    placeholder="081234567890"
+                                    autoComplete="off"
+                                    value={form.data.customer_phone}
+                                    onFocus={() => {
+                                        if (form.data.customer_phone.trim().length >= 2) {
+                                            setLookupQuery(form.data.customer_phone.trim());
+                                            setShowSuggestions(true);
+                                        }
+                                    }}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        form.setData('customer_phone', val);
+                                        if (
+                                            selectedCustomer &&
+                                            normalizePhoneForComparison(val) !==
+                                                normalizePhoneForComparison(selectedCustomer.phone)
+                                        ) {
+                                            setSelectedCustomer(null);
+                                        }
+                                        setLookupQuery(val.trim());
+                                        setShowSuggestions(true);
+                                    }}
+                                    aria-invalid={Boolean(form.errors.customer_phone)}
+                                    aria-describedby={form.errors.customer_phone ? 'manual-phone-error' : undefined}
+                                    required
+                                />
+                                {form.errors.customer_phone && (
+                                    <p id="manual-phone-error" className="text-xs text-destructive">
+                                        {form.errors.customer_phone}
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="manual-customer-phone">Nomor WhatsApp *</Label>
-                            <Input
-                                id="manual-customer-phone"
-                                type="tel"
-                                inputMode="tel"
-                                placeholder="081234567890"
-                                value={form.data.customer_phone}
-                                onChange={(e) => form.setData('customer_phone', e.target.value)}
-                                aria-invalid={Boolean(form.errors.customer_phone)}
-                                aria-describedby={form.errors.customer_phone ? 'manual-phone-error' : undefined}
-                                required
-                            />
-                            {form.errors.customer_phone && (
-                                <p id="manual-phone-error" className="text-xs text-destructive">
-                                    {form.errors.customer_phone}
-                                </p>
-                            )}
-                        </div>
+
+                        {showSuggestions && suggestions.length > 0 && (
+                            <div
+                                role="listbox"
+                                aria-label="Saran pelanggan terdaftar"
+                                className="divide-y divide-hairline-soft overflow-hidden rounded-sm border border-hairline-soft bg-bone/60"
+                            >
+                                {suggestions.map((c) => {
+                                    const aliases = Array.isArray(c.name_aliases) ? c.name_aliases : [];
+                                    const tags = Array.isArray(c.tags) ? c.tags : [];
+                                    return (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={selectedCustomer?.id === c.id}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => handleSelectCustomer(c)}
+                                            className="flex w-full cursor-pointer flex-col gap-1.5 px-3.5 py-2.5 text-left transition-colors hover:bg-bone focus-visible:bg-bone focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between"
+                                        >
+                                            <div className="min-w-0 space-y-0.5">
+                                                <div className="flex flex-wrap items-baseline gap-1.5">
+                                                    <span className="text-sm font-semibold text-ink">{c.name}</span>
+                                                    {aliases.length > 0 && (
+                                                        <span className="text-xs text-mute">
+                                                            (Alias: {aliases.join(', ')})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="font-mono text-xs text-mute tabular-nums">
+                                                    +{c.phone}
+                                                    {c.email ? ` · ${c.email}` : ''}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <Badge variant="secondary">{c.bookings_count}x kunjungan</Badge>
+                                                {tags.map((tag) => (
+                                                    <Badge
+                                                        key={tag}
+                                                        variant={tag.toUpperCase() === 'VIP' ? 'default' : 'outline'}
+                                                    >
+                                                        {tag}
+                                                    </Badge>
+                                                ))}
+                                                {c.no_show_count > 0 && (
+                                                    <Badge variant="warning">{c.no_show_count}x no-show</Badge>
+                                                )}
+                                                {c.is_blocked && <Badge variant="danger">Diblokir Online</Badge>}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <p className="text-xs text-mute">
+                            Ketik nama atau nomor WhatsApp untuk mencari pelanggan lama agar tidak terjadi data pelanggan ganda.
+                        </p>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
