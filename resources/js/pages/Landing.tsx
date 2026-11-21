@@ -534,7 +534,7 @@ export default function Landing({ plans }: LandingProps) {
                 <section aria-labelledby="heading-simulasi-bayar" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
                         {/* Editorial 2-Column Header */}
-                        <div className="grid items-start gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
+                        <div className="grid items-center gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
                             <div className="min-w-0 text-center md:col-span-7 md:text-start">
                                 <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
                                     Kenapa pesanan perlu uang muka?
@@ -640,7 +640,7 @@ export default function Landing({ plans }: LandingProps) {
 
                             <div className="flex min-w-0 flex-col justify-between rounded-sm bg-dark p-4 text-on-dark sm:p-6">
                                 <div>
-                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
                                         <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
                                             Paket Basic Janjiyan
                                         </p>
@@ -755,7 +755,7 @@ export default function Landing({ plans }: LandingProps) {
                                         />
                                     </div>
 
-                                    <div className="mt-4 flex items-start gap-3">
+                                    <div className="mt-4 flex items-center gap-3">
                                         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
                                             {idx + 1}
                                         </span>
@@ -832,7 +832,7 @@ export default function Landing({ plans }: LandingProps) {
                                     )}
                                 >
                                     <div>
-                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
                                             <h3 className="text-2xl font-semibold text-charcoal">{plan.name}</h3>
                                             {isPopular && <Badge variant="popular">Rekomendasi</Badge>}
                                         </div>
@@ -954,7 +954,7 @@ export default function Landing({ plans }: LandingProps) {
                                 >
                                     “{t.quote}”
                                 </p>
-                                <div className="mt-6 flex items-start gap-3">
+                                <div className="mt-6 flex items-center gap-3">
                                     <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink">
                                         {t.initials ?? t.name.slice(0, 2).toUpperCase()}
                                     </div>
@@ -1026,7 +1026,7 @@ export default function Landing({ plans }: LandingProps) {
             <footer className="mt-16 rounded-t-md bg-dark px-6 py-16 text-on-dark sm:px-12 sm:py-20">
                 <div className="mx-auto max-w-6xl">
                     {/* Closing CTA Band */}
-                    <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-start">
+                    <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
                         <div className="min-w-0">
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
                                 Coba dulu 14 hari, gratis.
