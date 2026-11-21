@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class StaffController extends Controller
 {
@@ -97,8 +98,9 @@ class StaffController extends Controller
 
         $normalizedEmail = ! empty($validated['email']) ? strtolower(trim($validated['email'])) : null;
 
-        DB::transaction(function () use ($user, $business, $grantLogin, $validated, $normalizedEmail, $commissionType, $commissionValue): void {
+        $newStaffUser = DB::transaction(function () use ($user, $business, $grantLogin, $validated, $normalizedEmail, $commissionType, $commissionValue): ?User {
             $linkedUserId = null;
+            $staffUser = null;
 
             if ($grantLogin && $normalizedEmail !== null) {
                 $existingUser = User::where('email', $normalizedEmail)->first();
@@ -107,6 +109,13 @@ class StaffController extends Controller
                     if ((int) $existingUser->id !== (int) $user->id) {
                         throw ValidationException::withMessages([
                             'email' => 'Email ini sudah terdaftar pada akun Janjiyan lain. Gunakan email khusus untuk akun staff baru.',
+                        ]);
+                    }
+
+                    // Self-link is for the owner/admin; a limited member linking themselves could then edit their own access.
+                    if (! $user->hasBusinessPermission($business, '*')) {
+                        throw ValidationException::withMessages([
+                            'email' => 'Hanya pemilik atau admin yang dapat menautkan akunnya sendiri sebagai staff.',
                         ]);
                     }
 
@@ -123,7 +132,7 @@ class StaffController extends Controller
                         'name' => $validated['name'],
                         'email' => $normalizedEmail,
                         'password' => Hash::make($validated['password']),
-                        'email_verified_at' => now(),
+                        // Left unverified on purpose: only the address owner may prove it (verification mail below).
                     ]);
 
                     $canAssignAdmin = $user->hasBusinessPermission($business, '*');
@@ -133,6 +142,7 @@ class StaffController extends Controller
                     $permissions = $role === 'admin'
                         ? ['*']
                         : array_values(array_unique($validated['permissions'] ?? ['manage_bookings', 'verify_payments']));
+                    $this->assertCanChangePermissions($user, $business, [], $permissions);
 
                     $business->users()->syncWithoutDetaching([
                         $staffUser->id => [
@@ -155,7 +165,18 @@ class StaffController extends Controller
                 'commission_type' => $commissionType,
                 'commission_value' => $commissionValue,
             ]);
+
+            return $staffUser;
         });
+
+        if ($newStaffUser) {
+            // Mail outage must not fail staff creation; the staff member can resend from the verify page.
+            try {
+                $newStaffUser->sendEmailVerificationNotification();
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         return to_route('dashboard.staff')->with('success', "Staff {$validated['name']} berhasil ditambahkan.");
     }
@@ -185,7 +206,13 @@ class StaffController extends Controller
             ? $this->normalizeCommissionValue($commissionType, (int) ($validated['commission_value'] ?? 0))
             : (int) ($staff->commission_value ?? 0);
 
-        DB::transaction(function () use ($user, $business, $staff, $validated, $commissionType, $commissionValue): void {
+        $isFullActor = $user->hasBusinessPermission($business, '*');
+        $targetPivot = $staff->user_id
+            ? $business->users()->where('users.id', $staff->user_id)->first()?->pivot
+            : null;
+        abort_if(! $isFullActor && in_array($targetPivot?->role, ['owner', 'admin'], true), 403);
+
+        DB::transaction(function () use ($user, $business, $staff, $validated, $commissionType, $commissionValue, $isFullActor, $targetPivot): void {
             $staff->update([
                 'name' => $validated['name'],
                 'title' => $validated['title'] ?? null,
@@ -195,14 +222,19 @@ class StaffController extends Controller
                 'commission_value' => $commissionValue,
             ]);
 
-            if ($staff->user_id && (int) $staff->user_id !== (int) $business->owner_id) {
-                $canAssignAdmin = $user->hasBusinessPermission($business, '*');
+            // A limited member never edits their own access; only owner/admin can.
+            $isSelf = (int) $staff->user_id === (int) $user->id;
+
+            if ($staff->user_id && (int) $staff->user_id !== (int) $business->owner_id && ($isFullActor || ! $isSelf)) {
+                $canAssignAdmin = $isFullActor;
                 $role = ($validated['role'] ?? 'staff') === 'admin' && $canAssignAdmin
                     ? 'admin'
                     : 'staff';
                 $permissions = $role === 'admin'
                     ? ['*']
                     : array_values(array_unique($validated['permissions'] ?? ['manage_bookings', 'verify_payments']));
+                $currentPermissions = json_decode((string) ($targetPivot?->permissions ?? '[]'), true) ?: [];
+                $this->assertCanChangePermissions($user, $business, $currentPermissions, $permissions);
 
                 $business->users()->updateExistingPivot($staff->user_id, [
                     'role' => $role,
@@ -220,13 +252,39 @@ class StaffController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless($business && $staff->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_staff'), 403);
 
-        if ($staff->user_id && $staff->user_id !== $business->owner_id) {
+        if ($staff->user_id && (int) $staff->user_id !== (int) $business->owner_id) {
+            $targetRole = $business->users()->where('users.id', $staff->user_id)->first()?->pivot?->role;
+            abort_if(in_array($targetRole, ['owner', 'admin'], true) && ! $user->hasBusinessPermission($business, '*'), 403);
+
             $business->users()->detach($staff->user_id);
         }
 
         $staff->delete();
 
         return back()->with('success', 'Data staff dihapus.');
+    }
+
+    /**
+     * A member without full authority may only grant or revoke permissions they hold themselves,
+     * so manage_staff cannot be used to climb to manage_settings / verify_payments.
+     *
+     * @param  array<int, string>  $current
+     * @param  array<int, string>  $requested
+     */
+    private function assertCanChangePermissions(User $actor, Business $business, array $current, array $requested): void
+    {
+        if ($actor->hasBusinessPermission($business, '*')) {
+            return;
+        }
+
+        $changed = array_unique(array_merge(array_diff($requested, $current), array_diff($current, $requested)));
+        foreach ($changed as $permission) {
+            if (! $actor->hasBusinessPermission($business, $permission)) {
+                throw ValidationException::withMessages([
+                    'permissions' => 'Anda tidak dapat memberikan atau mencabut izin yang tidak Anda miliki.',
+                ]);
+            }
+        }
     }
 
     public function calendarIcs(Request $request, Staff $staff, IcsCalendarService $icsService): HttpResponse

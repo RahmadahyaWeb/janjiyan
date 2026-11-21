@@ -133,6 +133,13 @@ class AuthController extends Controller
                     return redirect()->route('login')->with('error', 'Email Google Anda belum terverifikasi sehingga tidak dapat ditautkan otomatis ke akun yang sudah ada.');
                 }
 
+                // Nobody proved this address before, so whoever set the password (a pre-registrant or a
+                // merchant creating a staff login) must not keep access once the real owner proves it via Google.
+                if (! $existingByEmail->email_verified_at) {
+                    $existingByEmail->forceFill(['password' => Hash::make(Str::random(64))])->save();
+                    $existingByEmail->revokeOtherCredentials();
+                }
+
                 $user = $existingByEmail;
             }
         }

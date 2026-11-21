@@ -28,6 +28,7 @@ class Booking extends Model
         'staff_id',
         'customer_id',
         'booked_customer_name',
+        'booked_customer_email',
         'booking_mode',
         'quantity',
         'fulfillment_type',

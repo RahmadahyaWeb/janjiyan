@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -116,5 +118,20 @@ class User extends Authenticatable implements MustVerifyEmail
         $permissions = json_decode((string) $membership->pivot->permissions, true) ?? [];
 
         return in_array($permission, $permissions, true);
+    }
+
+    /**
+     * Kill every way someone else may still be signed in as this user: remember-me token and
+     * database sessions. Call when ownership of the account changes hands or is elevated.
+     */
+    public function revokeOtherCredentials(): void
+    {
+        $this->forceFill(['remember_token' => Str::random(60)])->save();
+
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))
+                ->where('user_id', $this->id)
+                ->delete();
+        }
     }
 }

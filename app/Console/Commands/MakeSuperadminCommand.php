@@ -71,14 +71,21 @@ class MakeSuperadminCommand extends Command
             return self::SUCCESS;
         }
 
-        if (is_string($passwordOption) && $passwordOption !== '') {
-            if (mb_strlen($passwordOption) < 8) {
-                $this->error('Kata sandi superadmin minimal harus 8 karakter.');
+        // Anyone can self-register (or a merchant can create a staff login for) this email, so an existing
+        // row is not proof the operator owns it. Always replace its credentials before elevating.
+        if (! is_string($passwordOption) || $passwordOption === '') {
+            $this->error("User {$user->email} sudah ada. Ulangi dengan --password=... agar kredensial lama diganti sebelum dijadikan superadmin.");
 
-                return self::FAILURE;
-            }
-            $user->password = Hash::make($passwordOption);
+            return self::FAILURE;
         }
+
+        if (mb_strlen($passwordOption) < 8) {
+            $this->error('Kata sandi superadmin minimal harus 8 karakter.');
+
+            return self::FAILURE;
+        }
+
+        $user->password = Hash::make($passwordOption);
 
         if (! $user->email_verified_at) {
             $user->email_verified_at = now();
@@ -86,6 +93,7 @@ class MakeSuperadminCommand extends Command
 
         $user->is_superadmin = true;
         $user->save();
+        $user->revokeOtherCredentials();
 
         $this->info("User {$user->email} berhasil dijadikan superadmin.");
 

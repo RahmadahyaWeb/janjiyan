@@ -470,12 +470,9 @@ class PublicBookingController extends Controller
         }
 
         $tz = $business->timezone ?: 'Asia/Jakarta';
-        $history = Booking::where('business_id', $business->id)
-            ->where('customer_id', $matched->customer_id)
-            ->with(['service', 'staff'])
-            ->latest('start_at')
-            ->limit(25)
-            ->get()
+        // Only the booking the visitor proved knowledge of. A phone number is never verified, so anyone can
+        // book under someone else's number; widening to the customer's history would hand out their tokens.
+        $history = collect([$matched->load(['service', 'staff'])])
             ->map(fn (Booking $b) => [
                 'invoice_number' => $b->invoice_number,
                 'invoice_token' => $b->invoice_token,
@@ -504,7 +501,7 @@ class PublicBookingController extends Controller
                 'logo_url' => $business->logo_path ? Storage::url($business->logo_path) : null,
                 'brand_color' => $business->brand_color,
             ],
-            'customerName' => $matched->customer?->name,
+            'customerName' => $matched->booked_customer_name ?: $matched->customer?->name,
             'matchedInvoiceToken' => $matched->invoice_token,
             'history' => $history,
         ]);

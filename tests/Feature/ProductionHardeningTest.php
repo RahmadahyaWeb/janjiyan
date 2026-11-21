@@ -228,7 +228,8 @@ class ProductionHardeningTest extends TestCase
                 'grant_login' => true,
                 'password' => 'password123',
                 'role' => 'admin',
-                'permissions' => ['manage_bookings'],
+                // Only permissions the grantor holds may be granted (see SecurityAuditFixesTest).
+                'permissions' => ['manage_staff'],
             ])
             ->assertRedirect();
 

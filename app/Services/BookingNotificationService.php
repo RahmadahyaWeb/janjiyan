@@ -42,7 +42,7 @@ class BookingNotificationService
     public function sendCustomerReminder(Booking $booking, string $reminderType): bool
     {
         $booking->loadMissing(['business', 'service', 'staff', 'customer']);
-        $email = trim((string) ($booking->customer?->email ?? ''));
+        $email = $this->customerEmailFor($booking);
 
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return false;
@@ -79,9 +79,15 @@ class BookingNotificationService
         }
     }
 
+    /** Booking-level email first (what this booker typed); customer record only for older bookings without one. */
+    private function customerEmailFor(Booking $booking): string
+    {
+        return trim((string) ($booking->booked_customer_email ?: ($booking->customer?->email ?? '')));
+    }
+
     private function notifyCustomerEmail(Booking $booking, string $eventType): void
     {
-        $email = trim((string) ($booking->customer?->email ?? ''));
+        $email = $this->customerEmailFor($booking);
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return;
         }

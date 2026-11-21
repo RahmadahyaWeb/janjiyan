@@ -349,6 +349,7 @@ class SlotAvailabilityService
                 'staff_id' => $assignedStaffId,
                 'customer_id' => $prepared['customer']->id,
                 'booked_customer_name' => $prepared['booked_customer_name'],
+                'booked_customer_email' => $prepared['booked_customer_email'],
                 'booking_mode' => 'time_slot',
                 'quantity' => 1,
                 'fulfillment_type' => 'dropoff',
@@ -464,6 +465,7 @@ class SlotAvailabilityService
                 'staff_id' => null,
                 'customer_id' => $prepared['customer']->id,
                 'booked_customer_name' => $prepared['booked_customer_name'],
+                'booked_customer_email' => $prepared['booked_customer_email'],
                 'booking_mode' => 'dropoff',
                 'quantity' => $quantity,
                 'fulfillment_type' => $resolvedFulfillment,
@@ -813,6 +815,7 @@ class SlotAvailabilityService
      * @return array{
      *     customer: Customer,
      *     booked_customer_name: string,
+     *     booked_customer_email: string|null,
      *     total_price: int,
      *     dp_amount: int,
      *     commission_amount: int,
@@ -871,9 +874,6 @@ class SlotAvailabilityService
                 if ($mergedAliases !== ($customer->name_aliases ?? [])) {
                     $updates['name_aliases'] = $mergedAliases;
                 }
-                if ($customerEmail && $customer->email !== $customerEmail) {
-                    $updates['email'] = $customerEmail;
-                }
                 if (! empty($updates)) {
                     $customer->update($updates);
                 }
@@ -888,9 +888,6 @@ class SlotAvailabilityService
             $updates = [];
             if ($mergedAliases !== ($customer->name_aliases ?? [])) {
                 $updates['name_aliases'] = $mergedAliases;
-            }
-            if ($customerEmail && $customer->email !== $customerEmail) {
-                $updates['email'] = $customerEmail;
             }
             if (! empty($updates)) {
                 $customer->update($updates);
@@ -943,6 +940,8 @@ class SlotAvailabilityService
         return [
             'customer' => $customer,
             'booked_customer_name' => $customerName,
+            // Unverified input only labels this booking; it must never rewrite the shared customer contact.
+            'booked_customer_email' => $customerEmail ?: null,
             'total_price' => $totalPrice,
             'dp_amount' => $dpAmount,
             'commission_amount' => $commissionAmount,
