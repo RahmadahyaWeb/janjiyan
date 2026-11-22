@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Search, SlidersHorizontal, UserX, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
@@ -196,6 +196,8 @@ export default function BookingsIndex({
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
     const [selectedCalendarBooking, setSelectedCalendarBooking] = useState<CalendarBookingItem | null>(null);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+    const [desktopFilterOpen, setDesktopFilterOpen] = useState(false);
+    const desktopFilterRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!mobileFilterOpen) return;
@@ -204,12 +206,32 @@ export default function BookingsIndex({
         return () => window.removeEventListener('keydown', onKey);
     }, [mobileFilterOpen]);
 
+    useEffect(() => {
+        if (!desktopFilterOpen) return;
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDesktopFilterOpen(false);
+        const onPointerDown = (e: MouseEvent) => {
+            if (desktopFilterRef.current && !desktopFilterRef.current.contains(e.target as Node)) {
+                setDesktopFilterOpen(false);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        document.addEventListener('mousedown', onPointerDown);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            document.removeEventListener('mousedown', onPointerDown);
+        };
+    }, [desktopFilterOpen]);
+
     const statusTabs = STATUS_TABS[isDropoffMode ? 'dropoff' : 'time_slot'];
 
     const currentStatus = filters.status || 'active';
     const advancedFilterCount = [
         filters.payment,
         filters.service_id,
+        supportsStaffFilter ? filters.staff_id : '',
+        filters.date_from || filters.date_to ? 'date' : '',
+    ].filter(Boolean).length;
+    const desktopAdvancedFilterCount = [
         supportsStaffFilter ? filters.staff_id : '',
         filters.date_from || filters.date_to ? 'date' : '',
     ].filter(Boolean).length;
@@ -443,6 +465,251 @@ export default function BookingsIndex({
                 <span className="hidden sm:inline">{config.bookings.createButtonLabel}</span>
             </Button>
         );
+
+    const getBookingMeta = (b: BookingRow) => {
+        const isDropoff = b.booking_mode === 'dropoff';
+        const isDropoffActive =
+            isDropoff && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
+        const showSlaWarning =
+            isDropoffActive &&
+            !!b.estimated_ready_date &&
+            b.work_status !== 'picked_up' &&
+            b.work_status !== 'ready_for_pickup';
+        // Once a drop-off item is in the shop, rescheduling or no-show no longer apply.
+        const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
+        const canReschedule =
+            !dropoffInShop && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
+        const canNoShow =
+            supportsNoShow && !isDropoff && b.reservation_status === 'confirmed';
+        const showWorkBadge =
+            isDropoff && !!b.work_status && b.reservation_status !== 'cancelled' && b.reservation_status !== 'no_show';
+        const canCancel =
+            b.reservation_status !== 'cancelled' &&
+            b.reservation_status !== 'completed' &&
+            b.reservation_status !== 'no_show';
+        const canSettle =
+            canVerifyPayments &&
+            b.payment_status !== 'settled' &&
+            b.payment_status !== 'waiting_verification' &&
+            b.reservation_status !== 'cancelled' &&
+            b.reservation_status !== 'no_show';
+        const showSettleAsPrimary =
+            b.reservation_status === 'completed' && canSettle;
+        const hasOverflowActions =
+            canReschedule || canNoShow || canCancel || (canSettle && !showSettleAsPrimary);
+
+        return {
+            isDropoff,
+            showSlaWarning,
+            canReschedule,
+            canNoShow,
+            showWorkBadge,
+            canCancel,
+            canSettle,
+            showSettleAsPrimary,
+            hasOverflowActions,
+        };
+    };
+
+    const renderBookingActions = (b: BookingRow, layout: 'mobile' | 'desktop') => {
+        const { canReschedule, canNoShow, canCancel, canSettle, showSettleAsPrimary, hasOverflowActions } = getBookingMeta(b);
+        const isDesktop = layout === 'desktop';
+        const primaryBtnClass = isDesktop ? 'h-8 px-2.5 text-xs' : 'flex-1 lg:flex-initial';
+        const secondaryBtnClass = isDesktop ? 'h-8 px-2.5 text-xs' : undefined;
+        const desktopIconClass = isDesktop ? 'size-8' : undefined;
+
+        return (
+            <>
+                {b.payment_status === 'waiting_verification' && canVerifyPayments ? (
+                    <Button type="button" size="sm" className={primaryBtnClass} onClick={() => verifyDp(b.id)}>
+                        <Check className="size-3.5" aria-hidden="true" />
+                        Verifikasi DP
+                    </Button>
+                ) : b.booking_mode === 'dropoff' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
+                    b.work_status === 'awaiting_dropoff' || !b.work_status ? (
+                        <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'in_progress')}>
+                            <Check className="size-3.5" aria-hidden="true" />
+                            Terima &amp; Proses
+                        </Button>
+                    ) : b.work_status === 'in_progress' ? (
+                        <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'ready_for_pickup')}>
+                            <Check className="size-3.5" aria-hidden="true" />
+                            Siap Diambil
+                        </Button>
+                    ) : (
+                        <Button type="button" variant="outline" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'picked_up')}>
+                            <Check className="size-3.5" aria-hidden="true" />
+                            Tandai Selesai
+                        </Button>
+                    )
+                ) : b.reservation_status === 'pending' ? (
+                    <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateStatus(b.id, 'confirmed')}>
+                        <Check className="size-3.5" aria-hidden="true" />
+                        Konfirmasi
+                    </Button>
+                ) : b.reservation_status === 'confirmed' ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={() => updateStatus(b.id, 'completed')}
+                    >
+                        <Check className="size-3.5" aria-hidden="true" />
+                        Tandai Selesai
+                    </Button>
+                ) : showSettleAsPrimary ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={() => settlePayment(b.id)}
+                    >
+                        <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                        Tandai Lunas
+                    </Button>
+                ) : null}
+
+                {layout === 'mobile' && b.dp_proof_url && (
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className={secondaryBtnClass}
+                        onClick={() => setPreviewUrl(b.dp_proof_url)}
+                    >
+                        <Eye className="size-3.5" aria-hidden="true" />
+                        Bukti DP
+                    </Button>
+                )}
+
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size={isDesktop ? 'icon-sm' : 'sm'}
+                                className={desktopIconClass}
+                                aria-label={isDesktop ? `Kirim WhatsApp ke ${b.customer_name}` : undefined}
+                                title={isDesktop ? 'Kirim WhatsApp' : undefined}
+                            >
+                                <MessageCircle className="size-3.5" aria-hidden="true" />
+                                {!isDesktop && (
+                                    <>
+                                        <span className="sm:hidden">WA</span>
+                                        <span className="hidden sm:inline">WhatsApp</span>
+                                        <ChevronDown className="size-3 text-mute" aria-hidden="true" />
+                                    </>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
+                        >
+                            {visibleWaTemplates.map((item) => (
+                                <DropdownMenuItem
+                                    key={item.key}
+                                    asChild
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                >
+                                    <a
+                                        href={buildTemplateWaUrl(b, item.key)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <MessageCircle className="mr-2 size-3.5 text-mute" aria-hidden="true" />
+                                        {item.shortLabel}
+                                    </a>
+                                </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                asChild
+                                className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-xs text-mute"
+                            >
+                                <a
+                                    href={buildQuickWaUrl(b)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Chat Cepat (Ringkasan)
+                                </a>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {hasOverflowActions && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size={isDesktop ? 'icon-sm' : 'icon'}
+                                    className={desktopIconClass}
+                                    aria-label={`Aksi lainnya untuk ${b.booking_mode === 'dropoff' ? 'pesanan' : 'reservasi'} ${b.booking_code}`}
+                                >
+                                    <MoreHorizontal className="size-4" aria-hidden="true" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-52 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
+                            >
+                                {canSettle && !showSettleAsPrimary && (
+                                    <DropdownMenuItem
+                                        onClick={() => settlePayment(b.id)}
+                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                    >
+                                        <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
+                                        Tandai Lunas
+                                    </DropdownMenuItem>
+                                )}
+                                {canReschedule && (
+                                    <DropdownMenuItem
+                                        asChild
+                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                    >
+                                        <Link href={route('dashboard.bookings.reschedule.edit', b.id)}>
+                                            <CalendarClock className="mr-2 size-4" aria-hidden="true" />
+                                            Ubah Jadwal
+                                        </Link>
+                                    </DropdownMenuItem>
+                                )}
+                                {canNoShow && (
+                                    <DropdownMenuItem
+                                        onClick={() => setNoShowBooking(b)}
+                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                    >
+                                        <UserX className="mr-2 size-4" aria-hidden="true" />
+                                        Tandai Tidak Hadir
+                                    </DropdownMenuItem>
+                                )}
+                                {canCancel && (
+                                    <>
+                                        {(canReschedule || canNoShow || (canSettle && !showSettleAsPrimary)) && (
+                                            <DropdownMenuSeparator />
+                                        )}
+                                        <DropdownMenuItem
+                                            asChild
+                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
+                                        >
+                                            <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
+                                                <X className="mr-2 size-4" aria-hidden="true" />
+                                                Batalkan {b.booking_mode === 'dropoff' ? 'Pesanan' : 'Reservasi'}
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+            </>
+        );
+    };
 
     return (
         <DashboardLayout
@@ -703,115 +970,151 @@ export default function BookingsIndex({
                             </div>
                         )}
 
-                        {/* Desktop Inline Filter Panel */}
-                        <div className="hidden space-y-2.5 rounded-md border border-hairline-soft bg-bone/50 p-3 md:block">
-                            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
-                                <div className="relative flex min-w-0 items-center">
-                                    <label htmlFor="bookings-search" className="sr-only">
-                                        Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
-                                    </label>
-                                    <Search className="pointer-events-none absolute top-4 left-4 size-4 text-ash" aria-hidden="true" />
-                                    <Input
-                                        id="bookings-search"
-                                        className="bg-canvas pl-10 pr-10"
-                                        placeholder="Cari kode, nama, atau WA…"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
-                                    />
-                                    {search && (
-                                        <button
-                                            type="button"
-                                            aria-label="Hapus pencarian"
-                                            onClick={() => {
-                                                setSearch('');
-                                                applyFilters({ search: '' });
-                                            }}
-                                            className="absolute right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                        >
-                                            <X className="size-4" aria-hidden="true" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                <NativeSelect
-                                    aria-label="Filter status pembayaran"
-                                    value={filters.payment}
-                                    onChange={(e) => applyFilters({ payment: e.target.value })}
-                                    className="bg-canvas"
-                                >
-                                    <option value="">Semua Pembayaran</option>
-                                    <option value="unpaid">Belum Dibayar</option>
-                                    <option value="waiting_verification">Menunggu Verifikasi DP</option>
-                                    <option value="dp_verified">DP Terverifikasi</option>
-                                    <option value="settled">Lunas</option>
-                                </NativeSelect>
-
-                                <NativeSelect
-                                    aria-label="Filter layanan"
-                                    value={filters.service_id ?? ''}
-                                    onChange={(e) => applyFilters({ service_id: e.target.value })}
-                                    className="bg-canvas"
-                                >
-                                    <option value="">Semua {config.services.pageTitle}</option>
-                                    {services.map((svc) => (
-                                        <option key={svc.id} value={String(svc.id)}>
-                                            {svc.name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-
-                            <div className="flex flex-wrap items-center justify-between gap-2.5">
-                                <div className="flex flex-wrap items-center gap-2.5">
-                                    {supportsStaffFilter && staffOptions.length > 0 && (
-                                        <NativeSelect
-                                            aria-label="Filter staff"
-                                            value={filters.staff_id ?? ''}
-                                            onChange={(e) => applyFilters({ staff_id: e.target.value })}
-                                            className="h-10 w-48 bg-canvas py-0"
-                                        >
-                                            <option value="">Semua Staff</option>
-                                            {staffOptions.map((st) => (
-                                                <option key={st.id} value={String(st.id)}>
-                                                    {st.name}
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
-                                    )}
-
-                                    <div className="flex items-center gap-2">
-                                        <span className="shrink-0 text-xs font-semibold text-mute">Tanggal:</span>
-                                        <Label htmlFor="bookings-date-from" className="sr-only">
-                                            Dari tanggal
-                                        </Label>
-                                        <Input
-                                            id="bookings-date-from"
-                                            type="date"
-                                            value={filters.date_from}
-                                            onChange={(e) => applyFilters({ date_from: e.target.value })}
-                                            className="h-10 w-40 bg-canvas px-3 py-2 text-sm"
-                                        />
-                                        <span className="text-xs text-mute">–</span>
-                                        <Label htmlFor="bookings-date-to" className="sr-only">
-                                            Sampai tanggal
-                                        </Label>
-                                        <Input
-                                            id="bookings-date-to"
-                                            type="date"
-                                            value={filters.date_to}
-                                            onChange={(e) => applyFilters({ date_to: e.target.value })}
-                                            className="h-10 w-40 bg-canvas px-3 py-2 text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                {hasActiveFilter && (
-                                    <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
-                                        Reset Filter
-                                    </Button>
+                        {/* Desktop Single-Row Toolbar */}
+                        <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2.5 lg:flex-nowrap">
+                            <div className="relative flex min-w-[200px] flex-1 items-center lg:max-w-sm">
+                                <label htmlFor="bookings-search" className="sr-only">
+                                    Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
+                                </label>
+                                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
+                                <Input
+                                    id="bookings-search"
+                                    className="h-10 bg-canvas pl-10 pr-9 text-sm"
+                                    placeholder="Cari kode, nama, atau WA…"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
+                                />
+                                {search && (
+                                    <button
+                                        type="button"
+                                        aria-label="Hapus pencarian"
+                                        onClick={() => {
+                                            setSearch('');
+                                            applyFilters({ search: '' });
+                                        }}
+                                        className="absolute right-1.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                    >
+                                        <X className="size-4" aria-hidden="true" />
+                                    </button>
                                 )}
                             </div>
+
+                            <NativeSelect
+                                aria-label="Filter status pembayaran"
+                                value={filters.payment}
+                                onChange={(e) => applyFilters({ payment: e.target.value })}
+                                className="h-10 w-auto min-w-[170px] max-w-[210px] shrink-0 bg-canvas py-0 text-sm"
+                            >
+                                <option value="">Semua Pembayaran</option>
+                                <option value="unpaid">Belum Dibayar</option>
+                                <option value="waiting_verification">Menunggu Verifikasi DP</option>
+                                <option value="dp_verified">DP Terverifikasi</option>
+                                <option value="settled">Lunas</option>
+                            </NativeSelect>
+
+                            <NativeSelect
+                                aria-label="Filter layanan"
+                                value={filters.service_id ?? ''}
+                                onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                className="h-10 w-auto min-w-[175px] max-w-[220px] shrink-0 bg-canvas py-0 text-sm"
+                            >
+                                <option value="">Semua {config.services.pageTitle}</option>
+                                {services.map((svc) => (
+                                    <option key={svc.id} value={String(svc.id)}>
+                                        {svc.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+
+                            <div ref={desktopFilterRef} className="relative shrink-0">
+                                <Button
+                                    type="button"
+                                    variant={desktopAdvancedFilterCount > 0 || desktopFilterOpen ? 'default' : 'outline'}
+                                    size="sm"
+                                    aria-expanded={desktopFilterOpen}
+                                    onClick={() => setDesktopFilterOpen((prev) => !prev)}
+                                    className="h-10 rounded-sm px-3.5 text-sm"
+                                >
+                                    <SlidersHorizontal className="size-4" aria-hidden="true" />
+                                    <span>Filter</span>
+                                    {desktopAdvancedFilterCount > 0 && (
+                                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas text-xs font-semibold tabular-nums text-ink">
+                                            {desktopAdvancedFilterCount}
+                                        </span>
+                                    )}
+                                </Button>
+
+                                {desktopFilterOpen && (
+                                    <div className="absolute top-full right-0 z-30 mt-2 w-80 space-y-4 overscroll-contain rounded-md border border-hairline bg-canvas p-4 shadow-lg">
+                                        {supportsStaffFilter && staffOptions.length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="desktop-filter-staff">Staff</Label>
+                                                <NativeSelect
+                                                    id="desktop-filter-staff"
+                                                    value={filters.staff_id ?? ''}
+                                                    onChange={(e) => applyFilters({ staff_id: e.target.value })}
+                                                    className="h-10 bg-canvas py-0 text-sm"
+                                                >
+                                                    <option value="">Semua Staff</option>
+                                                    {staffOptions.map((st) => (
+                                                        <option key={st.id} value={String(st.id)}>
+                                                            {st.name}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="min-w-0 space-y-1.5">
+                                                <Label htmlFor="bookings-date-from">Dari Tanggal</Label>
+                                                <Input
+                                                    id="bookings-date-from"
+                                                    type="date"
+                                                    value={filters.date_from}
+                                                    onChange={(e) => applyFilters({ date_from: e.target.value })}
+                                                    className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
+                                                />
+                                            </div>
+                                            <div className="min-w-0 space-y-1.5">
+                                                <Label htmlFor="bookings-date-to">Sampai Tanggal</Label>
+                                                <Input
+                                                    id="bookings-date-to"
+                                                    type="date"
+                                                    value={filters.date_to}
+                                                    onChange={(e) => applyFilters({ date_to: e.target.value })}
+                                                    className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 border-t border-divider pt-3">
+                                            {desktopAdvancedFilterCount > 0 ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => applyFilters({ staff_id: '', date_from: '', date_to: '' })}
+                                                >
+                                                    Reset Tanggal/Staff
+                                                </Button>
+                                            ) : (
+                                                <span />
+                                            )}
+                                            <Button type="button" size="sm" onClick={() => setDesktopFilterOpen(false)}>
+                                                Tutup
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {hasActiveFilter && (
+                                <Button type="button" variant="ghost" size="sm" className="h-10 shrink-0" onClick={resetFilters}>
+                                    Reset Filter
+                                </Button>
+                            )}
                         </div>
                     </>
                 )}
@@ -868,381 +1171,345 @@ export default function BookingsIndex({
                     </div>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {bookings.map((b) => {
-                        const isDropoff = b.booking_mode === 'dropoff';
-                        const isDropoffActive =
-                            isDropoff && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
-                        const showSlaWarning =
-                            isDropoffActive &&
-                            !!b.estimated_ready_date &&
-                            b.work_status !== 'picked_up' &&
-                            b.work_status !== 'ready_for_pickup';
-                        // Once a drop-off item is in the shop, rescheduling or no-show no longer apply.
-                        const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
-                        const canReschedule =
-                            !dropoffInShop && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
-                        const canNoShow =
-                            supportsNoShow && !isDropoff && b.reservation_status === 'confirmed';
-                        const showWorkBadge =
-                            isDropoff && !!b.work_status && b.reservation_status !== 'cancelled' && b.reservation_status !== 'no_show';
-                        const canCancel =
-                            b.reservation_status !== 'cancelled' &&
-                            b.reservation_status !== 'completed' &&
-                            b.reservation_status !== 'no_show';
-                        const canSettle =
-                            canVerifyPayments &&
-                            b.payment_status !== 'settled' &&
-                            b.payment_status !== 'waiting_verification' &&
-                            b.reservation_status !== 'cancelled' &&
-                            b.reservation_status !== 'no_show';
-                        const showSettleAsPrimary =
-                            b.reservation_status === 'completed' && canSettle;
-                        const hasOverflowActions =
-                            canReschedule || canNoShow || canCancel || (canSettle && !showSettleAsPrimary);
+                <div className="space-y-4">
+                    {/* Mobile Cards (< md) */}
+                    <div className="space-y-3 md:hidden">
+                        {bookings.map((b) => {
+                            const { isDropoff, showSlaWarning, showWorkBadge } = getBookingMeta(b);
 
-                        return (
-                            <div
-                                key={b.id}
-                                className="flex flex-col justify-between gap-3.5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5 lg:flex-row lg:items-start lg:gap-6"
-                            >
-                                <div className="min-w-0 flex-1 space-y-3">
-                                    {/* Top Header: Customer & Service on left, Price & DP on right (mobile/tablet) */}
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="line-clamp-2 break-words text-base font-semibold text-ink">
-                                                <Link
-                                                    href={route('dashboard.customers.show', b.customer_id)}
-                                                    className="hover:underline"
-                                                >
-                                                    {b.customer_name}
-                                                </Link>
-                                            </p>
-                                            <p className="mt-0.5 text-xs text-mute">
-                                                <span className="font-medium text-body">{b.service_name}</span>
-                                                {isDropoff ? (
-                                                    <span className="tabular-nums">
-                                                        {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
-                                                    </span>
-                                                ) : null}
-                                                {supportsStaffFilter && b.staff_name ? ` · ${b.staff_name}` : ''}
-                                            </p>
-                                        </div>
-
-                                        <div className="shrink-0 text-right lg:hidden">
-                                            <p className="text-base font-semibold tabular-nums text-ink">
-                                                {formatRupiah(b.total_price)}
-                                            </p>
-                                            {b.dp_amount > 0 && (
-                                                <p className="text-xs tabular-nums text-mute">
-                                                    DP {formatRupiah(b.dp_amount)}
+                            return (
+                                <div
+                                    key={b.id}
+                                    className="flex flex-col justify-between gap-3.5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5"
+                                >
+                                    <div className="min-w-0 flex-1 space-y-3">
+                                        {/* Top Header: Customer & Service on left, Price & DP on right */}
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="line-clamp-2 break-words text-base font-semibold text-ink">
+                                                    <Link
+                                                        href={route('dashboard.customers.show', b.customer_id)}
+                                                        className="hover:underline"
+                                                    >
+                                                        {b.customer_name}
+                                                    </Link>
                                                 </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Schedule / Fulfillment Strip (full card width to avoid overflow) */}
-                                    {isDropoff ? (
-                                        <div
-                                            className={cn(
-                                                'grid gap-2.5 rounded-xl bg-bone/70 px-3 py-2.5 text-xs',
-                                                b.estimated_ready_date ? 'grid-cols-1 min-[360px]:grid-cols-2' : 'grid-cols-1'
-                                            )}
-                                        >
-                                            <div className="min-w-0 space-y-0.5">
-                                                <p className="text-[11px] font-medium whitespace-nowrap text-mute">Masuk</p>
-                                                <p className="font-semibold tabular-nums text-ink">
-                                                    {formatDateShortIndo(b.booking_date)}
-                                                </p>
-                                                <p className="break-words text-[11px] text-mute">
-                                                    {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                <p className="mt-0.5 text-xs text-mute">
+                                                    <span className="font-medium text-body">{b.service_name}</span>
+                                                    {isDropoff ? (
+                                                        <span className="tabular-nums">
+                                                            {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
+                                                        </span>
+                                                    ) : null}
+                                                    {supportsStaffFilter && b.staff_name ? ` · ${b.staff_name}` : ''}
                                                 </p>
                                             </div>
-                                            {b.estimated_ready_date && (
-                                                <div className="min-w-0 space-y-0.5 border-t border-divider pt-2 min-[360px]:border-t-0 min-[360px]:border-l min-[360px]:pt-0 min-[360px]:pl-3">
-                                                    <p className="text-[11px] font-medium whitespace-nowrap text-mute">Target Selesai</p>
-                                                    <p
-                                                        className={cn(
-                                                            'font-semibold tabular-nums',
-                                                            showSlaWarning && b.estimated_ready_date < todayStr
-                                                                ? 'text-destructive'
-                                                                : showSlaWarning && b.estimated_ready_date === todayStr
-                                                                  ? 'text-warning'
-                                                                  : 'text-ink'
-                                                        )}
-                                                    >
-                                                        {formatDateShortIndo(b.estimated_ready_date)}
+
+                                            <div className="shrink-0 text-right">
+                                                <p className="text-base font-semibold tabular-nums text-ink">
+                                                    {formatRupiah(b.total_price)}
+                                                </p>
+                                                {b.dp_amount > 0 && (
+                                                    <p className="text-xs tabular-nums text-mute">
+                                                        DP {formatRupiah(b.dp_amount)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Schedule / Fulfillment Strip */}
+                                        {isDropoff ? (
+                                            <div
+                                                className={cn(
+                                                    'grid gap-2.5 rounded-xl bg-bone/70 px-3 py-2.5 text-xs',
+                                                    b.estimated_ready_date ? 'grid-cols-1 min-[360px]:grid-cols-2' : 'grid-cols-1'
+                                                )}
+                                            >
+                                                <div className="min-w-0 space-y-0.5">
+                                                    <p className="text-[11px] font-medium whitespace-nowrap text-mute">Masuk</p>
+                                                    <p className="font-semibold tabular-nums text-ink">
+                                                        {formatDateShortIndo(b.booking_date)}
+                                                    </p>
+                                                    <p className="break-words text-[11px] text-mute">
+                                                        {b.schedule_label ?? formatBookingScheduleShort(b)}
                                                     </p>
                                                 </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-bone/70 px-3 py-2 text-xs">
-                                            <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums text-ink">
-                                                <Calendar className="size-3.5 shrink-0 text-mute" aria-hidden="true" />
-                                                {formatDateShortIndo(b.booking_date)}
-                                            </span>
-                                            <span className="text-ash" aria-hidden="true">·</span>
-                                            <span className="font-mono font-medium tabular-nums text-body">
-                                                {b.schedule_label ?? formatBookingScheduleShort(b)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        {showWorkBadge ? (
-                                            <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
-                                                {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
-                                            </Badge>
+                                                {b.estimated_ready_date && (
+                                                    <div className="min-w-0 space-y-0.5 border-t border-divider pt-2 min-[360px]:border-t-0 min-[360px]:border-l min-[360px]:pt-0 min-[360px]:pl-3">
+                                                        <p className="text-[11px] font-medium whitespace-nowrap text-mute">Target Selesai</p>
+                                                        <p
+                                                            className={cn(
+                                                                'font-semibold tabular-nums',
+                                                                showSlaWarning && b.estimated_ready_date < todayStr
+                                                                    ? 'text-destructive'
+                                                                    : showSlaWarning && b.estimated_ready_date === todayStr
+                                                                      ? 'text-warning'
+                                                                      : 'text-ink'
+                                                            )}
+                                                        >
+                                                            {formatDateShortIndo(b.estimated_ready_date)}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         ) : (
-                                            reservationBadge(b.reservation_status)
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-bone/70 px-3 py-2 text-xs">
+                                                <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums text-ink">
+                                                    <Calendar className="size-3.5 shrink-0 text-mute" aria-hidden="true" />
+                                                    {formatDateShortIndo(b.booking_date)}
+                                                </span>
+                                                <span className="text-ash" aria-hidden="true">·</span>
+                                                <span className="font-mono font-medium tabular-nums text-body">
+                                                    {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                </span>
+                                            </div>
                                         )}
-                                        {showSlaWarning && b.estimated_ready_date! < todayStr && (
-                                            <Badge variant="danger">Lewat Tenggat</Badge>
-                                        )}
-                                        {showSlaWarning && b.estimated_ready_date! === todayStr && (
-                                            <Badge variant="warning">Tenggat Hari Ini</Badge>
-                                        )}
-                                        {paymentBadge(b.payment_status)}
-                                        {(b.rescheduled_count ?? 0) > 0 && (
-                                            <Badge variant="outline" className="tabular-nums">
-                                                Reschedule {b.rescheduled_count}x
-                                            </Badge>
-                                        )}
-                                        {b.customer_tags?.includes('VIP') && (
-                                            <Badge variant="popular">
-                                                VIP
-                                            </Badge>
-                                        )}
-                                        {(b.customer_no_show_count ?? 0) > 0 && (
-                                            <Badge variant="warning" className="tabular-nums">
-                                                No-Show {b.customer_no_show_count}x
-                                            </Badge>
-                                        )}
-                                        {b.customer_is_blocked && (
-                                            <Badge variant="danger">
-                                                Diblokir
-                                            </Badge>
-                                        )}
-                                    </div>
 
-                                    {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
-                                        <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
-                                            Alamat Jemput ({FULFILLMENT_TYPE_LABELS[b.fulfillment_type] ?? 'Jemput'}): {b.pickup_address}
-                                        </p>
-                                    )}
-
-                                    {b.customer_notes && (
-                                        <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
-                                            Catatan: {b.customer_notes}
-                                        </p>
-                                    )}
-
-                                    {b.reservation_status === 'cancelled' && b.cancellation_reason && (
-                                        <p className="break-words rounded-xl bg-destructive-soft px-3 py-2 text-xs text-destructive">
-                                            Alasan pembatalan: {b.cancellation_reason}
-                                        </p>
-                                    )}
-
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-ash">
-                                        <span className="font-medium text-mute">{b.booking_code}</span>
-                                        <span className="tabular-nums">+{b.customer_phone}</span>
-                                        {b.invoice_number && (
-                                            <span className="break-all">{b.invoice_number}</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex shrink-0 flex-col gap-3 border-t border-divider pt-3 lg:items-end lg:border-t-0 lg:pt-0">
-                                    <div className="hidden text-right lg:block">
-                                        <p className="text-base font-semibold tabular-nums text-ink">
-                                            {formatRupiah(b.total_price)}
-                                        </p>
-                                        {b.dp_amount > 0 && (
-                                            <p className="text-xs tabular-nums text-mute">DP: {formatRupiah(b.dp_amount)}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                                        {b.payment_status === 'waiting_verification' && canVerifyPayments ? (
-                                            <Button type="button" size="sm" className="flex-1 lg:flex-initial" onClick={() => verifyDp(b.id)}>
-                                                <Check className="size-3.5" aria-hidden="true" />
-                                                Verifikasi DP
-                                            </Button>
-                                        ) : b.booking_mode === 'dropoff' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
-                                            b.work_status === 'awaiting_dropoff' || !b.work_status ? (
-                                                <Button type="button" size="sm" className="flex-1 lg:flex-initial" onClick={() => updateWorkStatus(b.id, 'in_progress')}>
-                                                    <Check className="size-3.5" aria-hidden="true" />
-                                                    Terima &amp; Proses
-                                                </Button>
-                                            ) : b.work_status === 'in_progress' ? (
-                                                <Button type="button" size="sm" className="flex-1 lg:flex-initial" onClick={() => updateWorkStatus(b.id, 'ready_for_pickup')}>
-                                                    <Check className="size-3.5" aria-hidden="true" />
-                                                    Siap Diambil
-                                                </Button>
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            {showWorkBadge ? (
+                                                <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
+                                                    {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
+                                                </Badge>
                                             ) : (
-                                                <Button type="button" variant="outline" size="sm" className="flex-1 lg:flex-initial" onClick={() => updateWorkStatus(b.id, 'picked_up')}>
-                                                    <Check className="size-3.5" aria-hidden="true" />
-                                                    Tandai Selesai
-                                                </Button>
-                                            )
-                                        ) : b.reservation_status === 'pending' ? (
-                                            <Button type="button" size="sm" className="flex-1 lg:flex-initial" onClick={() => updateStatus(b.id, 'confirmed')}>
-                                                <Check className="size-3.5" aria-hidden="true" />
-                                                Konfirmasi
-                                            </Button>
-                                        ) : b.reservation_status === 'confirmed' ? (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 lg:flex-initial"
-                                                onClick={() => updateStatus(b.id, 'completed')}
-                                            >
-                                                <Check className="size-3.5" aria-hidden="true" />
-                                                Tandai Selesai
-                                            </Button>
-                                        ) : showSettleAsPrimary ? (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 lg:flex-initial"
-                                                onClick={() => settlePayment(b.id)}
-                                            >
-                                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                                                Tandai Lunas
-                                            </Button>
-                                        ) : null}
+                                                reservationBadge(b.reservation_status)
+                                            )}
+                                            {showSlaWarning && b.estimated_ready_date! < todayStr && (
+                                                <Badge variant="danger">Lewat Tenggat</Badge>
+                                            )}
+                                            {showSlaWarning && b.estimated_ready_date! === todayStr && (
+                                                <Badge variant="warning">Tenggat Hari Ini</Badge>
+                                            )}
+                                            {paymentBadge(b.payment_status)}
+                                            {(b.rescheduled_count ?? 0) > 0 && (
+                                                <Badge variant="outline" className="tabular-nums">
+                                                    Reschedule {b.rescheduled_count}x
+                                                </Badge>
+                                            )}
+                                            {b.customer_tags?.includes('VIP') && (
+                                                <Badge variant="popular">
+                                                    VIP
+                                                </Badge>
+                                            )}
+                                            {(b.customer_no_show_count ?? 0) > 0 && (
+                                                <Badge variant="warning" className="tabular-nums">
+                                                    No-Show {b.customer_no_show_count}x
+                                                </Badge>
+                                            )}
+                                            {b.customer_is_blocked && (
+                                                <Badge variant="danger">
+                                                    Diblokir
+                                                </Badge>
+                                            )}
+                                        </div>
 
-                                        {b.dp_proof_url && (
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => setPreviewUrl(b.dp_proof_url)}
-                                            >
-                                                <Eye className="size-3.5" aria-hidden="true" />
-                                                Bukti DP
-                                            </Button>
+                                        {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
+                                            <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
+                                                Alamat Jemput ({FULFILLMENT_TYPE_LABELS[b.fulfillment_type] ?? 'Jemput'}): {b.pickup_address}
+                                            </p>
                                         )}
 
-                                        <div className="flex shrink-0 items-center gap-2">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button type="button" variant="outline" size="sm">
-                                                        <MessageCircle className="size-3.5" aria-hidden="true" />
-                                                        <span className="sm:hidden">WA</span>
-                                                        <span className="hidden sm:inline">WhatsApp</span>
-                                                        <ChevronDown className="size-3 text-mute" aria-hidden="true" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent
-                                                    align="end"
-                                                    className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
-                                                >
-                                                    {visibleWaTemplates.map((item) => (
-                                                        <DropdownMenuItem
-                                                            key={item.key}
-                                                            asChild
-                                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                                        >
-                                                            <a
-                                                                href={buildTemplateWaUrl(b, item.key)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                            >
-                                                                <MessageCircle className="mr-2 size-3.5 text-mute" aria-hidden="true" />
-                                                                {item.shortLabel}
-                                                            </a>
-                                                        </DropdownMenuItem>
-                                                    ))}
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        asChild
-                                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-xs text-mute"
-                                                    >
-                                                        <a
-                                                            href={buildQuickWaUrl(b)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            Chat Cepat (Ringkasan)
-                                                        </a>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                        {b.customer_notes && (
+                                            <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
+                                                Catatan: {b.customer_notes}
+                                            </p>
+                                        )}
 
-                                            {hasOverflowActions && (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            type="button"
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            aria-label={`Aksi lainnya untuk ${b.booking_mode === 'dropoff' ? 'pesanan' : 'reservasi'} ${b.booking_code}`}
-                                                        >
-                                                            <MoreHorizontal className="size-4" aria-hidden="true" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent
-                                                        align="end"
-                                                        className="w-52 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
-                                                    >
-                                                        {canSettle && !showSettleAsPrimary && (
-                                                            <DropdownMenuItem
-                                                                onClick={() => settlePayment(b.id)}
-                                                                className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                                            >
-                                                                <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
-                                                                Tandai Lunas
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {canReschedule && (
-                                                            <DropdownMenuItem
-                                                                asChild
-                                                                className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                                            >
-                                                                <Link href={route('dashboard.bookings.reschedule.edit', b.id)}>
-                                                                    <CalendarClock className="mr-2 size-4" aria-hidden="true" />
-                                                                    Ubah Jadwal
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {canNoShow && (
-                                                            <DropdownMenuItem
-                                                                onClick={() => setNoShowBooking(b)}
-                                                                className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                                            >
-                                                                <UserX className="mr-2 size-4" aria-hidden="true" />
-                                                                Tandai Tidak Hadir
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {canCancel && (
-                                                            <>
-                                                                {(canReschedule || canNoShow || (canSettle && !showSettleAsPrimary)) && (
-                                                                    <DropdownMenuSeparator />
-                                                                )}
-                                                                <DropdownMenuItem
-                                                                    asChild
-                                                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
-                                                                >
-                                                                    <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
-                                                                        <X className="mr-2 size-4" aria-hidden="true" />
-                                                                        Batalkan {b.booking_mode === 'dropoff' ? 'Pesanan' : 'Reservasi'}
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                            </>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                        {b.reservation_status === 'cancelled' && b.cancellation_reason && (
+                                            <p className="break-words rounded-xl bg-destructive-soft px-3 py-2 text-xs text-destructive">
+                                                Alasan pembatalan: {b.cancellation_reason}
+                                            </p>
+                                        )}
+
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-ash">
+                                            <span className="font-medium text-mute">{b.booking_code}</span>
+                                            <span className="tabular-nums">+{b.customer_phone}</span>
+                                            {b.invoice_number && (
+                                                <span className="break-all">{b.invoice_number}</span>
                                             )}
                                         </div>
                                     </div>
+
+                                    <div className="flex flex-wrap items-center gap-2 border-t border-divider pt-3">
+                                        {renderBookingActions(b, 'mobile')}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
+
+                    {/* Desktop Table (md+) */}
+                    <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas md:block">
+                        <table className="w-full min-w-[760px] text-left text-sm">
+                            <thead className="border-b border-divider bg-bone text-xs font-semibold whitespace-nowrap text-mute">
+                                <tr>
+                                    <th scope="col" className="min-w-[150px] py-3 pr-2.5 pl-4">Pelanggan</th>
+                                    <th scope="col" className="min-w-[165px] px-2.5 py-3">Layanan</th>
+                                    <th scope="col" className="min-w-[120px] px-2.5 py-3">{isDropoffMode ? 'Masuk & Target' : 'Jadwal'}</th>
+                                    <th scope="col" className="min-w-[135px] px-2.5 py-3">Status</th>
+                                    <th scope="col" className="px-2.5 py-3 text-right">Total</th>
+                                    <th scope="col" className="py-3 pr-4 pl-2.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-divider">
+                                {bookings.map((b) => {
+                                    const { isDropoff, showSlaWarning, showWorkBadge } = getBookingMeta(b);
+
+                                    return (
+                                        <tr key={b.id} className="align-top transition-colors hover:bg-bone/50">
+                                            <td className="min-w-[150px] max-w-[185px] py-3.5 pr-2.5 pl-4">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <Link
+                                                        href={route('dashboard.customers.show', b.customer_id)}
+                                                        className="font-semibold text-ink hover:underline"
+                                                    >
+                                                        {b.customer_name}
+                                                    </Link>
+                                                    {b.customer_tags?.includes('VIP') && (
+                                                        <Badge variant="popular">VIP</Badge>
+                                                    )}
+                                                    {(b.customer_no_show_count ?? 0) > 0 && (
+                                                        <Badge variant="warning" className="tabular-nums">
+                                                            No-Show {b.customer_no_show_count}x
+                                                        </Badge>
+                                                    )}
+                                                    {b.customer_is_blocked && (
+                                                        <Badge variant="danger">Diblokir</Badge>
+                                                    )}
+                                                </div>
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-xs text-ash">
+                                                    <span className="font-medium text-mute">{b.booking_code}</span>
+                                                    <span className="tabular-nums">+{b.customer_phone}</span>
+                                                </div>
+                                                {b.invoice_number && (
+                                                    <p className="mt-0.5 font-mono text-[11px] text-ash">{b.invoice_number}</p>
+                                                )}
+                                            </td>
+
+                                            <td className="min-w-[165px] px-2.5 py-3.5">
+                                                <p className="font-medium text-ink">
+                                                    {b.service_name}
+                                                    {isDropoff && (
+                                                        <span className="font-normal text-mute tabular-nums">
+                                                            {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                {supportsStaffFilter && b.staff_name && (
+                                                    <p className="mt-0.5 text-xs text-mute">{b.staff_name}</p>
+                                                )}
+                                                {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
+                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-bone px-2 py-1 text-xs text-body">
+                                                        Jemput: {b.pickup_address}
+                                                    </p>
+                                                )}
+                                                {b.customer_notes && (
+                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-bone px-2 py-1 text-xs text-body">
+                                                        Catatan: {b.customer_notes}
+                                                    </p>
+                                                )}
+                                                {b.reservation_status === 'cancelled' && b.cancellation_reason && (
+                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-destructive-soft px-2 py-1 text-xs text-destructive">
+                                                        Batal: {b.cancellation_reason}
+                                                    </p>
+                                                )}
+                                            </td>
+
+                                            <td className="min-w-[120px] px-2.5 py-3.5">
+                                                {isDropoff ? (
+                                                    <div className="space-y-1 text-xs">
+                                                        <div>
+                                                            <p className="font-semibold whitespace-nowrap tabular-nums text-ink">
+                                                                {formatDateShortIndo(b.booking_date)}
+                                                            </p>
+                                                            <p className="text-mute">
+                                                                {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                            </p>
+                                                        </div>
+                                                        {b.estimated_ready_date && (
+                                                            <p
+                                                                className={cn(
+                                                                    'font-medium tabular-nums',
+                                                                    showSlaWarning && b.estimated_ready_date < todayStr
+                                                                        ? 'text-destructive'
+                                                                        : showSlaWarning && b.estimated_ready_date === todayStr
+                                                                          ? 'text-warning'
+                                                                          : 'text-mute'
+                                                                )}
+                                                            >
+                                                                <span className="block text-[11px] font-normal text-ash">Target selesai</span>
+                                                                <span className="whitespace-nowrap">{formatDateShortIndo(b.estimated_ready_date)}</span>
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-0.5 text-xs">
+                                                        <p className="font-semibold whitespace-nowrap tabular-nums text-ink">
+                                                            {formatDateShortIndo(b.booking_date)}
+                                                        </p>
+                                                        <p className="font-mono whitespace-nowrap text-mute tabular-nums">
+                                                            {b.schedule_label ?? formatBookingScheduleShort(b)}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            <td className="min-w-[135px] px-2.5 py-3.5">
+                                                <div className="flex flex-col items-start gap-1.5">
+                                                    {showWorkBadge ? (
+                                                        <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
+                                                            {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
+                                                        </Badge>
+                                                    ) : (
+                                                        reservationBadge(b.reservation_status)
+                                                    )}
+                                                    {showSlaWarning && b.estimated_ready_date! < todayStr && (
+                                                        <Badge variant="danger">Lewat Tenggat</Badge>
+                                                    )}
+                                                    {showSlaWarning && b.estimated_ready_date! === todayStr && (
+                                                        <Badge variant="warning">Tenggat Hari Ini</Badge>
+                                                    )}
+                                                    {paymentBadge(b.payment_status)}
+                                                    {(b.rescheduled_count ?? 0) > 0 && (
+                                                        <Badge variant="outline" className="tabular-nums">
+                                                            Reschedule {b.rescheduled_count}x
+                                                        </Badge>
+                                                    )}
+                                                    {b.dp_proof_url && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPreviewUrl(b.dp_proof_url)}
+                                                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-bone px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                                        >
+                                                            <Eye className="size-3" aria-hidden="true" />
+                                                            Bukti DP
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            <td className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                                                <p className="font-semibold tabular-nums text-ink">
+                                                    {formatRupiah(b.total_price)}
+                                                </p>
+                                                {b.dp_amount > 0 && (
+                                                    <p className="mt-0.5 text-xs tabular-nums text-mute">
+                                                        DP {formatRupiah(b.dp_amount)}
+                                                    </p>
+                                                )}
+                                            </td>
+
+                                            <td className="py-3.5 pr-4 pl-2.5 text-right whitespace-nowrap">
+                                                <div className="inline-flex items-center justify-end gap-1.5">
+                                                    {renderBookingActions(b, 'desktop')}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
                     <PaginationBar pagination={pagination} />
                 </div>
             )}

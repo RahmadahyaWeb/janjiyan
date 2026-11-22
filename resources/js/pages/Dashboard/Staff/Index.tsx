@@ -74,7 +74,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                     </Button>
                 </div>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                     {staffMembers.map((st) => (
                         <div
                             key={st.id}

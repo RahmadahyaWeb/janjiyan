@@ -94,7 +94,7 @@ export default function CustomersIndex({
                             <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
                             <Input
                                 id="customer-search"
-                                className="pl-10 pr-11"
+                                className="pl-10 pr-11 md:h-10 md:text-sm"
                                 placeholder="Cari nama, email, atau WA…"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -119,6 +119,7 @@ export default function CustomersIndex({
                             aria-label="Filter segmen pelanggan"
                             value={activeFilters.segment}
                             onChange={(e) => applyFilters({ segment: e.target.value })}
+                            className="md:h-10 md:py-0"
                         >
                             <option value="all">Semua Pelanggan</option>
                             <option value="vip">Pelanggan VIP</option>
@@ -136,6 +137,7 @@ export default function CustomersIndex({
                             aria-label="Urutkan pelanggan"
                             value={activeFilters.sort}
                             onChange={(e) => applyFilters({ sort: e.target.value })}
+                            className="md:h-10 md:py-0"
                         >
                             <option value="latest">Terbaru Terdaftar</option>
                             <option value="top_spent">Transaksi Tertinggi</option>

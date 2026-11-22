@@ -40,7 +40,7 @@ export default function ProfileIndex({ hasPassword }: ProfileIndexProps) {
         <DashboardLayout title="Profil & Keamanan Akun">
             <Head title="Profil Akun" />
 
-            <div className="max-w-2xl space-y-6">
+            <div className="grid max-w-5xl gap-6 lg:grid-cols-2 lg:items-start">
                 {/* Account Information */}
                 <form
                     onSubmit={handleProfileSubmit}

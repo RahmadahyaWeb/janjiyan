@@ -72,6 +72,8 @@ const NAV_ITEMS: {
 // Mobile/tablet bottom bar shows these; the rest live in the "Lainnya" sheet.
 const PRIMARY_NAV = ['dashboard', 'dashboard.bookings', 'dashboard.services', 'dashboard.customers'];
 
+const CONFIG_ROUTES = new Set(['dashboard.settings', 'dashboard.billing']);
+
 // Sub-pages (create/edit/show) keep their section active; 'dashboard.*' would match every page.
 const isNavActive = (routeName: string) =>
     route().current(routeName) || (routeName !== 'dashboard' && route().current(`${routeName}.*`));
@@ -133,8 +135,181 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
         router.post(route('dashboard.businesses.switch'), { business_id: businessId });
     };
 
+    const operationalNav = navItems.filter((item) => !CONFIG_ROUTES.has(item.routeName));
+    const configNav = navItems.filter((item) => CONFIG_ROUTES.has(item.routeName));
+
+    const renderBusinessSwitcher = (triggerClassName: string) =>
+        activeBusiness ? (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        type="button"
+                        aria-label={`Pilih bisnis aktif: ${activeBusiness.name}`}
+                        className={triggerClassName}
+                    >
+                        <span className="truncate">{activeBusiness.name}</span>
+                        <ChevronDown className="size-3.5 shrink-0 text-mute sm:size-4" aria-hidden="true" />
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
+                    {businesses.map((b) => (
+                        <DropdownMenuItem
+                            key={b.id}
+                            onClick={() => handleSwitch(b.id)}
+                            className={cn(
+                                'min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm',
+                                b.id === activeBusiness.id && 'bg-bone font-semibold'
+                            )}
+                        >
+                            <div className="flex min-w-0 flex-col">
+                                <span className="truncate">{b.name}</span>
+                                <span className="truncate text-xs text-mute">/b/{b.slug}</span>
+                            </div>
+                        </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        asChild
+                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric"
+                    >
+                        <Link href={route('dashboard.businesses.create')}>
+                            <Plus className="mr-1.5 size-4" />
+                            Tambah Bisnis Baru
+                        </Link>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        ) : null;
+
+    const renderPortalShareDropdown = (trigger: ReactNode) =>
+        activeBusiness ? (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
+                    <DropdownMenuItem
+                        onClick={copyPublicBookingLink}
+                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                    >
+                        {copiedLink ? (
+                            <Check className="mr-2 size-4 text-success" aria-hidden="true" />
+                        ) : (
+                            <Copy className="mr-2 size-4" aria-hidden="true" />
+                        )}
+                        {copiedLink ? 'Link Tersalin' : 'Salin Link Booking'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
+                        <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
+                            <ExternalLink className="mr-2 size-4" aria-hidden="true" />
+                            Buka Link Booking
+                        </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onClick={() => setQrOpen(true)}
+                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                    >
+                        <QrCode className="mr-2 size-4" aria-hidden="true" />
+                        QR Poster
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        ) : null;
+
+    const renderAccountMenu = (triggerClassName: string) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={`Menu akun ${auth.user?.name ?? ''}`}
+                    className={triggerClassName}
+                >
+                    {auth.user?.name.slice(0, 2).toUpperCase()}
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
+                <div className="px-3 py-2">
+                    <p className="text-sm font-semibold text-ink">{auth.user?.name}</p>
+                    <p className="truncate text-xs text-mute">{auth.user?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
+                    <Link href={route('dashboard.profile')}>
+                        <UserIcon className="mr-2 size-4" aria-hidden="true" />
+                        Profil & Kata Sandi
+                    </Link>
+                </DropdownMenuItem>
+                {auth.user?.is_superadmin && (
+                    <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric">
+                        <Link href={route('admin.index')}>
+                            <ShieldAlert className="mr-2 size-4" aria-hidden="true" />
+                            Panel Superadmin
+                        </Link>
+                    </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                    onClick={() => router.post(route('logout'))}
+                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
+                >
+                    <LogOut className="mr-2 size-4" aria-hidden="true" />
+                    Keluar
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+
+    const renderSidebarNavItem = (item: (typeof navItems)[number]) => {
+        const Icon = item.icon;
+        const isActive = isNavActive(item.routeName);
+        const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
+
+        return (
+            <Link
+                key={item.routeName}
+                href={route(item.routeName)}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                    'flex shrink-0 items-center justify-between gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                    isActive ? 'bg-ink text-canvas' : 'text-mute hover:bg-bone hover:text-ink'
+                )}
+            >
+                <span className="flex min-w-0 items-center gap-2.5">
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{item.label}</span>
+                </span>
+                {showQueueCount && (
+                    <>
+                        <span
+                            aria-hidden="true"
+                            className={cn(
+                                'inline-flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
+                                isActive ? 'bg-canvas text-ink' : 'bg-electric text-canvas'
+                            )}
+                        >
+                            {pendingBookingsCount}
+                        </span>
+                        <span className="sr-only">
+                            {` (${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut)`}
+                        </span>
+                    </>
+                )}
+            </Link>
+        );
+    };
+
+    const subscriptionBadge =
+        subscription && (!can || can.manage_settings) ? (
+            <Link href={route('dashboard.billing')} className="inline-flex">
+                <Badge variant={subscription.is_expired ? 'destructive' : subscription.is_trial ? 'popular' : 'secondary'}>
+                    {subscription.is_expired
+                        ? 'Paket Berakhir'
+                        : subscription.is_trial
+                            ? `Trial · ${subscription.days_remaining} hari`
+                            : subscription.plan.name}
+                </Badge>
+            </Link>
+        ) : null;
+
     return (
-        <div className="min-h-screen bg-canvas text-ink">
+        <div className="min-h-screen bg-canvas text-ink lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
             <a
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-canvas focus:ring-2 focus:ring-ink focus:ring-offset-2 focus:ring-offset-canvas focus:outline-none"
@@ -142,8 +317,35 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                 Lewati ke konten utama
             </a>
 
-            {/* Top Bar */}
-            <header className="sticky top-0 z-40 border-b border-divider bg-canvas/95 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-md">
+            {/* Desktop Full-Bleed Sidebar (lg+) */}
+            <aside
+                aria-label="Navigasi Dashboard"
+                className="hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:bg-canvas"
+            >
+                <div className="flex h-16 shrink-0 items-center border-b border-divider px-5">
+                    <Link
+                        href={route('dashboard')}
+                        aria-label="Beranda Dashboard Janjiyan"
+                        className="inline-flex items-center rounded-full px-1 py-1 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <JanjiyanLogo size="sm" />
+                    </Link>
+                </div>
+
+                <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+                    <div className="space-y-1">{operationalNav.map(renderSidebarNavItem)}</div>
+
+                    {configNav.length > 0 && (
+                        <>
+                            <div className="my-3 border-t border-divider" />
+                            <div className="space-y-1">{configNav.map(renderSidebarNavItem)}</div>
+                        </>
+                    )}
+                </div>
+            </aside>
+
+            {/* Mobile / Tablet Top Bar (< lg) */}
+            <header className="sticky top-0 z-40 border-b border-divider bg-canvas/95 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-md lg:hidden">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
                     <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
                         <Link
@@ -154,110 +356,33 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                             <JanjiyanLogo size="sm" compactMobile />
                         </Link>
 
-                        {/* Multi-Business Switcher */}
-                        {activeBusiness && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button
-                                        type="button"
-                                        aria-label={`Pilih bisnis aktif: ${activeBusiness.name}`}
-                                        className="inline-flex h-10 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:max-w-[260px] sm:gap-2 sm:px-4 lg:max-w-[320px]"
-                                    >
-                                        <span className="truncate">{activeBusiness.name}</span>
-                                        <ChevronDown className="size-3.5 shrink-0 text-mute sm:size-4" aria-hidden="true" />
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-64 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
-                                    {businesses.map((b) => (
-                                        <DropdownMenuItem
-                                            key={b.id}
-                                            onClick={() => handleSwitch(b.id)}
-                                            className={cn(
-                                                'min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm',
-                                                b.id === activeBusiness.id && 'bg-bone font-semibold'
-                                            )}
-                                        >
-                                            <div className="flex min-w-0 flex-col">
-                                                <span className="truncate">{b.name}</span>
-                                                <span className="truncate text-xs text-mute">/b/{b.slug}</span>
-                                            </div>
-                                        </DropdownMenuItem>
-                                    ))}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        asChild
-                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric"
-                                    >
-                                        <Link href={route('dashboard.businesses.create')}>
-                                            <Plus className="mr-1.5 size-4" />
-                                            Tambah Bisnis Baru
-                                        </Link>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                        {renderBusinessSwitcher(
+                            'inline-flex h-10 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:max-w-[260px] sm:gap-2 sm:px-4'
                         )}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-                        {/* Plan status is billing info: only owners/managers can open or need it. */}
-                        {subscription && (!can || can.manage_settings) && (
-                            <Link href={route('dashboard.billing')} className="hidden lg:inline-flex">
-                                <Badge variant={subscription.is_expired ? 'destructive' : subscription.is_trial ? 'popular' : 'secondary'}>
-                                    {subscription.is_expired
-                                        ? 'Paket Berakhir'
-                                        : subscription.is_trial
-                                            ? `Trial · ${subscription.days_remaining} hari`
-                                            : subscription.plan.name}
-                                </Badge>
-                            </Link>
-                        )}
-
                         {activeBusiness && (
                             <>
-                                {/* Mobile: one share menu instead of three icon buttons, so the business name has room */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            size="icon"
-                                            aria-label={
-                                                copiedLink
-                                                    ? 'Link booking tersalin ke clipboard'
-                                                    : `Bagikan link booking ${activeBusiness.name}`
-                                            }
-                                            className="sm:hidden"
-                                        >
-                                            {copiedLink ? (
-                                                <Check className="size-4 text-success" aria-hidden="true" />
-                                            ) : (
-                                                <Share2 className="size-4" aria-hidden="true" />
-                                            )}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
-                                        <DropdownMenuItem
-                                            onClick={copyPublicBookingLink}
-                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                        >
-                                            <Copy className="mr-2 size-4" aria-hidden="true" />
-                                            Salin Link Booking
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
-                                            <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
-                                                <ExternalLink className="mr-2 size-4" aria-hidden="true" />
-                                                Buka Link Booking
-                                            </a>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => setQrOpen(true)}
-                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
-                                        >
-                                            <QrCode className="mr-2 size-4" aria-hidden="true" />
-                                            QR Poster
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {renderPortalShareDropdown(
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="icon"
+                                        aria-label={
+                                            copiedLink
+                                                ? 'Link booking tersalin ke clipboard'
+                                                : `Bagikan link booking ${activeBusiness.name}`
+                                        }
+                                        className="sm:hidden"
+                                    >
+                                        {copiedLink ? (
+                                            <Check className="size-4 text-success" aria-hidden="true" />
+                                        ) : (
+                                            <Share2 className="size-4" aria-hidden="true" />
+                                        )}
+                                    </Button>
+                                )}
 
                                 <Button
                                     type="button"
@@ -268,7 +393,6 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     className="hidden h-10 px-3.5 sm:inline-flex"
                                 >
                                     <QrCode className="size-3.5" aria-hidden="true" />
-                                    <span className="hidden lg:inline">QR Poster</span>
                                 </Button>
 
                                 <Button
@@ -288,9 +412,6 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     ) : (
                                         <Copy className="size-3.5" aria-hidden="true" />
                                     )}
-                                    <span className="hidden lg:inline">
-                                        {copiedLink ? 'Tersalin' : 'Salin Link'}
-                                    </span>
                                 </Button>
 
                                 <Button asChild variant="outline" size="sm" className="hidden h-10 px-4 sm:inline-flex">
@@ -300,103 +421,66 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                         rel="noreferrer"
                                         aria-label={`Buka link booking ${activeBusiness.name} di tab baru`}
                                     >
-                                        <span className="hidden sm:inline">Link Booking</span>
+                                        <span>Link Booking</span>
                                         <ExternalLink className="size-3.5" aria-hidden="true" />
                                     </a>
                                 </Button>
                             </>
                         )}
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button
-                                    type="button"
-                                    aria-label={`Menu akun ${auth.user?.name ?? ''}`}
-                                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                                >
-                                    {auth.user?.name.slice(0, 2).toUpperCase()}
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
-                                <div className="px-3 py-2">
-                                    <p className="text-sm font-semibold text-ink">{auth.user?.name}</p>
-                                    <p className="truncate text-xs text-mute">{auth.user?.email}</p>
-                                </div>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
-                                    <Link href={route('dashboard.profile')}>
-                                        <UserIcon className="mr-2 size-4" aria-hidden="true" />
-                                        Profil & Kata Sandi
-                                    </Link>
-                                </DropdownMenuItem>
-                                {auth.user?.is_superadmin && (
-                                    <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric">
-                                        <Link href={route('admin.index')}>
-                                            <ShieldAlert className="mr-2 size-4" aria-hidden="true" />
-                                            Panel Superadmin
-                                        </Link>
-                                    </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                    onClick={() => router.post(route('logout'))}
-                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
-                                >
-                                    <LogOut className="mr-2 size-4" aria-hidden="true" />
-                                    Keluar
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {renderAccountMenu(
+                            'inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none'
+                        )}
                     </div>
                 </div>
             </header>
 
-            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:gap-6 sm:px-6 sm:pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:py-8">
-                {/* Sidebar Nav */}
-                <aside aria-label="Navigasi Dashboard" className="hidden flex-col gap-1.5 lg:flex">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = isNavActive(item.routeName);
-                        const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
+            <div className="flex min-w-0 flex-col lg:border-l lg:border-divider">
+                {/* Desktop Topbar (lg+) */}
+                <header className="sticky top-0 z-40 hidden h-16 shrink-0 items-center justify-between gap-4 border-b border-divider bg-canvas/95 px-6 supports-[backdrop-filter]:backdrop-blur-md lg:flex">
+                    <div className="flex min-w-0 items-center gap-3">
+                        {renderBusinessSwitcher(
+                            'inline-flex h-9 max-w-[300px] min-w-0 cursor-pointer items-center gap-2 rounded-full bg-bone px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none'
+                        )}
+                        {subscriptionBadge}
+                    </div>
 
-                        return (
-                            <Link
-                                key={item.routeName}
-                                href={route(item.routeName)}
-                                aria-current={isActive ? 'page' : undefined}
-                                className={cn(
-                                    'inline-flex shrink-0 items-center justify-between gap-2.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
-                                    isActive
-                                        ? 'bg-ink text-canvas'
-                                        : 'text-mute hover:bg-bone hover:text-ink'
-                                )}
-                            >
-                                <span className="inline-flex items-center gap-2.5">
-                                    <Icon className="size-4" aria-hidden="true" />
-                                    <span>{item.label}</span>
-                                </span>
-                                {showQueueCount && (
-                                    <>
-                                        <span
-                                            aria-hidden="true"
-                                            className={cn(
-                                                'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
-                                                isActive ? 'bg-canvas text-ink' : 'bg-electric text-canvas'
-                                            )}
-                                        >
-                                            {pendingBookingsCount}
-                                        </span>
-                                        <span className="sr-only">
-                                            {` (${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut)`}
-                                        </span>
-                                    </>
-                                )}
-                            </Link>
-                        );
-                    })}
-                </aside>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                        {activeBusiness &&
+                            renderPortalShareDropdown(
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label={
+                                        copiedLink
+                                            ? 'Link booking tersalin ke clipboard'
+                                            : `Menu portal booking ${activeBusiness.name}`
+                                    }
+                                    className="h-9 gap-1.5 border-hairline px-3.5 text-xs font-semibold"
+                                >
+                                    {copiedLink ? (
+                                        <Check className="size-3.5 text-success" aria-hidden="true" />
+                                    ) : (
+                                        <Share2 className="size-3.5 text-mute" aria-hidden="true" />
+                                    )}
+                                    <span>{copiedLink ? 'Link Tersalin' : 'Portal Booking'}</span>
+                                    <ChevronDown className="size-3.5 text-mute" aria-hidden="true" />
+                                </Button>
+                            )}
+
+                        {renderAccountMenu(
+                            'inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none'
+                        )}
+                    </div>
+                </header>
 
                 {/* Main Content */}
-                <main id="main-content" tabIndex={-1} className="min-w-0 space-y-4 outline-none sm:space-y-6">
+                <main
+                    id="main-content"
+                    tabIndex={-1}
+                    className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] outline-none sm:space-y-6 sm:px-6 sm:pt-6 lg:max-w-[1360px] lg:px-6 lg:py-7 lg:pb-12"
+                >
                     <div role="status" aria-live="polite" className="sr-only">
                         {copiedLink ? 'Link booking bisnis berhasil disalin ke clipboard.' : ''}
                     </div>
@@ -411,7 +495,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                             </Link>
                         )}
                         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5">
-                            <h1 className="min-w-0 text-2xl leading-tight font-semibold text-balance text-ink sm:text-3xl">{title}</h1>
+                            <h1 className="min-w-0 text-2xl leading-tight font-semibold text-balance text-ink sm:text-[26px] lg:text-3xl">{title}</h1>
                             {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
                         </div>
                     </div>

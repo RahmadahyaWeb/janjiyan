@@ -122,52 +122,51 @@ export default function CommissionsIndex({
     });
 
     return (
-        <DashboardLayout title="Laporan Komisi Staff">
-            <Head title="Laporan Komisi Staff" />
-
-            <div className="space-y-6">
-                {/* Header & Export */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-mute">
-                        Rekap otomatis jumlah layanan, omzet, dan komisi yang harus dibayarkan per staff.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                        {canManageStaff && (
-                            <Button asChild variant="secondary" size="sm" className="rounded-full">
-                                <Link href={route('dashboard.staff')}>
-                                    <Settings2 className="mr-1.5 size-4" aria-hidden="true" />
-                                    Atur Tarif di Tim &amp; Staff
+        <DashboardLayout
+            title="Laporan Komisi Staff"
+            actions={
+                canManageStaff ? (
+                    <>
+                        <Button asChild variant="secondary" size="sm" className="rounded-full">
+                            <Link href={route('dashboard.staff')}>
+                                <Settings2 className="mr-1.5 size-4" aria-hidden="true" />
+                                Atur Tarif di Tim &amp; Staff
+                            </Link>
+                        </Button>
+                        {canExportCsv ? (
+                            <Button asChild variant="outline" size="sm" className="rounded-full">
+                                <a href={exportUrl}>
+                                    <Download className="mr-1.5 size-4" aria-hidden="true" />
+                                    Export CSV
+                                </a>
+                            </Button>
+                        ) : (
+                            <Button
+                                asChild
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full text-mute"
+                            >
+                                <Link
+                                    href={route('dashboard.billing')}
+                                    title="Export CSV tersedia pada paket Professional & Enterprise"
+                                    aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
+                                >
+                                    <Download className="mr-1.5 size-4" aria-hidden="true" />
+                                    Export CSV (Pro)
                                 </Link>
                             </Button>
                         )}
-                        {canManageStaff && (
-                            canExportCsv ? (
-                                <Button asChild size="sm" className="rounded-full">
-                                    <a href={exportUrl}>
-                                        <Download className="mr-1.5 size-4" aria-hidden="true" />
-                                        Export CSV
-                                    </a>
-                                </Button>
-                            ) : (
-                                <Button
-                                    asChild
-                                    size="sm"
-                                    variant="outline"
-                                    className="rounded-full text-mute"
-                                >
-                                    <Link
-                                        href={route('dashboard.billing')}
-                                        title="Export CSV tersedia pada paket Professional & Enterprise"
-                                        aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
-                                    >
-                                        <Download className="mr-1.5 size-4" aria-hidden="true" />
-                                        Export CSV (Pro)
-                                    </Link>
-                                </Button>
-                            )
-                        )}
-                    </div>
-                </div>
+                    </>
+                ) : undefined
+            }
+        >
+            <Head title="Laporan Komisi Staff" />
+
+            <div className="space-y-6">
+                <p className="text-sm text-mute">
+                    Rekap otomatis jumlah layanan, omzet, dan komisi yang harus dibayarkan per staff.
+                </p>
 
                 {/* Filters Card */}
                 <Card>

@@ -91,7 +91,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                         <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
                         <Input
                             id="services-search"
-                            className="pl-10 pr-11"
+                            className="pl-10 pr-11 md:h-10 md:text-sm"
                             placeholder="Cari layanan…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -135,7 +135,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     </Button>
                 </div>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {filteredServices.map((s) => (
                         <div
                             key={s.id}

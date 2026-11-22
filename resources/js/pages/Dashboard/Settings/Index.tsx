@@ -292,7 +292,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         <DashboardLayout title="Pengaturan Bisnis">
             <Head title="Pengaturan" />
 
-            <div className="max-w-3xl space-y-8">
+            <div className="max-w-4xl space-y-8">
                 <HorizontalScrollContainer
                     as="div"
                     ariaLabel="Bagian pengaturan"
