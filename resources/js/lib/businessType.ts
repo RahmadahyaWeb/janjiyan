@@ -24,7 +24,9 @@ export interface BusinessTypeConfig {
     shortLabel: string;
     nav: {
         bookingsLabel: string;
+        bookingsMobileLabel: string;
         servicesLabel: string;
+        servicesMobileLabel: string;
         teamLabel: string;
         showCommissions: boolean;
         bookingsIconKey: 'calendar' | 'package';
@@ -163,7 +165,9 @@ export const BUSINESS_TYPE_CONFIG: Record<BusinessType, BusinessTypeConfig> = {
         shortLabel: 'Janji Temu',
         nav: {
             bookingsLabel: 'Reservasi',
+            bookingsMobileLabel: 'Reservasi',
             servicesLabel: 'Layanan',
+            servicesMobileLabel: 'Layanan',
             teamLabel: 'Tim & Staff',
             showCommissions: true,
             bookingsIconKey: 'calendar',
@@ -247,7 +251,9 @@ export const BUSINESS_TYPE_CONFIG: Record<BusinessType, BusinessTypeConfig> = {
         shortLabel: 'Tempat / Sesi',
         nav: {
             bookingsLabel: 'Jadwal Booking',
+            bookingsMobileLabel: 'Booking',
             servicesLabel: 'Fasilitas & Paket',
+            servicesMobileLabel: 'Fasilitas',
             teamLabel: 'Tim & Admin',
             showCommissions: false,
             bookingsIconKey: 'calendar',
@@ -329,7 +335,9 @@ export const BUSINESS_TYPE_CONFIG: Record<BusinessType, BusinessTypeConfig> = {
         shortLabel: 'Drop-off',
         nav: {
             bookingsLabel: 'Pesanan',
+            bookingsMobileLabel: 'Pesanan',
             servicesLabel: 'Layanan & Tarif',
+            servicesMobileLabel: 'Layanan',
             teamLabel: 'Tim & Admin',
             showCommissions: false,
             bookingsIconKey: 'package',

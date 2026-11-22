@@ -88,10 +88,10 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                         <Label htmlFor="services-search" className="sr-only">
                             Cari layanan
                         </Label>
-                        <Search className="pointer-events-none absolute top-4 left-4 size-4 text-ash" aria-hidden="true" />
+                        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
                         <Input
                             id="services-search"
-                            className="pl-10 pr-10"
+                            className="pl-10 pr-11"
                             placeholder="Cari layanan…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -101,7 +101,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                 type="button"
                                 aria-label="Hapus pencarian layanan"
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                className="absolute right-1.5 inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                             >
                                 <X className="size-4" aria-hidden="true" />
                             </button>
@@ -111,7 +111,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
             </div>
 
             {services.length === 0 ? (
-                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-6 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         Belum ada {config.services.pageTitle.toLowerCase()} tersedia.
                     </p>
@@ -126,7 +126,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     </Button>
                 </div>
             ) : filteredServices.length === 0 ? (
-                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-6 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         Tidak ada layanan dengan nama &ldquo;{searchQuery}&rdquo;.
                     </p>
@@ -139,9 +139,9 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     {filteredServices.map((s) => (
                         <div
                             key={s.id}
-                            className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
+                            className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                         >
-                            <div>
+                            <div className="min-w-0">
                                 {s.image_url && (
                                     <img
                                         src={s.image_url}
@@ -155,7 +155,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                         {!s.is_active && <Badge variant="danger">Nonaktif</Badge>}
                                         {config.type === 'dropoff' ? (
                                             <>
-                                                <Badge variant="outline" className="tabular-nums">
+                                                <Badge variant="outline" className="max-w-full whitespace-normal tabular-nums">
                                                     Drop-off · Maks {s.capacity} {s.unit_label ?? 'item'}/hari
                                                 </Badge>
                                                 {s.supports_pickup && (
@@ -171,7 +171,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                         )}
                                     </div>
                                 </div>
-                                {s.description && <p className="mt-2 text-sm text-mute">{s.description}</p>}
+                                {s.description && <p className="mt-2 text-sm break-words text-mute">{s.description}</p>}
                                 <div className="mt-4 flex flex-wrap gap-2 text-xs text-mute">
                                     <span className="rounded-full bg-bone px-3 py-1 font-semibold tabular-nums text-ink">
                                         {formatRupiah(s.price)}
@@ -215,12 +215,12 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon"
                                         aria-label={`Hapus layanan ${s.name}`}
                                         className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                                         onClick={() => setDeletingService(s)}
                                     >
-                                        <Trash2 className="size-3.5" aria-hidden="true" />
+                                        <Trash2 className="size-4" aria-hidden="true" />
                                     </Button>
                                 </div>
                             </div>

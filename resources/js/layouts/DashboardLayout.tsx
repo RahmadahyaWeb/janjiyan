@@ -5,6 +5,7 @@ import {
     CalendarDays,
     Check,
     ChevronDown,
+    ChevronRight,
     Clock,
     Copy,
     CreditCard,
@@ -50,16 +51,22 @@ interface DashboardLayoutProps {
 }
 
 // `need` mirrors each page's server-side permission check; items the user can't open are hidden.
-const NAV_ITEMS: { label: string; routeName: string; icon: typeof Settings; need?: BusinessPermission[] }[] = [
+const NAV_ITEMS: {
+    label: string;
+    mobileLabel?: string;
+    routeName: string;
+    icon: typeof Settings;
+    need?: BusinessPermission[];
+}[] = [
     { label: 'Ringkasan', routeName: 'dashboard', icon: LayoutDashboard },
     { label: 'Reservasi', routeName: 'dashboard.bookings', icon: CalendarDays },
     { label: 'Layanan', routeName: 'dashboard.services', icon: Scissors, need: ['manage_services'] },
-    { label: 'Jadwal & Libur', routeName: 'dashboard.schedule', icon: Clock, need: ['manage_settings'] },
-    { label: 'Tim & Staff', routeName: 'dashboard.staff', icon: UserSquare2, need: ['manage_staff'] },
-    { label: 'Komisi Staff', routeName: 'dashboard.commissions', icon: BadgePercent, need: ['manage_staff'] },
+    { label: 'Jadwal & Libur', mobileLabel: 'Jadwal', routeName: 'dashboard.schedule', icon: Clock, need: ['manage_settings'] },
+    { label: 'Tim & Staff', mobileLabel: 'Tim', routeName: 'dashboard.staff', icon: UserSquare2, need: ['manage_staff'] },
+    { label: 'Komisi Staff', mobileLabel: 'Komisi', routeName: 'dashboard.commissions', icon: BadgePercent, need: ['manage_staff'] },
     { label: 'Pelanggan', routeName: 'dashboard.customers', icon: Users, need: ['manage_bookings'] },
     { label: 'Pengaturan', routeName: 'dashboard.settings', icon: Settings, need: ['manage_settings'] },
-    { label: 'Paket & Billing', routeName: 'dashboard.billing', icon: CreditCard, need: ['manage_settings'] },
+    { label: 'Paket & Billing', mobileLabel: 'Billing', routeName: 'dashboard.billing', icon: CreditCard, need: ['manage_settings'] },
 ];
 
 // Mobile/tablet bottom bar shows these; the rest live in the "Lainnya" sheet.
@@ -88,14 +95,19 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
             return {
                 ...item,
                 label: businessConfig.nav.bookingsLabel,
+                mobileLabel: businessConfig.nav.bookingsMobileLabel,
                 icon: businessConfig.nav.bookingsIconKey === 'package' ? Package : CalendarDays,
             };
         }
         if (item.routeName === 'dashboard.services') {
-            return { ...item, label: businessConfig.nav.servicesLabel };
+            return {
+                ...item,
+                label: businessConfig.nav.servicesLabel,
+                mobileLabel: businessConfig.nav.servicesMobileLabel,
+            };
         }
         if (item.routeName === 'dashboard.staff') {
-            return { ...item, label: businessConfig.nav.teamLabel };
+            return { ...item, label: businessConfig.nav.teamLabel, mobileLabel: 'Tim' };
         }
         return item;
     });
@@ -131,13 +143,13 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
             </a>
 
             {/* Top Bar */}
-            <header className="sticky top-0 z-40 border-b border-divider bg-canvas">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6">
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+            <header className="sticky top-0 z-40 border-b border-divider bg-canvas/95 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-md">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
                         <Link
                             href={route('dashboard')}
                             aria-label="Beranda Dashboard Janjiyan"
-                            className="inline-flex min-h-9 shrink-0 items-center rounded-full px-1 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                            className="-ml-1.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:ml-0 sm:w-auto sm:px-1"
                         >
                             <JanjiyanLogo size="sm" compactMobile />
                         </Link>
@@ -149,19 +161,19 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     <button
                                         type="button"
                                         aria-label={`Pilih bisnis aktif: ${activeBusiness.name}`}
-                                        className="inline-flex h-9 max-w-[220px] min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:h-10 sm:max-w-[260px] sm:gap-2 sm:px-4 sm:text-sm lg:max-w-[320px]"
+                                        className="inline-flex h-10 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:max-w-[260px] sm:gap-2 sm:px-4 lg:max-w-[320px]"
                                     >
                                         <span className="truncate">{activeBusiness.name}</span>
                                         <ChevronDown className="size-3.5 shrink-0 text-mute sm:size-4" aria-hidden="true" />
                                     </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-64 rounded-md border-hairline-soft p-2 shadow-none">
+                                <DropdownMenuContent align="start" className="w-64 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
                                     {businesses.map((b) => (
                                         <DropdownMenuItem
                                             key={b.id}
                                             onClick={() => handleSwitch(b.id)}
                                             className={cn(
-                                                'cursor-pointer rounded-xl px-3 py-2 text-sm',
+                                                'min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm',
                                                 b.id === activeBusiness.id && 'bg-bone font-semibold'
                                             )}
                                         >
@@ -174,7 +186,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         asChild
-                                        className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-electric"
+                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric"
                                     >
                                         <Link href={route('dashboard.businesses.create')}>
                                             <Plus className="mr-1.5 size-4" />
@@ -186,7 +198,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         )}
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+                    <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
                         {/* Plan status is billing info: only owners/managers can open or need it. */}
                         {subscription && (!can || can.manage_settings) && (
                             <Link href={route('dashboard.billing')} className="hidden lg:inline-flex">
@@ -208,22 +220,30 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                         <Button
                                             type="button"
                                             variant="secondary"
-                                            size="sm"
-                                            aria-label={`Bagikan link booking ${activeBusiness.name}`}
-                                            className="size-9 px-0 sm:hidden"
+                                            size="icon"
+                                            aria-label={
+                                                copiedLink
+                                                    ? 'Link booking tersalin ke clipboard'
+                                                    : `Bagikan link booking ${activeBusiness.name}`
+                                            }
+                                            className="sm:hidden"
                                         >
-                                            <Share2 className="size-4" aria-hidden="true" />
+                                            {copiedLink ? (
+                                                <Check className="size-4 text-success" aria-hidden="true" />
+                                            ) : (
+                                                <Share2 className="size-4" aria-hidden="true" />
+                                            )}
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-56 rounded-md border-hairline-soft p-2 shadow-none">
+                                    <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
                                         <DropdownMenuItem
                                             onClick={copyPublicBookingLink}
-                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
+                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
                                         >
                                             <Copy className="mr-2 size-4" aria-hidden="true" />
                                             Salin Link Booking
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink">
+                                        <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
                                             <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
                                                 <ExternalLink className="mr-2 size-4" aria-hidden="true" />
                                                 Buka Link Booking
@@ -231,7 +251,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => setQrOpen(true)}
-                                            className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink"
+                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
                                         >
                                             <QrCode className="mr-2 size-4" aria-hidden="true" />
                                             QR Poster
@@ -292,25 +312,25 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 <button
                                     type="button"
                                     aria-label={`Menu akun ${auth.user?.name ?? ''}`}
-                                    className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:size-10"
+                                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                                 >
                                     {auth.user?.name.slice(0, 2).toUpperCase()}
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-md border-hairline-soft p-2 shadow-none">
+                            <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none">
                                 <div className="px-3 py-2">
                                     <p className="text-sm font-semibold text-ink">{auth.user?.name}</p>
                                     <p className="truncate text-xs text-mute">{auth.user?.email}</p>
                                 </div>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm text-ink">
+                                <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
                                     <Link href={route('dashboard.profile')}>
                                         <UserIcon className="mr-2 size-4" aria-hidden="true" />
                                         Profil & Kata Sandi
                                     </Link>
                                 </DropdownMenuItem>
                                 {auth.user?.is_superadmin && (
-                                    <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-electric">
+                                    <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-electric">
                                         <Link href={route('admin.index')}>
                                             <ShieldAlert className="mr-2 size-4" aria-hidden="true" />
                                             Panel Superadmin
@@ -319,7 +339,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 )}
                                 <DropdownMenuItem
                                     onClick={() => router.post(route('logout'))}
-                                    className="cursor-pointer rounded-xl px-3 py-2 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
                                 >
                                     <LogOut className="mr-2 size-4" aria-hidden="true" />
                                     Keluar
@@ -330,7 +350,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                 </div>
             </header>
 
-            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 pt-4 pb-28 sm:gap-6 sm:px-6 sm:pt-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:gap-6 sm:px-6 sm:pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:py-8">
                 {/* Sidebar Nav */}
                 <aside aria-label="Navigasi Dashboard" className="hidden flex-col gap-1.5 lg:flex">
                     {navItems.map((item) => {
@@ -355,15 +375,20 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     <span>{item.label}</span>
                                 </span>
                                 {showQueueCount && (
-                                    <span
-                                        aria-label={`${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut`}
-                                        className={cn(
-                                            'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
-                                            isActive ? 'bg-canvas text-ink' : 'bg-electric text-canvas'
-                                        )}
-                                    >
-                                        {pendingBookingsCount}
-                                    </span>
+                                    <>
+                                        <span
+                                            aria-hidden="true"
+                                            className={cn(
+                                                'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
+                                                isActive ? 'bg-canvas text-ink' : 'bg-electric text-canvas'
+                                            )}
+                                        >
+                                            {pendingBookingsCount}
+                                        </span>
+                                        <span className="sr-only">
+                                            {` (${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut)`}
+                                        </span>
+                                    </>
                                 )}
                             </Link>
                         );
@@ -379,22 +404,22 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         {back && (
                             <Link
                                 href={back.href}
-                                className="-ml-1 mb-1 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-mute transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                className="-ml-2 mb-1 inline-flex min-h-10 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-mute transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                             >
                                 <ArrowLeft className="size-4" aria-hidden="true" />
                                 {back.label}
                             </Link>
                         )}
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h1 className="min-w-0 text-2xl font-semibold text-ink sm:text-3xl">{title}</h1>
-                            {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5">
+                            <h1 className="min-w-0 text-2xl leading-tight font-semibold text-balance text-ink sm:text-3xl">{title}</h1>
+                            {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
                         </div>
                     </div>
 
                     {activeBusiness?.is_suspended && (
                         <div
                             role="alert"
-                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
+                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-4 py-3.5 text-sm text-destructive sm:flex-row sm:items-center sm:px-5 sm:py-4"
                         >
                             <div>
                                 <p className="font-semibold">Bisnis ini sedang ditangguhkan oleh administrator.</p>
@@ -408,7 +433,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                     {subscription?.is_expired && (
                         <div
                             role="alert"
-                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-5 py-4 text-sm text-destructive sm:flex-row sm:items-center"
+                            className="flex flex-col justify-between gap-3 rounded-md border border-destructive/20 bg-destructive-soft px-4 py-3.5 text-sm text-destructive sm:flex-row sm:items-center sm:px-5 sm:py-4"
                         >
                             <div>
                                 <p className="font-semibold">Masa trial atau paket langganan Anda telah berakhir.</p>
@@ -444,16 +469,18 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
             {/* Mobile/tablet bottom navigation */}
             <nav
                 aria-label="Navigasi Dashboard"
-                className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-canvas pb-[env(safe-area-inset-bottom)] lg:hidden"
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-divider bg-canvas/95 pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-md lg:hidden"
             >
                 <div
-                    className="mx-auto grid max-w-xl"
+                    className="mx-auto grid max-w-xl px-1"
                     style={{ gridTemplateColumns: `repeat(${bottomNav.length + (secondaryNav.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}
                 >
                     {bottomNav.map((item) => {
                         const Icon = item.icon;
                         const isActive = isNavActive(item.routeName);
                         const showQueueCount = item.routeName === 'dashboard.bookings' && pendingBookingsCount > 0;
+                        const mobileLabel = item.mobileLabel ?? item.label;
+                        const queueBadgeText = pendingBookingsCount > 99 ? '99+' : pendingBookingsCount;
 
                         return (
                             <Link
@@ -461,27 +488,41 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 href={route(item.routeName)}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                    'relative flex min-h-16 min-w-0 flex-col items-center justify-start gap-1 pt-2 pb-1.5 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
                                     isActive ? 'text-ink' : 'text-mute hover:text-ink'
                                 )}
                             >
                                 <span
                                     className={cn(
-                                        'relative inline-flex h-7 w-12 items-center justify-center rounded-full transition-colors',
+                                        'relative inline-flex h-7 w-12 shrink-0 items-center justify-center rounded-full transition-colors',
                                         isActive && 'bg-ink text-canvas'
                                     )}
                                 >
                                     <Icon className="size-[18px]" aria-hidden="true" />
                                     {showQueueCount && (
                                         <span
-                                            aria-label={`${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut`}
-                                            className="absolute -top-1 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-electric px-1 text-[10px] leading-4 font-semibold text-canvas tabular-nums"
+                                            aria-hidden="true"
+                                            className="absolute -top-1 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-electric px-1 text-[10px] leading-4 font-semibold text-canvas ring-2 ring-canvas tabular-nums"
                                         >
-                                            {pendingBookingsCount}
+                                            {queueBadgeText}
                                         </span>
                                     )}
                                 </span>
-                                {item.label}
+                                {mobileLabel !== item.label ? (
+                                    <>
+                                        <span aria-hidden="true" className="max-w-full truncate px-1 text-center leading-tight">
+                                            {mobileLabel}
+                                        </span>
+                                        <span className="sr-only">{item.label}</span>
+                                    </>
+                                ) : (
+                                    <span className="max-w-full truncate px-1 text-center leading-tight">{mobileLabel}</span>
+                                )}
+                                {showQueueCount && (
+                                    <span className="sr-only">
+                                        {` (${pendingBookingsCount} ${bookingsNounLower} menunggu tindak lanjut)`}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
@@ -493,49 +534,80 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                     type="button"
                                     aria-current={moreActive ? 'page' : undefined}
                                     className={cn(
-                                        'flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                        'flex min-h-16 min-w-0 cursor-pointer flex-col items-center justify-start gap-1 pt-2 pb-1.5 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
                                         moreActive ? 'text-ink' : 'text-mute hover:text-ink'
-                                )}
-                            >
-                                <span
-                                    className={cn(
-                                        'inline-flex h-7 w-12 items-center justify-center rounded-full transition-colors',
-                                        moreActive && 'bg-ink text-canvas'
                                     )}
                                 >
-                                    <Menu className="size-[18px]" aria-hidden="true" />
-                                </span>
-                                Lainnya
-                            </button>
-                        </SheetTrigger>
-                        <SheetContent side="bottom" className="rounded-t-md pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                            <SheetHeader className="pb-0">
-                                <SheetTitle>Menu lainnya</SheetTitle>
-                                <SheetDescription className="sr-only">Halaman dashboard lainnya</SheetDescription>
-                            </SheetHeader>
-                            <div className="grid gap-1 px-3">
-                                {secondaryNav.map((item) => {
-                                    const Icon = item.icon;
-                                    const isActive = isNavActive(item.routeName);
-                                    return (
-                                        <Link
-                                            key={item.routeName}
-                                            href={route(item.routeName)}
-                                            aria-current={isActive ? 'page' : undefined}
-                                            onClick={() => setMoreOpen(false)}
-                                            className={cn(
-                                                'flex min-h-12 items-center gap-3 rounded-sm px-4 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
-                                                isActive ? 'bg-ink text-canvas' : 'text-ink hover:bg-bone'
-                                            )}
-                                        >
-                                            <Icon className="size-4" aria-hidden="true" />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </SheetContent>
-                    </Sheet>
+                                    <span
+                                        className={cn(
+                                            'inline-flex h-7 w-12 shrink-0 items-center justify-center rounded-full transition-colors',
+                                            moreActive && 'bg-ink text-canvas'
+                                        )}
+                                    >
+                                        <Menu className="size-[18px]" aria-hidden="true" />
+                                    </span>
+                                    <span className="max-w-full truncate px-1 text-center leading-tight">Lainnya</span>
+                                </button>
+                            </SheetTrigger>
+                            <SheetContent
+                                side="bottom"
+                                className="max-h-[85dvh] gap-2 overflow-y-auto overscroll-contain rounded-t-md border-t border-divider px-0 pt-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+                            >
+                                <div aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-hairline" />
+                                <SheetHeader className="pt-2 pr-12 pb-1 pl-5 text-left">
+                                    <SheetTitle className="text-base font-semibold text-ink">Menu lainnya</SheetTitle>
+                                    <SheetDescription className="sr-only">Halaman dashboard lainnya</SheetDescription>
+                                </SheetHeader>
+                                <div className="grid gap-1 px-3">
+                                    {secondaryNav.map((item) => {
+                                        const Icon = item.icon;
+                                        const isActive = isNavActive(item.routeName);
+                                        const showPlanBadge = item.routeName === 'dashboard.billing' && Boolean(subscription);
+
+                                        return (
+                                            <Link
+                                                key={item.routeName}
+                                                href={route(item.routeName)}
+                                                aria-current={isActive ? 'page' : undefined}
+                                                onClick={() => setMoreOpen(false)}
+                                                className={cn(
+                                                    'flex min-h-12 items-center justify-between gap-3 rounded-xl px-3.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                    isActive ? 'bg-ink text-canvas' : 'text-ink hover:bg-bone'
+                                                )}
+                                            >
+                                                <span className="flex min-w-0 items-center gap-3">
+                                                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                                                    <span className="truncate">{item.label}</span>
+                                                </span>
+                                                {showPlanBadge && subscription ? (
+                                                    <Badge
+                                                        variant={
+                                                            subscription.is_expired
+                                                                ? 'destructive'
+                                                                : subscription.is_trial
+                                                                  ? 'popular'
+                                                                  : 'secondary'
+                                                        }
+                                                        className="shrink-0"
+                                                    >
+                                                        {subscription.is_expired
+                                                            ? 'Berakhir'
+                                                            : subscription.is_trial
+                                                              ? `Trial · ${subscription.days_remaining}h`
+                                                              : subscription.plan.name}
+                                                    </Badge>
+                                                ) : (
+                                                    <ChevronRight
+                                                        className={cn('size-4 shrink-0', isActive ? 'text-canvas/80' : 'text-stone')}
+                                                        aria-hidden="true"
+                                                    />
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </SheetContent>
+                        </Sheet>
                     )}
                 </div>
             </nav>

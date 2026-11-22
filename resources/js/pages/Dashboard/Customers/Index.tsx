@@ -91,10 +91,10 @@ export default function CustomersIndex({
                             <label htmlFor="customer-search" className="sr-only">
                                 Cari pelanggan berdasarkan nama, email, atau nomor WhatsApp
                             </label>
-                            <Search className="pointer-events-none absolute top-4 left-4 size-4 text-ash" aria-hidden="true" />
+                            <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
                             <Input
                                 id="customer-search"
-                                className="pl-10 pr-10"
+                                className="pl-10 pr-11"
                                 placeholder="Cari nama, email, atau WA…"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -108,7 +108,7 @@ export default function CustomersIndex({
                                         setSearch('');
                                         applyFilters({ search: '' });
                                     }}
-                                    className="absolute right-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                    className="absolute right-1.5 inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                 >
                                     <X className="size-4" aria-hidden="true" />
                                 </button>
@@ -186,10 +186,10 @@ export default function CustomersIndex({
                 </div>
 
                 {(duplicateCustomersCount ?? 0) > 0 && activeFilters.segment !== 'duplicates' && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline-soft bg-bone/70 px-4 py-3 text-xs text-ink">
-                        <div className="flex items-center gap-2">
-                            <Users className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                            <span>
+                    <div className="flex flex-col gap-3 rounded-md border border-hairline-soft bg-bone/70 px-4 py-3 text-xs text-ink sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-start gap-2 sm:items-center">
+                            <Users className="mt-0.5 size-4 shrink-0 text-mute sm:mt-0" aria-hidden="true" />
+                            <span className="min-w-0 leading-relaxed">
                                 Terdeteksi {duplicateCustomersCount} profil pelanggan dengan nama yang sama tapi nomor WhatsApp berbeda.
                             </span>
                         </div>
@@ -197,6 +197,7 @@ export default function CustomersIndex({
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="w-full shrink-0 sm:w-auto"
                             onClick={() => applyFilters({ segment: 'duplicates' })}
                         >
                             Lihat Potensi Duplikat
@@ -206,7 +207,7 @@ export default function CustomersIndex({
             </div>
 
             {customers.length === 0 ? (
-                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-6 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         {hasActiveFilter
                             ? 'Tidak ada pelanggan yang cocok dengan filter saat ini.'
@@ -236,11 +237,11 @@ export default function CustomersIndex({
                                     <div className="min-w-0 flex-1">
                                         <Link
                                             href={route('dashboard.customers.show', c.id)}
-                                            className="block truncate text-base font-semibold text-ink hover:underline"
+                                            className="block line-clamp-2 text-base font-semibold break-words text-ink hover:underline"
                                         >
                                             {c.name}
                                         </Link>
-                                        <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">+{c.phone}</p>
+                                        <p className="mt-0.5 truncate font-mono text-xs tabular-nums text-mute">+{c.phone}</p>
                                         {c.email && <p className="truncate text-xs text-mute">{c.email}</p>}
                                         {c.name_aliases && c.name_aliases.length > 0 && (
                                             <p className="mt-0.5 truncate text-xs text-mute">

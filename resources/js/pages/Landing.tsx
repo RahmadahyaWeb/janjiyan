@@ -323,20 +323,20 @@ export default function Landing({ plans }: LandingProps) {
                         <JanjiyanLogo size="sm" compactMobile />
                     </Link>
 
-                    <div className="hidden items-center gap-6 text-sm font-semibold md:flex">
-                        <a href="#tipe-bisnis" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                    <div className="hidden items-center gap-4 text-sm font-semibold md:flex lg:gap-6">
+                        <a href="#tipe-bisnis" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             Tipe bisnis
                         </a>
-                        <a href="#fitur" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                        <a href="#fitur" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             Fitur
                         </a>
-                        <a href="#harga" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                        <a href="#harga" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             Harga
                         </a>
-                        <a href="#cara-mulai" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                        <a href="#cara-mulai" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             Cara mulai
                         </a>
-                        <a href="#faq" className="inline-flex min-h-8 items-center rounded-full px-1 text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
+                        <a href="#faq" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
                             FAQ
                         </a>
                     </div>
@@ -1023,7 +1023,7 @@ export default function Landing({ plans }: LandingProps) {
             </main>
 
             {/* Unified Closing CTA + Inverse Dark Footer */}
-            <footer className="mt-16 rounded-t-md bg-dark px-6 py-16 text-on-dark sm:px-12 sm:py-20">
+            <footer className="mt-16 rounded-t-md bg-dark px-6 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))] text-on-dark sm:px-12 sm:pt-20 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
                 <div className="mx-auto max-w-6xl">
                     {/* Closing CTA Band */}
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
@@ -1038,7 +1038,7 @@ export default function Landing({ plans }: LandingProps) {
                         <Button
                             asChild
                             size="lg"
-                            className="min-h-14 h-auto shrink-0 py-3 whitespace-normal bg-canvas text-center text-ink hover:bg-bone focus-visible:ring-on-dark focus-visible:ring-offset-dark"
+                            className="min-h-14 h-auto w-full shrink-0 py-3 whitespace-normal bg-canvas text-center text-ink hover:bg-bone focus-visible:ring-on-dark focus-visible:ring-offset-dark sm:w-auto"
                         >
                             <Link href={dashboardHref}>
                                 {primaryCtaLabel}

@@ -33,7 +33,7 @@ export default function Onboarding() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col bg-canvas px-4 py-6 text-ink sm:px-6 sm:py-10">
+        <div className="flex min-h-screen flex-col bg-canvas px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-ink sm:px-6 sm:py-10">
             <Head title="Setup Profil Bisnis" />
 
             <a
@@ -96,7 +96,7 @@ export default function Onboarding() {
 
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-6 space-y-6 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-8"
+                    className="mt-6 space-y-6 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8"
                 >
                     <BusinessTypeSelector
                         idPrefix="onboarding"

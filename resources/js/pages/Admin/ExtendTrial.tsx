@@ -37,9 +37,9 @@ export default function AdminExtendTrial({ merchant }: ExtendTrialProps) {
                             Superadmin
                         </span>
                     </div>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="icon" className="sm:w-auto sm:px-4">
                         <Link href={route('admin.index')}>
-                            <ArrowLeft className="size-3.5" aria-hidden="true" />
+                            <ArrowLeft className="size-4 sm:size-3.5" aria-hidden="true" />
                             <span className="hidden sm:inline">Kembali ke Admin</span>
                             <span className="sr-only sm:hidden">Kembali ke Admin</span>
                         </Link>
@@ -51,7 +51,7 @@ export default function AdminExtendTrial({ merchant }: ExtendTrialProps) {
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <div>
                         <h1 className="text-xl font-semibold text-ink">Perpanjang Trial Merchant</h1>
-                        <p className="mt-1 text-sm text-mute">
+                        <p className="mt-1 text-sm text-mute [overflow-wrap:anywhere]">
                             Merchant: <span className="font-semibold text-ink">{merchant.name}</span> ({merchant.email})
                         </p>
                     </div>
@@ -72,10 +72,10 @@ export default function AdminExtendTrial({ merchant }: ExtendTrialProps) {
                         )}
                     </div>
                     <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                        <Button asChild type="button" variant="outline">
+                        <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                             <Link href={route('admin.index')}>Batal</Link>
                         </Button>
-                        <Button type="submit" disabled={form.processing}>
+                        <Button type="submit" disabled={form.processing} className="w-full sm:w-auto">
                             {form.processing ? 'Menyimpan…' : 'Simpan Perpanjangan Trial'}
                         </Button>
                     </div>

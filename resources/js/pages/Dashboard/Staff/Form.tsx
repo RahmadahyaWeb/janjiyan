@@ -130,7 +130,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
             <form
                 ref={formRef}
                 onSubmit={handleSubmit}
-                className="max-w-xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
             >
                 <div className="space-y-1.5">
                     <Label htmlFor="staff-name">Nama Lengkap *</Label>
@@ -241,7 +241,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
 
                 {isEditing ? (
                     <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
-                        <div>
+                        <div className="min-w-0">
                             <Label htmlFor="edit-staff-active" className="text-sm font-semibold text-ink">
                                 {isStaffAppointment ? 'Staff Aktif untuk Reservasi' : 'Anggota Tim Aktif'}
                             </Label>
@@ -253,13 +253,14 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                         </div>
                         <Switch
                             id="edit-staff-active"
+                            className="shrink-0"
                             checked={form.data.is_active}
                             onCheckedChange={(val) => form.setData('is_active', val)}
                         />
                     </div>
                 ) : (
                     <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5">
-                        <div>
+                        <div className="min-w-0">
                             <Label htmlFor="staff-grant-login" className="text-sm font-semibold text-ink">
                                 Buatkan Akun Login Dashboard (opsional)
                             </Label>
@@ -271,6 +272,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                         </div>
                         <Switch
                             id="staff-grant-login"
+                            className="shrink-0"
                             checked={form.data.grant_login}
                             onCheckedChange={(val) => form.setData('grant_login', val)}
                         />
@@ -320,7 +322,7 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                         {form.data.role === 'staff' && (
                             <div className="space-y-2">
                                 <Label>Menu yang Boleh Dibuka</Label>
-                                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilih izin akses tim">
+                                <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Pilih izin akses tim">
                                     {permissionOptions.map((perm) => {
                                         const active = form.data.permissions.includes(perm.key);
                                         return (
@@ -329,13 +331,13 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                                                 type="button"
                                                 aria-pressed={active}
                                                 onClick={() => togglePermission(perm.key)}
-                                                className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
-                                                    active ? 'bg-ink text-canvas' : 'bg-bone text-ink'
+                                                className={`min-h-11 cursor-pointer rounded-xl px-3.5 py-2.5 text-left text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                                    active ? 'bg-ink text-canvas' : 'bg-bone text-ink hover:bg-hairline-soft'
                                                 }`}
                                             >
-                                                {perm.label}
-                                                <span className={`ml-1 font-normal ${active ? 'text-canvas/70' : 'text-mute'}`}>
-                                                    · {perm.hint}
+                                                <span className="block font-semibold">{perm.label}</span>
+                                                <span className={`mt-0.5 block leading-snug font-normal ${active ? 'text-canvas/75' : 'text-mute'}`}>
+                                                    {perm.hint}
                                                 </span>
                                             </button>
                                         );
@@ -357,10 +359,10 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                 )}
 
                 <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <Button asChild type="button" variant="outline">
+                    <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                         <Link href={route('dashboard.staff')}>Batal</Link>
                     </Button>
-                    <Button type="submit" disabled={form.processing}>
+                    <Button type="submit" disabled={form.processing} className="w-full sm:w-auto">
                         {form.processing
                             ? 'Menyimpan…'
                             : isEditing

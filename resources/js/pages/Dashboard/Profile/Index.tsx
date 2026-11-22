@@ -90,7 +90,7 @@ export default function ProfileIndex({ hasPassword }: ProfileIndexProps) {
                         )}
                     </div>
 
-                    <Button type="submit" disabled={profileForm.processing}>
+                    <Button type="submit" disabled={profileForm.processing} className="w-full sm:w-auto">
                         {profileForm.processing ? 'Menyimpan…' : 'Simpan Profil'}
                     </Button>
                 </form>
@@ -172,7 +172,7 @@ export default function ProfileIndex({ hasPassword }: ProfileIndexProps) {
                         />
                     </div>
 
-                    <Button type="submit" disabled={passwordForm.processing}>
+                    <Button type="submit" disabled={passwordForm.processing} className="w-full sm:w-auto">
                         {passwordForm.processing ? 'Memperbarui…' : 'Perbarui Kata Sandi'}
                     </Button>
                 </form>

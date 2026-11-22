@@ -142,7 +142,7 @@ export default function BookingPortal({
 
     // Keep focused fields and scroll targets clear of the mobile bottom bar (WCAG 2.4.11).
     useEffect(() => {
-        const padding = ['scroll-pt-4', 'scroll-pb-28', 'lg:scroll-pb-0'];
+        const padding = ['scroll-pt-4', 'scroll-pb-32', 'lg:scroll-pb-0'];
         document.documentElement.classList.add(...padding);
         return () => document.documentElement.classList.remove(...padding);
     }, []);
@@ -308,7 +308,7 @@ export default function BookingPortal({
         : null;
 
     return (
-        <div className={cn('min-h-screen bg-canvas text-ink', services.length > 0 && 'pb-24 lg:pb-0')}>
+        <div className={cn('min-h-screen bg-canvas text-ink', services.length > 0 && 'pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0')}>
             <Head title={`${typeConfig.publicPortal.bookingPageTitle} — ${business.name}`} />
 
             <a
@@ -381,7 +381,7 @@ export default function BookingPortal({
                                                     setPickupAddressError('');
                                                 }}
                                                 className={cn(
-                                                    'flex cursor-pointer flex-col justify-between rounded-md p-5 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                                    'flex min-w-0 cursor-pointer flex-col justify-between rounded-md p-4 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:p-5',
                                                     active
                                                         ? 'bg-canvas ring-2 ring-ink'
                                                         : 'bg-canvas ring-1 ring-hairline hover:ring-ink/40'
@@ -397,7 +397,7 @@ export default function BookingPortal({
                                                     )}
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-start justify-between gap-2">
-                                                            <h3 className="text-base font-semibold text-ink">{service.name}</h3>
+                                                            <h3 className="text-base font-semibold break-words text-ink">{service.name}</h3>
                                                             {active && (
                                                                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-ink text-canvas">
                                                                     <Check className="size-3" aria-hidden="true" />
@@ -405,7 +405,7 @@ export default function BookingPortal({
                                                             )}
                                                         </div>
                                                         {service.description && (
-                                                            <p className="mt-1.5 text-sm leading-relaxed text-mute">
+                                                            <p className="mt-1.5 text-sm leading-relaxed break-words text-mute">
                                                                 {service.description}
                                                             </p>
                                                         )}
@@ -497,7 +497,7 @@ export default function BookingPortal({
                                                 aria-pressed={selectedStaffId === staff.id}
                                                 onClick={() => setSelectedStaffId(staff.id)}
                                                 className={cn(
-                                                    'inline-flex h-11 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                                    'inline-flex min-h-11 max-w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-0.5 rounded-full px-4 py-2 text-left text-sm font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
                                                     selectedStaffId === staff.id
                                                         ? 'bg-ink text-canvas'
                                                         : 'bg-bone text-ink hover:bg-hairline-soft'
@@ -533,12 +533,12 @@ export default function BookingPortal({
 
                                 <div className="grid grid-cols-[minmax(0,1fr)] gap-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                                     <div className="min-w-0 space-y-3">
-                                    <div className="flex items-stretch gap-2">
+                                    <div className="flex min-w-0 items-stretch gap-2">
                                     <HorizontalScrollContainer
                                         role="group"
                                         ariaLabel="Pilih tanggal"
-                                        wrapperClassName="-ml-4 flex-1 sm:ml-0"
-                                        className="flex gap-2 pb-1 pl-4 sm:pl-0"
+                                        wrapperClassName="-ml-4 min-w-0 flex-1 sm:ml-0"
+                                        className="flex gap-2 pb-1 pl-4 pr-8 sm:px-0"
                                     >
                                         {quickDates.map(({ date, closed }) => {
                                             const d = new Date(`${date}T00:00:00Z`);
@@ -576,14 +576,14 @@ export default function BookingPortal({
                                         {/* Kept outside the scroll strip so it is always reachable; dates beyond the strip: transparent native date input over the chip */}
                                         <label
                                             className={cn(
-                                                'relative mb-1 flex w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border py-2 text-xs font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2',
+                                                'relative mb-1 flex w-22 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border px-1.5 py-2 text-center text-xs font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2',
                                                 isCustomDate
                                                     ? 'border-ink bg-ink text-canvas'
                                                     : 'border-dashed border-hairline bg-canvas text-ink hover:border-ink/40'
                                             )}
                                         >
                                             <Calendar className="size-4" aria-hidden="true" />
-                                            <span className="whitespace-nowrap">Tanggal lain</span>
+                                            <span className="leading-tight">Tanggal lain</span>
                                             <input
                                                 id="booking-date"
                                                 type="date"
@@ -988,10 +988,10 @@ export default function BookingPortal({
                                                         <div key={idx} className="flex items-center justify-between gap-3 rounded-xl bg-bone p-3 text-xs">
                                                             <div className="min-w-0">
                                                                 <p className="font-semibold text-ink">{acc.bank_name}</p>
-                                                                <p className="mt-0.5 font-mono text-sm font-semibold text-ink">
+                                                                <p className="mt-0.5 font-mono text-sm font-semibold break-all tabular-nums text-ink">
                                                                     {acc.account_number}
                                                                 </p>
-                                                                <p className="text-mute">a.n. {acc.account_holder}</p>
+                                                                <p className="break-words text-mute">a.n. {acc.account_holder}</p>
                                                             </div>
                                                             <CopyButton value={acc.account_number} label={`nomor rekening ${acc.bank_name}`} />
                                                         </div>
@@ -1053,7 +1053,7 @@ export default function BookingPortal({
                                                         )}
                                                     >
                                                         <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                                        <span className="break-words">
+                                                        <span className="min-w-0 [overflow-wrap:anywhere]">
                                                             {dpProof ? dpProof.name : 'Pilih foto/screenshot bukti transfer (JPG/PNG/WebP, maks 5MB)'}
                                                         </span>
                                                         <input
@@ -1248,8 +1248,8 @@ export default function BookingPortal({
                         </aside>
 
                         {/* Mobile/tablet sticky total + CTA */}
-                        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-canvas px-4 py-3 sm:px-6 lg:hidden">
-                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+                        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 lg:hidden">
+                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 sm:gap-4">
                                 <div className="min-w-0">
                                     <p className="truncate text-xs text-mute">
                                         {selectedService?.name}
@@ -1257,7 +1257,7 @@ export default function BookingPortal({
                                         {` · ${formatDateShortIndo(selectedDate)}`}
                                         {!isDropoffService && selectedTime && `, ${selectedTime}`}
                                     </p>
-                                    <p className="text-lg font-semibold whitespace-nowrap tabular-nums text-ink">
+                                    <p className="text-base font-semibold whitespace-nowrap tabular-nums text-ink sm:text-lg">
                                         {formatRupiah(computedTotalPrice)}
                                     </p>
                                 </div>

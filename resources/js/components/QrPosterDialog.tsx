@@ -414,7 +414,7 @@ export function QrPosterDialog({
                         placeholder={DEFAULT_SUBTITLE}
                         value={subtitle}
                         onChange={(e) => setSubtitle(e.target.value)}
-                        className="h-10 bg-canvas text-base md:text-sm"
+                        className="h-10 bg-canvas py-2 text-base md:text-sm"
                     />
                     <div className="flex flex-wrap gap-1.5">
                         {subtitlePresets.map((preset) => (
@@ -422,7 +422,7 @@ export function QrPosterDialog({
                                 key={preset}
                                 type="button"
                                 onClick={() => setSubtitle(preset)}
-                                className={`min-h-8 cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 text-left text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                     resolvedSubtitle === preset
                                         ? 'bg-ink text-canvas'
                                         : 'bg-canvas text-mute hover:text-ink'
@@ -450,7 +450,7 @@ export function QrPosterDialog({
                             <img
                                 src={qrDataUrl}
                                 alt={`QR Code portal booking ${businessName}`}
-                                className="size-40 rounded-lg bg-white object-contain sm:size-44"
+                                className="size-40 rounded-xs bg-white object-contain sm:size-44"
                             />
                         ) : (
                             <div className="flex size-40 items-center justify-center text-xs text-mute sm:size-44">
@@ -460,7 +460,7 @@ export function QrPosterDialog({
                     </div>
 
                     <div className="mt-4">
-                        <span className="inline-block max-w-full break-words rounded-full bg-ink px-4 py-1.5 font-mono text-xs text-canvas">
+                        <span className="inline-block max-w-full rounded-xl bg-ink px-4 py-1.5 font-mono text-xs break-all text-canvas">
                             {publicUrl.replace(/^https?:\/\//, '')}
                         </span>
                     </div>

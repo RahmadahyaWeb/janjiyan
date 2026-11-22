@@ -120,8 +120,8 @@ export function BookingRescheduleDialog({
         <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-ink">
-                        <CalendarClock className="size-5" aria-hidden="true" />
+                    <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-ink sm:text-xl">
+                        <CalendarClock className="size-5 shrink-0" aria-hidden="true" />
                         Ubah Jadwal Reservasi
                     </DialogTitle>
                 </DialogHeader>
@@ -130,16 +130,17 @@ export function BookingRescheduleDialog({
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="rounded-sm bg-bone p-3.5 text-xs">
                             <p className="font-mono font-semibold text-ink">{booking.booking_code}</p>
-                            <p className="mt-0.5 text-mute">
+                            <p className="mt-0.5 break-words text-mute">
                                 {booking.customer_name} · {booking.service_name}
                             </p>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="reschedule-date">Tanggal Baru</Label>
                             <Input
                                 id="reschedule-date"
                                 type="date"
+                                className="min-w-0"
                                 min={todayString}
                                 value={form.data.date}
                                 onChange={(e) => form.setData('date', e.target.value)}
@@ -205,7 +206,7 @@ export function BookingRescheduleDialog({
                             {showInitialLoading ? (
                                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                     {Array.from({ length: 8 }).map((_, idx) => (
-                                        <div key={idx} className="h-9 rounded-xl bg-bone" />
+                                        <div key={idx} className="h-10 rounded-xl bg-bone" />
                                     ))}
                                 </div>
                             ) : !hasLoaded ? (
@@ -219,6 +220,8 @@ export function BookingRescheduleDialog({
                                     className={`grid grid-cols-3 gap-2 transition-opacity duration-150 sm:grid-cols-4 ${
                                         showRefreshing ? 'opacity-60' : ''
                                     }`}
+                                    role="group"
+                                    aria-label="Pilih slot waktu baru"
                                 >
                                     {slots.map((slot) => {
                                         const selected = form.data.time === slot.time;
@@ -226,11 +229,12 @@ export function BookingRescheduleDialog({
                                             <button
                                                 key={slot.time}
                                                 type="button"
+                                                aria-pressed={selected}
                                                 onClick={() => {
                                                     setTimeError('');
                                                     form.setData('time', slot.time);
                                                 }}
-                                                className={`cursor-pointer rounded-xl border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
+                                                className={`inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border px-2.5 py-2 text-center font-mono text-xs font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                                     selected
                                                         ? 'border-ink bg-ink text-white'
                                                         : 'border-hairline-soft bg-canvas text-ink hover:bg-bone'
@@ -250,12 +254,13 @@ export function BookingRescheduleDialog({
                         </div>
                         )}
 
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button type="button" variant="outline" onClick={onClose}>
+                        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
                                 Batal
                             </Button>
                             <Button
                                 type="submit"
+                                className="w-full sm:w-auto"
                                 disabled={
                                     form.processing ||
                                     (isDropoff

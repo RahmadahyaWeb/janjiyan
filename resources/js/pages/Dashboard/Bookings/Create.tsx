@@ -266,9 +266,9 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                 <form
                     ref={formRef}
                     onSubmit={handleSubmit}
-                    className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                    className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                 >
-                    <div className="space-y-1.5">
+                    <div className="min-w-0 space-y-1.5">
                         <Label htmlFor="manual-service">{config.services.pageTitle} *</Label>
                         <NativeSelect
                             id="manual-service"
@@ -298,11 +298,12 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="manual-date">{isDropoff ? 'Tanggal Drop-off *' : 'Tanggal *'}</Label>
                             <Input
                                 id="manual-date"
                                 type="date"
+                                className="min-w-0"
                                 min={todayString}
                                 value={form.data.date}
                                 onChange={(e) => form.setData('date', e.target.value)}
@@ -311,13 +312,15 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         </div>
 
                         {isDropoff ? (
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <Label htmlFor="manual-quantity">Jumlah ({unitLabel}) *</Label>
                                 <Input
                                     id="manual-quantity"
                                     type="number"
+                                    inputMode="numeric"
                                     min={1}
                                     max={50}
+                                    className="tabular-nums"
                                     value={form.data.quantity}
                                     onChange={(e) => form.setData('quantity', parseNumericInput(e.target.value))}
                                     aria-invalid={Boolean(form.errors.quantity)}
@@ -329,7 +332,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                             </div>
                         ) : (
                             config.bookings.supportsStaffColumn && selectedService?.assignment_mode === 'staff' && (
-                                <div className="space-y-1.5">
+                                <div className="min-w-0 space-y-1.5">
                                     <Label htmlFor="manual-staff">Staff</Label>
                                     <NativeSelect
                                         id="manual-staff"
@@ -373,7 +376,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
                             {selectedService?.supports_pickup && (
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="space-y-1.5">
+                                    <div className="min-w-0 space-y-1.5">
                                         <Label htmlFor="manual-fulfillment">Metode Penyerahan</Label>
                                         <NativeSelect
                                             id="manual-fulfillment"
@@ -387,7 +390,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                         </NativeSelect>
                                     </div>
                                     {form.data.fulfillment_type === 'pickup' && (
-                                        <div className="space-y-1.5">
+                                        <div className="min-w-0 space-y-1.5">
                                             <Label htmlFor="manual-pickup-session">Sesi Jemput</Label>
                                             <NativeSelect
                                                 id="manual-pickup-session"
@@ -439,6 +442,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                     </div>
                                     <Switch
                                         id="manual-start-in-progress"
+                                        className="shrink-0"
                                         checked={form.data.start_in_progress}
                                         onCheckedChange={(checked) => form.setData('start_in_progress', checked)}
                                     />
@@ -458,9 +462,9 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 {showRefreshing && <span className="text-xs font-medium text-mute">Memperbarui…</span>}
                             </div>
                             {showInitialLoading ? (
-                                <div className="flex flex-wrap gap-2">
-                                    {Array.from({ length: 6 }).map((_, idx) => (
-                                        <div key={idx} className="h-8 w-16 rounded-full bg-bone" />
+                                <div className="grid grid-cols-3 gap-2 min-[380px]:grid-cols-4 sm:flex sm:flex-wrap">
+                                    {Array.from({ length: 8 }).map((_, idx) => (
+                                        <div key={idx} className="h-10 rounded-xl bg-bone sm:w-20 sm:rounded-full" />
                                     ))}
                                 </div>
                             ) : !hasLoaded ? (
@@ -471,7 +475,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 </p>
                             ) : (
                                 <div
-                                    className={`flex flex-wrap gap-2 transition-opacity duration-150 ${
+                                    className={`grid grid-cols-3 gap-2 transition-opacity duration-150 min-[380px]:grid-cols-4 sm:flex sm:flex-wrap ${
                                         showRefreshing ? 'opacity-60' : ''
                                     }`}
                                     role="group"
@@ -488,7 +492,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                                     form.setData('time', slot.time);
                                                     setTimeError('');
                                                 }}
-                                                className={`cursor-pointer rounded-full px-3.5 py-2 font-mono text-xs font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                                className={`inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl px-3 py-2 font-mono text-xs font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-3.5 ${
                                                     selected ? 'bg-ink text-canvas' : 'bg-bone text-ink hover:bg-hairline-soft'
                                                 }`}
                                             >
@@ -508,14 +512,15 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
                     <div ref={customerLookupRef} className="space-y-2.5">
                         {selectedCustomer && (
-                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-hairline-soft bg-bone px-3.5 py-2.5 text-xs">
-                                <p className="font-medium text-ink">
-                                    Terhubung ke pelanggan terdaftar: <span className="font-semibold">{selectedCustomer.name}</span> (+{selectedCustomer.phone}) · {selectedCustomer.bookings_count}x riwayat kunjungan
+                            <div className="flex flex-col gap-2.5 rounded-sm border border-hairline-soft bg-bone p-3.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+                                <p className="min-w-0 break-words font-medium text-ink">
+                                    Terhubung ke pelanggan terdaftar: <span className="font-semibold">{selectedCustomer.name}</span> (+{selectedCustomer.phone}) · <span className="tabular-nums">{selectedCustomer.bookings_count}x</span> riwayat kunjungan
                                 </p>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
+                                    className="w-full shrink-0 sm:w-auto"
                                     onClick={handleClearSelectedCustomer}
                                 >
                                     Ganti / Input Baru
@@ -524,7 +529,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         )}
 
                         <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <Label htmlFor="manual-customer-name">Nama Pelanggan *</Label>
                                 <Input
                                     id="manual-customer-name"
@@ -553,7 +558,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                     </p>
                                 )}
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <Label htmlFor="manual-customer-phone">Nomor WhatsApp *</Label>
                                 <Input
                                     id="manual-customer-phone"
@@ -610,7 +615,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                             aria-selected={selectedCustomer?.id === c.id}
                                             onMouseDown={(e) => e.preventDefault()}
                                             onClick={() => handleSelectCustomer(c)}
-                                            className="flex w-full cursor-pointer flex-col gap-1.5 px-3.5 py-2.5 text-left transition-colors hover:bg-bone focus-visible:bg-bone focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between"
+                                            className="flex min-h-11 w-full cursor-pointer flex-col gap-1.5 px-3.5 py-2.5 text-left transition-colors hover:bg-bone focus-visible:bg-bone focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             <div className="min-w-0 space-y-0.5">
                                                 <div className="flex flex-wrap items-baseline gap-1.5">
@@ -653,7 +658,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="manual-customer-email">Email (Opsional)</Label>
                             <Input
                                 id="manual-customer-email"
@@ -670,7 +675,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 </p>
                             )}
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="manual-payment-status">Status Pembayaran Awal *</Label>
                             <NativeSelect
                                 id="manual-payment-status"
@@ -704,11 +709,11 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         </div>
                     )}
 
-                    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                        <Button asChild type="button" variant="outline">
+                    <div className="flex flex-col-reverse gap-2.5 pt-2 sm:flex-row sm:justify-end">
+                        <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                             <Link href={route('dashboard.bookings')}>Batal</Link>
                         </Button>
-                        <Button type="submit" disabled={form.processing}>
+                        <Button type="submit" className="w-full sm:w-auto" disabled={form.processing}>
                             {form.processing
                                 ? 'Menyimpan…'
                                 : `Simpan ${config.bookings.itemSingular} Manual`}

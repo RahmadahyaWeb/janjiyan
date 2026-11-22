@@ -324,7 +324,7 @@ export default function BusinessHome({
                                     type="button"
                                     onClick={() => setLightboxIdx(idx)}
                                     aria-label={item.caption ? `Lihat foto: ${item.caption}` : `Lihat foto ${idx + 1}`}
-                                    className="w-[30%] shrink-0 cursor-pointer snap-start overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    className="w-[30%] min-w-24 shrink-0 cursor-pointer snap-start overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                                 >
                                     <img
                                         src={item.image_url}
@@ -455,7 +455,7 @@ export default function BusinessHome({
                     </nav>
                 </main>
 
-                <footer className="pb-10 text-center text-xs text-mute">
+                <footer className="pb-[calc(2.5rem+env(safe-area-inset-bottom))] text-center text-xs text-mute">
                     <span className="inline-flex items-center gap-1.5">
                         Ditenagai oleh <JanjiyanLogo size="sm" />
                     </span>
@@ -475,7 +475,7 @@ export default function BusinessHome({
                             <img
                                 src={galleries[lightboxIdx].image_url}
                                 alt={galleries[lightboxIdx].caption || `${business.name} portofolio ${lightboxIdx + 1}`}
-                                className="max-h-[60vh] w-full rounded-xs bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
+                                className="max-h-[60dvh] w-full rounded-xs bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
                             />
 
                             {galleries.length > 1 && (
@@ -484,11 +484,12 @@ export default function BusinessHome({
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
+                                        aria-label="Foto sebelumnya"
+                                        className="gap-1 px-3 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
                                         onClick={() => setLightboxIdx((lightboxIdx - 1 + galleries.length) % galleries.length)}
                                     >
                                         <ChevronLeft className="size-4" aria-hidden="true" />
-                                        <span>Sebelumnya</span>
+                                        <span className="hidden min-[360px]:inline">Sebelumnya</span>
                                     </Button>
                                     <span className="shrink-0 font-mono text-xs font-semibold whitespace-nowrap text-mute tabular-nums">
                                         {lightboxIdx + 1} / {galleries.length}
@@ -497,10 +498,11 @@ export default function BusinessHome({
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
+                                        aria-label="Foto berikutnya"
+                                        className="gap-1 px-3 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
                                         onClick={() => setLightboxIdx((lightboxIdx + 1) % galleries.length)}
                                     >
-                                        <span>Berikutnya</span>
+                                        <span className="hidden min-[360px]:inline">Berikutnya</span>
                                         <ChevronRight className="size-4" aria-hidden="true" />
                                     </Button>
                                 </div>

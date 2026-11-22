@@ -99,6 +99,7 @@
 @layer base {
     html {
         scroll-padding-block-start: 5.5rem;
+        overflow-x: clip;
     }
 
     * {
@@ -111,6 +112,7 @@
         color: var(--color-ink);
         font-weight: 450;
         letter-spacing: 0;
+        overflow-x: clip;
     }
 
     h1, h2, h3, h4 {
@@ -118,16 +120,23 @@
         letter-spacing: 0;
     }
 
-    /* iOS WebKit draws date inputs natively: ignores width/height, grey bg, centered text. */
-    input[type="date"] {
+    /* iOS WebKit draws date/time inputs natively with wide intrinsic widths and centered values. */
+    input[type="date"],
+    input[type="time"] {
         -webkit-appearance: none;
         appearance: none;
         display: block;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        font-variant-numeric: tabular-nums;
     }
 
-    input[type="date"]::-webkit-date-and-time-value {
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="time"]::-webkit-date-and-time-value {
         text-align: left;
         min-height: 1.5em;
+        margin: 0;
     }
 }
 

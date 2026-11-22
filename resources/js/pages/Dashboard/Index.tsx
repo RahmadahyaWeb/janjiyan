@@ -144,7 +144,7 @@ export default function DashboardIndex({
     };
 
     const kpiCardClass =
-        'group flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-ink/30 hover:bg-bone/40 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
+        'group flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-3.5 transition-colors hover:border-ink/30 hover:bg-bone/40 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:p-5';
 
     return (
         <DashboardLayout title="Ringkasan Bisnis">
@@ -152,15 +152,15 @@ export default function DashboardIndex({
 
             {/* Public Link Share Banner */}
             {activeBusiness && (
-                <div className="flex flex-col justify-between gap-4 rounded-md bg-bone p-5 sm:flex-row sm:items-center">
+                <div className="flex flex-col justify-between gap-3.5 rounded-md bg-bone p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold text-mute">Link Booking Publik Anda</p>
                         <p className="mt-0.5 truncate font-mono text-sm font-semibold text-ink">
                             /b/{activeBusiness.slug}
                         </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={copyLink}>
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
+                        <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={copyLink}>
                             {copied ? (
                                 <Check className="size-3.5 text-success" aria-hidden="true" />
                             ) : (
@@ -168,7 +168,7 @@ export default function DashboardIndex({
                             )}
                             {copied ? 'Tersalin' : 'Salin Link'}
                         </Button>
-                        <Button asChild size="sm">
+                        <Button asChild size="sm" className="w-full sm:w-auto">
                             <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
                                 Buka Portal
                                 <ArrowUpRight className="size-3.5" aria-hidden="true" />
@@ -253,13 +253,13 @@ export default function DashboardIndex({
                     )}
                     className={kpiCardClass}
                 >
-                    <div className="flex items-center justify-between text-mute">
-                        <span className="text-xs font-semibold">
+                    <div className="flex items-start justify-between gap-1.5 text-mute">
+                        <span className="min-w-0 text-xs leading-snug font-semibold">
                             {config.dashboard.todayMetricLabel}
                         </span>
-                        <Calendar className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        <Calendar className="size-4 shrink-0 motion-safe:transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:mt-3">
                         <p className="text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
                             {stats.today_bookings}
                         </p>
@@ -274,26 +274,26 @@ export default function DashboardIndex({
                         stats.pending_dp > 0 && 'border-warning-border bg-warning-soft/30 hover:bg-warning-soft/50'
                     )}
                 >
-                    <div className="flex items-center justify-between text-mute">
-                        <span className="text-xs font-semibold">Perlu Verifikasi DP</span>
-                        <Clock className="size-4" aria-hidden="true" />
+                    <div className="flex items-start justify-between gap-1.5 text-mute">
+                        <span className="min-w-0 text-xs leading-snug font-semibold">Perlu Verifikasi DP</span>
+                        <Clock className="size-4 shrink-0" aria-hidden="true" />
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:mt-3">
                         <p className="text-2xl font-semibold tabular-nums text-ink sm:text-3xl">{stats.pending_dp}</p>
                         <span className="text-xs font-semibold text-electric">
-                            {stats.pending_dp > 0 ? 'Tindak lanjuti' : 'Lihat'}
+                            {stats.pending_dp > 0 ? 'Cek DP' : 'Lihat'}
                         </span>
                     </div>
                 </Link>
 
                 {stats.monthly_revenue !== null && (
                     <Link href={route('dashboard.bookings', { status: 'all' })} className={kpiCardClass}>
-                        <div className="flex items-center justify-between text-mute">
-                            <span className="text-xs font-semibold">Omzet Terverifikasi (Bln)</span>
-                            <CheckCircle2 className="size-4" aria-hidden="true" />
+                        <div className="flex items-start justify-between gap-1.5 text-mute">
+                            <span className="min-w-0 text-xs leading-snug font-semibold">Omzet Terverifikasi (Bln)</span>
+                            <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between gap-2">
-                            <p className="text-lg font-semibold tabular-nums text-ink sm:text-3xl">
+                        <div className="mt-2.5 flex items-baseline justify-between gap-2 sm:mt-3">
+                            <p className="min-w-0 text-base leading-tight font-semibold break-words tabular-nums text-ink min-[360px]:text-lg sm:text-2xl xl:text-3xl">
                                 {formatRupiah(stats.monthly_revenue)}
                             </p>
                         </div>
@@ -304,11 +304,11 @@ export default function DashboardIndex({
                     href={route('dashboard.customers')}
                     className={cn(kpiCardClass, !canSeeRevenue && 'min-[360px]:col-span-2 lg:col-span-1')}
                 >
-                    <div className="flex items-center justify-between text-mute">
-                        <span className="text-xs font-semibold">Total Pelanggan</span>
-                        <Users className="size-4" aria-hidden="true" />
+                    <div className="flex items-start justify-between gap-1.5 text-mute">
+                        <span className="min-w-0 text-xs leading-snug font-semibold">Total Pelanggan</span>
+                        <Users className="size-4 shrink-0" aria-hidden="true" />
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:mt-3">
                         <p className="text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
                             {stats.total_customers}
                         </p>
@@ -344,7 +344,7 @@ export default function DashboardIndex({
                                     aria-pressed={trendMetric === 'bookings'}
                                     onClick={() => setTrendMetric('bookings')}
                                     className={cn(
-                                        'cursor-pointer rounded-full px-3.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                        'min-h-9 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                         trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -355,7 +355,7 @@ export default function DashboardIndex({
                                 aria-pressed={trendMetric === 'revenue'}
                                 onClick={() => setTrendMetric('revenue')}
                                 className={cn(
-                                    'cursor-pointer rounded-full px-3.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                    'min-h-9 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                     trendMetric === 'revenue' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -424,7 +424,7 @@ export default function DashboardIndex({
                                         >
                                             <span
                                                 className={cn(
-                                                    'flex h-5 w-full items-center justify-center truncate text-xs font-semibold tabular-nums',
+                                                    'flex h-5 w-full items-center justify-center truncate text-[11px] font-semibold tabular-nums sm:text-xs',
                                                     val > 0 ? 'text-ink' : 'text-transparent'
                                                 )}
                                             >
@@ -472,13 +472,13 @@ export default function DashboardIndex({
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 {/* Recent Bookings */}
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-ink">
+                    <div className="mb-4 flex items-center justify-between gap-2">
+                        <h2 className="min-w-0 text-lg font-semibold text-ink">
                             {config.dashboard.recentSectionTitle}
                         </h2>
                         <Link
                             href={route('dashboard.bookings', { status: 'all' })}
-                            className="inline-flex min-h-7 items-center rounded-sm text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                            className="inline-flex min-h-10 shrink-0 items-center rounded-sm text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                         >
                             Lihat Semua
                         </Link>
@@ -494,32 +494,34 @@ export default function DashboardIndex({
                                 <Link
                                     key={b.id}
                                     href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
-                                    className="flex items-center justify-between gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                    className="block rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                 >
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-ink">
-                                            {b.customer_name}{' '}
-                                            <span className="font-mono text-xs font-normal text-mute">
-                                                · {b.booking_code}
-                                            </span>
-                                        </p>
-                                        <p className="truncate text-xs text-mute">
-                                            {b.service_name}
-                                            {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
-                                                ? ` (${b.quantity} ${b.unit_label ?? 'item'})`
-                                                : ''}{' '}
-                                            · {formatDateIndo(b.booking_date)} (
-                                            {b.booking_mode === 'dropoff'
-                                                ? b.fulfillment_type === 'pickup'
-                                                    ? 'Jemput-Antar'
-                                                    : 'Drop-off'
-                                                : b.start_time_local}
-                                            )
-                                        </p>
+                                    <div className="flex flex-col items-start gap-1.5 min-[360px]:flex-row min-[360px]:justify-between min-[360px]:gap-2.5 sm:gap-4">
+                                        <div className="w-full min-w-0 min-[360px]:w-auto min-[360px]:flex-1">
+                                            <p className="truncate text-sm font-semibold text-ink">
+                                                {b.customer_name}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">
+                                                {b.booking_code}
+                                            </p>
+                                        </div>
+                                        <div className="shrink-0">
+                                            {statusBadge(b.reservation_status)}
+                                        </div>
                                     </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                        {statusBadge(b.reservation_status)}
-                                    </div>
+                                    <p className="mt-1 line-clamp-1 text-xs text-mute">
+                                        {b.service_name}
+                                        {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
+                                            ? ` (${b.quantity} ${b.unit_label ?? 'item'})`
+                                            : ''}{' '}
+                                        · {formatDateIndo(b.booking_date)} (
+                                        {b.booking_mode === 'dropoff'
+                                            ? b.fulfillment_type === 'pickup'
+                                                ? 'Jemput-Antar'
+                                                : 'Drop-off'
+                                            : b.start_time_local}
+                                        )
+                                    </p>
                                 </Link>
                             ))}
                         </div>

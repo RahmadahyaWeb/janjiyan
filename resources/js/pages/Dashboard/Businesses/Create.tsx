@@ -40,15 +40,15 @@ export default function BusinessCreate({ canCreateBusiness = true }: BusinessCre
             {!canCreateBusiness && (
                 <div
                     role="note"
-                    className="flex flex-col justify-between gap-3 rounded-md border border-warning-border bg-warning-soft px-5 py-4 text-sm text-warning sm:flex-row sm:items-center"
+                    className="flex flex-col justify-between gap-3 rounded-md border border-warning-border bg-warning-soft p-4 text-sm text-warning sm:flex-row sm:items-center sm:px-5"
                 >
-                    <div>
+                    <div className="min-w-0">
                         <p className="font-semibold">Batas jumlah bisnis pada paket Anda sudah tercapai.</p>
                         <p className="mt-0.5 text-xs text-warning/90">
                             Upgrade paket di halaman Paket &amp; Billing untuk membuka kapasitas bisnis tambahan.
                         </p>
                     </div>
-                    <Button asChild size="sm" variant="outline" className="shrink-0 bg-canvas text-ink">
+                    <Button asChild size="sm" variant="outline" className="w-full shrink-0 bg-canvas text-ink sm:w-auto">
                         <Link href={route('dashboard.billing')}>Lihat Paket &amp; Billing</Link>
                     </Button>
                 </div>
@@ -56,7 +56,7 @@ export default function BusinessCreate({ canCreateBusiness = true }: BusinessCre
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-3xl space-y-6 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-3xl space-y-6 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
             >
                 <BusinessTypeSelector
                     idPrefix="create-business"
@@ -117,10 +117,10 @@ export default function BusinessCreate({ canCreateBusiness = true }: BusinessCre
                 </div>
 
                 <div className="flex flex-col-reverse gap-2 border-t border-divider pt-4 sm:flex-row sm:justify-end">
-                    <Button asChild type="button" variant="outline">
+                    <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                         <Link href={route('dashboard')}>Batal</Link>
                     </Button>
-                    <Button type="submit" disabled={form.processing}>
+                    <Button type="submit" disabled={form.processing} className="w-full sm:w-auto">
                         {form.processing ? 'Menyimpan…' : 'Buat Bisnis'}
                     </Button>
                 </div>

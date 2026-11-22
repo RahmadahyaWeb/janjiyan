@@ -1,8 +1,9 @@
 import { expect, test as setup } from '@playwright/test';
 
-// Accounts come from database/seeders/DemoSeeder.php.
+// Accounts come from database/seeders/DemoSeeder.php and ResponsiveQaSeeder.php.
 const accounts = {
     owner: 'owner@janjiyan.test',
+    dropoff: 'dropoff@janjiyan.test',
     admin: 'admin@janjiyan.test',
 };
 

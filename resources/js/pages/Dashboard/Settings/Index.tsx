@@ -297,7 +297,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     as="div"
                     ariaLabel="Bagian pengaturan"
                     wrapperClassName="sticky top-16 z-30 -mx-4 bg-canvas py-2 sm:mx-0"
-                    className="flex gap-1.5 px-4 sm:px-0"
+                    className="flex gap-1.5 pl-4 pr-10 sm:px-0"
                 >
                     {SETTINGS_TABS.map((t) => {
                         const active = tab === t.id;
@@ -309,7 +309,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 aria-pressed={active}
                                 onClick={() => changeTab(t.id)}
                                 className={cn(
-                                    'inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                    'inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                     active
                                         ? 'border-ink bg-ink text-canvas'
                                         : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
@@ -317,7 +317,10 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             >
                                 {t.label}
                                 {hasError && (
-                                    <span className="size-1.5 rounded-full bg-destructive" aria-label="ada isian yang perlu diperbaiki" />
+                                    <>
+                                        <span className="size-1.5 rounded-full bg-destructive" aria-hidden="true" />
+                                        <span className="sr-only"> (ada isian yang perlu diperbaiki)</span>
+                                    </>
                                 )}
                             </button>
                         );
@@ -361,11 +364,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         <div className="space-y-2">
                             <Label htmlFor="settings-logo-upload">Logo Bisnis (Opsional)</Label>
                             {business.logo_url && !form.data.remove_logo && !form.data.logo_image && (
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
                                     <img
                                         src={business.logo_url}
                                         alt={`Logo ${business.name}`}
-                                        className="size-16 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10"
+                                        className="size-16 shrink-0 rounded-[30%] object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                     <Button
                                         type="button"
@@ -383,7 +386,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="break-words">
+                                <span className="min-w-0 [overflow-wrap:anywhere]">
                                     {form.data.logo_image ? form.data.logo_image.name : 'Unggah logo bisnis (JPG/PNG/WebP, maks 2MB)'}
                                 </span>
                                 <input
@@ -418,8 +421,10 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                                 {form.errors.name && <p className="text-xs text-destructive">{form.errors.name}</p>}
                             </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="settings-slug">Slug URL (/b/{form.data.slug})</Label>
+                            <div className="min-w-0 space-y-1.5">
+                                <Label htmlFor="settings-slug" className="block break-all">
+                                    Slug URL (/b/{form.data.slug})
+                                </Label>
                                 <Input
                                     id="settings-slug"
                                     value={form.data.slug}
@@ -501,16 +506,17 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
-                            <div>
+                            <div className="min-w-0">
                                 <Label htmlFor="settings-is-active" className="text-sm font-semibold text-ink">
                                     Portal Booking Publik Aktif
                                 </Label>
-                                <p className="mt-0.5 text-xs text-mute">
+                                <p className="mt-0.5 text-xs text-mute [overflow-wrap:anywhere]">
                                     Jika dinonaktifkan, link /b/{form.data.slug} tidak dapat diakses pelanggan sementara.
                                 </p>
                             </div>
                             <Switch
                                 id="settings-is-active"
+                                className="shrink-0"
                                 checked={form.data.is_active}
                                 onCheckedChange={(val) => form.setData('is_active', val)}
                             />
@@ -521,7 +527,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     <div id="tampilan" hidden={tab !== 'tampilan'} className="scroll-mt-12 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                         <div>
                             <h2 className="text-lg font-semibold text-ink">Tampilan halaman toko</h2>
-                            <p className="mt-1 text-sm text-mute">
+                            <p className="mt-1 text-sm text-mute [overflow-wrap:anywhere]">
                                 Warna dan foto ini muncul di /b/{form.data.slug}. Warna teks di atasnya diatur otomatis supaya tetap terbaca.
                             </p>
                         </div>
@@ -612,7 +618,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                                     >
                                         <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                        <span className="min-w-0 break-words">
+                                        <span className="min-w-0 [overflow-wrap:anywhere]">
                                             {form.data.cover_image ? form.data.cover_image.name : 'Unggah foto cover (JPG/PNG/WebP, maks 5MB, mendatar)'}
                                         </span>
                                         <input
@@ -729,7 +735,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
                         <div className="space-y-3">
                             <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
-                                <div>
+                                <div className="min-w-0">
                                     <Label htmlFor="settings-reminder-h1" className="text-sm font-semibold text-ink">
                                         Email Pengingat H-1 Hari (24 Jam Sebelumnya)
                                     </Label>
@@ -739,6 +745,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 </div>
                                 <Switch
                                     id="settings-reminder-h1"
+                                    className="shrink-0"
                                     checked={form.data.reminder_h1_enabled}
                                     onCheckedChange={(val) => form.setData('reminder_h1_enabled', val)}
                                 />
@@ -746,7 +753,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
                             {businessConfig.settings.showReminderH2 && (
                                 <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
-                                    <div>
+                                    <div className="min-w-0">
                                         <Label htmlFor="settings-reminder-h2" className="text-sm font-semibold text-ink">
                                             Email Pengingat H-2 Jam
                                         </Label>
@@ -756,6 +763,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     </div>
                                     <Switch
                                         id="settings-reminder-h2"
+                                        className="shrink-0"
                                         checked={form.data.reminder_h2_enabled}
                                         onCheckedChange={(val) => form.setData('reminder_h2_enabled', val)}
                                     />
@@ -765,12 +773,12 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             {businessConfig.settings.showNoShowDp && (
                                 <div className="space-y-3 rounded-sm border border-hairline-soft bg-bone/70 p-4">
                                     <div className="flex items-center justify-between gap-4">
-                                        <div>
+                                        <div className="min-w-0">
                                             <Label
                                                 htmlFor="settings-noshow-dp"
                                                 className="flex items-center gap-1.5 text-sm font-semibold text-ink"
                                             >
-                                                <ShieldAlert className="size-4 text-ink" aria-hidden="true" />
+                                                <ShieldAlert className="size-4 shrink-0 text-ink" aria-hidden="true" />
                                                 Proteksi No-Show Otomatis (Wajib DP 100%)
                                             </Label>
                                             <p className="mt-0.5 text-xs text-mute">
@@ -779,6 +787,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         </div>
                                         <Switch
                                             id="settings-noshow-dp"
+                                            className="shrink-0"
                                             checked={form.data.no_show_require_full_dp}
                                             onCheckedChange={(val) => form.setData('no_show_require_full_dp', val)}
                                         />
@@ -798,7 +807,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                                     form.setData('no_show_dp_threshold', parseNumericInput(e.target.value))
                                                 }
                                                 required
-                                                className="h-9 w-20 rounded-full bg-canvas text-center font-mono text-sm"
+                                                className="h-10 w-20 rounded-full bg-canvas py-2 text-center font-mono text-base tabular-nums md:text-sm"
                                             />
                                             <span className="text-xs text-mute">kali tidak hadir</span>
                                         </div>
@@ -832,17 +841,16 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </Button>
                         </div>
 
-                        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Pilih jenis template WhatsApp">
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilih jenis template WhatsApp">
                             {filteredWaMeta.map((item) => {
                                 const active = resolvedWaTab === item.key;
                                 return (
                                     <button
                                         key={item.key}
                                         type="button"
-                                        role="tab"
-                                        aria-selected={active}
+                                        aria-pressed={active}
                                         onClick={() => setActiveWaTab(item.key)}
-                                        className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                                        className={`min-h-10 cursor-pointer rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                             active
                                                 ? 'bg-ink text-canvas'
                                                 : 'bg-bone text-ink hover:bg-hairline-soft'
@@ -872,7 +880,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         key={p.token}
                                         type="button"
                                         onClick={() => insertPlaceholder(p.token)}
-                                        className="min-h-8 cursor-pointer rounded-full border border-hairline-soft bg-bone px-3 py-1.5 font-mono text-xs text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                        className="min-h-9 cursor-pointer rounded-full border border-hairline-soft bg-bone px-3 py-1.5 font-mono text-xs text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                         title={p.label}
                                     >
                                         {p.token}
@@ -885,7 +893,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             <p className="text-xs font-semibold tracking-wider text-mute uppercase">
                                 Pratinjau Pesan
                             </p>
-                            <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-ink">
+                            <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-ink [overflow-wrap:anywhere]">
                                 {interpolateWhatsappTemplate(form.data.whatsapp_templates[resolvedWaTab] ?? '', {
                                     customer_name: 'Budi Santoso',
                                     business_name: form.data.name || business.name,
@@ -913,11 +921,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
                     {/* Notifikasi Instan Telegram Bot */}
                     <div id="telegram" hidden={tab !== 'notifikasi'} className="scroll-mt-12 space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
                                 <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
-                                    <BellRing className="size-5 text-ink" aria-hidden="true" />
-                                    Notifikasi Instan Telegram Bot
+                                    <BellRing className="size-5 shrink-0 text-ink" aria-hidden="true" />
+                                    <span>Notifikasi Instan Telegram Bot</span>
                                 </h2>
                                 <p className="mt-0.5 text-xs text-mute">
                                     Terima notifikasi real-time gratis di HP Anda setiap kali ada {businessConfig.bookings.itemSingular.toLowerCase()} baru atau bukti DP diunggah.
@@ -925,6 +933,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </div>
                             <Switch
                                 id="settings-telegram-enabled"
+                                className="shrink-0"
                                 aria-label="Aktifkan notifikasi Telegram"
                                 checked={form.data.telegram_notifications_enabled}
                                 onCheckedChange={(val) => form.setData('telegram_notifications_enabled', val)}
@@ -934,11 +943,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         {/* Token fields only matter once Telegram is switched on. */}
                         <div hidden={!form.data.telegram_notifications_enabled} className="space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
+                                <div className="min-w-0 space-y-1.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
                                         <Label htmlFor="settings-telegram-token">Bot Token (dari @BotFather)</Label>
                                         {business.has_telegram_bot_token && !form.data.clear_telegram_token && (
-                                            <Badge variant="success" className="font-mono">
+                                            <Badge variant="success" className="max-w-full font-mono">
                                                 Tersimpan ({business.telegram_bot_token_hint})
                                             </Badge>
                                         )}
@@ -967,7 +976,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                             onClick={() =>
                                                 form.setData('clear_telegram_token', !form.data.clear_telegram_token)
                                             }
-                                            className="cursor-pointer text-xs text-destructive hover:underline"
+                                            className="inline-flex min-h-9 cursor-pointer items-center text-xs text-destructive hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                         >
                                             {form.data.clear_telegram_token
                                                 ? 'Batal hapus token'
@@ -976,7 +985,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     )}
                                 </div>
 
-                                <div className="space-y-1.5">
+                                <div className="min-w-0 space-y-1.5">
                                     <Label htmlFor="settings-telegram-chat-id">Chat ID / Group ID</Label>
                                     <Input
                                         id="settings-telegram-chat-id"
@@ -990,8 +999,8 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm bg-bone p-3.5 text-xs text-mute">
-                                <span>
+                            <div className="flex flex-col gap-3 rounded-sm bg-bone p-3.5 text-xs text-mute sm:flex-row sm:items-center sm:justify-between">
+                                <span className="min-w-0 leading-relaxed">
                                     Cara cepat: buat bot di <strong className="text-ink">@BotFather</strong> → mulai chat dengan bot Anda → cek Chat ID via <strong className="text-ink">@userinfobot</strong>, lalu simpan pengaturan sebelum tes.
                                 </span>
                                 {business.has_telegram_bot_token && business.telegram_chat_id && (
@@ -1001,7 +1010,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                         size="sm"
                                         disabled={testingTelegram}
                                         onClick={handleTestTelegram}
-                                        className="shrink-0 rounded-full bg-canvas"
+                                        className="w-full shrink-0 rounded-full bg-canvas sm:w-auto"
                                     >
                                         <Send className="mr-1.5 size-3.5" aria-hidden="true" />
                                         {testingTelegram ? 'Mengirim…' : 'Kirim Pesan Tes'}
@@ -1018,17 +1027,17 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 <h2 className="text-lg font-semibold text-ink">Rekening Bank & QRIS</h2>
                                 <p className="text-xs text-mute">Ditampilkan ke pelanggan saat melakukan DP (0% fee).</p>
                             </div>
-                            <Button type="button" variant="secondary" size="sm" onClick={addBank}>
+                            <Button type="button" variant="secondary" size="sm" className="w-full sm:w-auto" onClick={addBank}>
                                 <Plus className="size-3.5" aria-hidden="true" />
                                 Tambah Bank
                             </Button>
                         </div>
 
                         {form.data.bank_accounts.map((bank, idx) => (
-                            <div key={idx} className="grid items-center gap-2 rounded-md bg-bone p-3 sm:grid-cols-[1fr_1.3fr_1.3fr_auto]">
+                            <div key={idx} className="grid items-center gap-2 rounded-md bg-bone p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto]">
                                 <Input
                                     aria-label={`Nama bank rekening ${idx + 1}`}
-                                    className="h-10 rounded-xs bg-canvas text-base md:text-sm"
+                                    className="h-10 min-w-0 rounded-xs bg-canvas py-2 text-base md:text-sm"
                                     placeholder="Bank (BCA)"
                                     value={bank.bank_name}
                                     onChange={(e) => updateBank(idx, 'bank_name', e.target.value)}
@@ -1036,7 +1045,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                                 <Input
                                     aria-label={`Nomor rekening ${idx + 1}`}
-                                    className="h-10 rounded-xs bg-canvas font-mono text-base md:text-sm"
+                                    className="h-10 min-w-0 rounded-xs bg-canvas py-2 font-mono text-base tabular-nums md:text-sm"
                                     placeholder="No. Rekening"
                                     value={bank.account_number}
                                     onChange={(e) => updateBank(idx, 'account_number', e.target.value)}
@@ -1044,7 +1053,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 />
                                 <Input
                                     aria-label={`Atas nama rekening ${idx + 1}`}
-                                    className="h-10 rounded-xs bg-canvas text-base md:text-sm"
+                                    className="h-10 min-w-0 rounded-xs bg-canvas py-2 text-base md:text-sm"
                                     placeholder="Atas Nama"
                                     value={bank.account_holder}
                                     onChange={(e) => updateBank(idx, 'account_holder', e.target.value)}
@@ -1053,12 +1062,13 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon-sm"
+                                    size="sm"
                                     aria-label={`Hapus rekening ${bank.bank_name || idx + 1}`}
-                                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                    className="w-full justify-center text-destructive hover:bg-destructive-soft hover:text-destructive sm:size-9 sm:w-9 sm:px-0"
                                     onClick={() => removeBank(idx)}
                                 >
                                     <Trash2 className="size-4" aria-hidden="true" />
+                                    <span className="sm:hidden">Hapus Rekening</span>
                                 </Button>
                             </div>
                         ))}
@@ -1066,11 +1076,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         <div className="space-y-2 pt-2">
                             <Label htmlFor="settings-qris-upload">Gambar QRIS Statis (Opsional)</Label>
                             {business.qris_url && !form.data.remove_qris && !form.data.qris_image && (
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
                                     <img
                                         src={business.qris_url}
                                         alt={`QRIS ${business.name}`}
-                                        className="size-32 rounded-sm object-cover outline-1 -outline-offset-1 outline-black/10"
+                                        className="size-32 shrink-0 rounded-sm object-cover outline-1 -outline-offset-1 outline-black/10"
                                     />
                                     <Button
                                         type="button"
@@ -1088,7 +1098,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="break-words">{form.data.qris_image ? form.data.qris_image.name : 'Unggah gambar QRIS (JPG/PNG)'}</span>
+                                <span className="min-w-0 [overflow-wrap:anywhere]">{form.data.qris_image ? form.data.qris_image.name : 'Unggah gambar QRIS (JPG/PNG)'}</span>
                                 <input
                                     id="settings-qris-upload"
                                     type="file"
@@ -1121,13 +1131,16 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                     )}
 
                     {/* One form behind the tabs: this saves changes made on every tab. */}
-                    <div hidden={tab === 'galeri'} className="sticky bottom-20 z-30 flex items-center justify-end gap-3 lg:bottom-4">
+                    <div
+                        hidden={tab === 'galeri'}
+                        className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-end gap-2 sm:gap-3 lg:bottom-4"
+                    >
                         {form.isDirty && (
-                            <span className="rounded-full bg-canvas/90 px-3 py-1 text-xs text-mute shadow-sm">
+                            <span className="rounded-full bg-canvas/95 px-3 py-1 text-xs text-mute shadow-sm ring-1 ring-hairline-soft">
                                 Ada perubahan belum disimpan
                             </span>
                         )}
-                        <Button type="submit" size="lg" disabled={form.processing} className="shadow-lg">
+                        <Button type="submit" size="lg" disabled={form.processing} className="w-full shadow-lg sm:w-auto">
                             {form.processing ? 'Menyimpan…' : 'Simpan Semua Tab'}
                         </Button>
                     </div>
@@ -1152,7 +1165,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-3 text-sm text-ink transition-colors hover:bg-hairline-soft focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                             >
                                 <ImagePlus className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="break-words">
+                                <span className="min-w-0 [overflow-wrap:anywhere]">
                                     {galleryForm.data.image
                                         ? galleryForm.data.image.name
                                         : 'Pilih foto portofolio (JPG/PNG/WebP, maks 3MB)'}
@@ -1171,7 +1184,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1 space-y-1.5">
+                            <div className="min-w-0 flex-1 space-y-1.5">
                                 <Label htmlFor="gallery-caption">Keterangan Foto (Opsional)</Label>
                                 <Input
                                     id="gallery-caption"
@@ -1184,6 +1197,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             </div>
                             <Button
                                 type="submit"
+                                className="w-full sm:w-auto"
                                 disabled={galleryForm.processing || !galleryForm.data.image}
                             >
                                 <Plus className="size-4" aria-hidden="true" />
@@ -1249,6 +1263,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             <Button
                                 type="button"
                                 variant="destructive"
+                                className="w-full sm:w-auto"
                                 onClick={() => {
                                     deleteForm.reset();
                                     deleteForm.clearErrors();
@@ -1265,7 +1280,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                             >
                                 <p className="text-sm leading-relaxed text-mute">
                                     Ketik{' '}
-                                    <strong className="font-semibold text-ink">{business.name}</strong> untuk mengonfirmasi penghapusan permanen.
+                                    <strong className="font-semibold break-words text-ink">{business.name}</strong> untuk mengonfirmasi penghapusan permanen.
                                 </p>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="delete-business-confirm">Konfirmasi Nama Bisnis</Label>
@@ -1286,12 +1301,13 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     )}
                                 </div>
                                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                    <Button type="button" variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setShowDeleteConfirm(false)}>
                                         Batal
                                     </Button>
                                     <Button
                                         type="submit"
                                         variant="destructive"
+                                        className="w-full sm:w-auto"
                                         disabled={deleteForm.processing || deleteForm.data.confirm_name.trim() !== business.name}
                                     >
                                         {deleteForm.processing ? 'Menghapus…' : 'Hapus Bisnis Permanen'}

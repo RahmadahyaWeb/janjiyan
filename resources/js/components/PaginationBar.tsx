@@ -28,30 +28,32 @@ export function PaginationBar({ pagination }: PaginationBarProps) {
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline-soft bg-canvas px-4 py-3 text-xs text-mute">
+        <div className="flex flex-col gap-2.5 rounded-md border border-hairline-soft bg-canvas px-4 py-3 text-xs text-mute sm:flex-row sm:items-center sm:justify-between">
             <p className="tabular-nums">
                 Menampilkan <span className="font-semibold text-ink">{pagination.from ?? 0}</span>–
                 <span className="font-semibold text-ink">{pagination.to ?? 0}</span> dari{' '}
                 <span className="font-semibold text-ink">{pagination.total}</span> data
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
                     disabled={!pagination.prev_page_url}
                     onClick={() => goTo(pagination.prev_page_url)}
                 >
                     <ChevronLeft className="size-4" aria-hidden="true" />
                     Sebelumnya
                 </Button>
-                <span className="px-2 font-mono text-xs tabular-nums text-ink">
+                <span className="shrink-0 px-1 font-mono text-xs whitespace-nowrap tabular-nums text-ink sm:px-2">
                     {pagination.current_page} / {pagination.last_page}
                 </span>
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-4 sm:text-sm"
                     disabled={!pagination.next_page_url}
                     onClick={() => goTo(pagination.next_page_url)}
                 >

@@ -123,7 +123,7 @@ export default function AdminIndex({
         <div className="min-h-screen bg-canvas text-ink">
             <Head title="Panel Superadmin" />
 
-            <header className="sticky top-0 z-40 border-b border-divider bg-canvas">
+            <header className="sticky top-0 z-40 border-b border-divider bg-canvas pt-[env(safe-area-inset-top)]">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                         <JanjiyanLogo size="sm" />
@@ -144,7 +144,7 @@ export default function AdminIndex({
                 </div>
             </header>
 
-            <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
+            <main className="mx-auto max-w-7xl space-y-6 px-4 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
                 <div>
                     <h1 className="text-2xl font-semibold text-ink sm:text-3xl">Operasional Platform Janjiyan</h1>
                     <p className="mt-1 text-sm text-mute">
@@ -164,38 +164,40 @@ export default function AdminIndex({
                 )}
 
                 {/* KPI Stats */}
-                <section aria-label="Ringkasan platform" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <div className="rounded-md bg-bone p-4">
+                <section aria-label="Ringkasan platform" className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-6">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Total Merchant</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.total_merchants}</p>
                     </div>
-                    <div className="rounded-md bg-bone p-4">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Paket Aktif</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.active_paid}</p>
                     </div>
-                    <div className="rounded-md bg-bone p-4">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Dalam Trial</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-electric">{stats.trialing}</p>
                     </div>
-                    <div className="rounded-md bg-bone p-4">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Expired</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-destructive">{stats.expired}</p>
                     </div>
-                    <div className="rounded-md bg-bone p-4">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Bisnis Ditangguhkan</p>
                         <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{stats.suspended_businesses}</p>
                     </div>
-                    <div className="rounded-md bg-bone p-4">
+                    <div className="min-w-0 rounded-md bg-bone p-3.5 sm:p-4">
                         <p className="text-xs text-mute">Total Pendapatan</p>
-                        <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-ink">{formatRupiah(stats.total_revenue)}</p>
+                        <p className="mt-1 font-mono text-base leading-tight font-semibold break-words tabular-nums text-ink min-[360px]:text-lg">
+                            {formatRupiah(stats.total_revenue)}
+                        </p>
                     </div>
                 </section>
 
                 {/* Filter & Tabs */}
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <div
-                        className="flex max-w-full flex-wrap gap-1 rounded-md bg-bone p-1 sm:inline-flex sm:rounded-full"
-                        role="tablist"
+                        className="grid w-full grid-cols-3 gap-1 rounded-sm bg-bone p-1 sm:inline-flex sm:w-auto sm:rounded-full"
+                        role="group"
                         aria-label="Menu superadmin"
                     >
                         {[
@@ -206,11 +208,10 @@ export default function AdminIndex({
                             <button
                                 key={tab.id}
                                 type="button"
-                                role="tab"
-                                aria-selected={activeTab === tab.id}
+                                aria-pressed={activeTab === tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    'min-h-9 cursor-pointer rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-4 sm:text-sm',
+                                    'min-h-10 cursor-pointer truncate rounded-xl px-2 py-2 text-center text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4 sm:text-sm',
                                     activeTab === tab.id ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -247,7 +248,7 @@ export default function AdminIndex({
                             <option value="trialing">Trial</option>
                             <option value="expired">Expired</option>
                         </NativeSelect>
-                        <Button type="submit" variant="outline" size="sm">
+                        <Button type="submit" variant="outline" size="sm" className="w-full sm:w-auto">
                             Cari
                         </Button>
                     </form>
@@ -267,15 +268,15 @@ export default function AdminIndex({
                                 return (
                                     <div
                                         key={m.id}
-                                        className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
+                                        className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5 lg:flex-row lg:items-center"
                                     >
-                                        <div className="space-y-1">
+                                        <div className="min-w-0 space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <p className="text-base font-semibold text-ink">{m.name}</p>
+                                                <p className="text-base font-semibold break-words text-ink">{m.name}</p>
                                                 <Badge variant={badgeInfo.variant}>{badgeInfo.label}</Badge>
                                                 {m.is_superadmin && <Badge variant="default">Superadmin</Badge>}
                                             </div>
-                                            <p className="text-sm text-mute">
+                                            <p className="text-sm text-mute [overflow-wrap:anywhere]">
                                                 {m.email} · {m.owned_businesses_count} bisnis
                                             </p>
                                             {m.subscription && (
@@ -286,14 +287,14 @@ export default function AdminIndex({
                                             )}
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button asChild size="sm" variant="outline">
+                                        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-center">
+                                            <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
                                                 <Link href={route('admin.users.trial.edit', m.id)}>
                                                     <Clock className="size-3.5" aria-hidden="true" />
                                                     Perpanjang Trial
                                                 </Link>
                                             </Button>
-                                            <Button asChild size="sm" variant="default">
+                                            <Button asChild size="sm" variant="default" className="w-full sm:w-auto">
                                                 <Link href={route('admin.users.plan.edit', m.id)}>
                                                     <CreditCard className="size-3.5" aria-hidden="true" />
                                                     Aktivasi Paket
@@ -318,12 +319,12 @@ export default function AdminIndex({
                             businesses.map((b) => (
                                 <div
                                     key={b.id}
-                                    className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-5 lg:flex-row lg:items-center"
+                                    className="flex flex-col justify-between gap-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5 lg:flex-row lg:items-center"
                                 >
-                                    <div className="space-y-1">
+                                    <div className="min-w-0 space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <p className="text-base font-semibold text-ink">{b.name}</p>
-                                            <span className="font-mono text-xs text-mute">/b/{b.slug}</span>
+                                            <p className="text-base font-semibold break-words text-ink">{b.name}</p>
+                                            <span className="font-mono text-xs break-all text-mute">/b/{b.slug}</span>
                                             {b.is_suspended ? (
                                                 <Badge variant="destructive">Ditangguhkan</Badge>
                                             ) : b.is_active ? (
@@ -332,11 +333,11 @@ export default function AdminIndex({
                                                 <Badge variant="outline">Nonaktif</Badge>
                                             )}
                                         </div>
-                                        <p className="text-sm text-mute">
+                                        <p className="text-sm text-mute [overflow-wrap:anywhere]">
                                             Owner: {b.owner_name} ({b.owner_email}) · {b.bookings_count} booking · {b.services_count} layanan · {b.staff_count} staff
                                         </p>
                                         {b.is_suspended && b.suspension_reason && (
-                                            <p className="text-xs font-medium text-destructive">Alasan suspend: {b.suspension_reason}</p>
+                                            <p className="text-xs font-medium break-words text-destructive">Alasan suspend: {b.suspension_reason}</p>
                                         )}
                                     </div>
 
@@ -346,13 +347,14 @@ export default function AdminIndex({
                                                 type="button"
                                                 size="sm"
                                                 variant="outline"
+                                                className="w-full sm:w-auto"
                                                 onClick={() => handleUnsuspend(b)}
                                             >
                                                 <CheckCircle2 className="size-3.5" aria-hidden="true" />
                                                 Cabut Penangguhan
                                             </Button>
                                         ) : (
-                                            <Button asChild size="sm" variant="destructive">
+                                            <Button asChild size="sm" variant="destructive" className="w-full sm:w-auto">
                                                 <Link href={route('admin.businesses.suspend.edit', b.id)}>
                                                     <Ban className="size-3.5" aria-hidden="true" />
                                                     Tangguhkan Bisnis
@@ -377,22 +379,22 @@ export default function AdminIndex({
                             invoices.map((inv) => (
                                 <div
                                     key={inv.id}
-                                    className="flex flex-col justify-between gap-3 rounded-md border border-hairline-soft bg-canvas p-5 sm:flex-row sm:items-center"
+                                    className="flex flex-col justify-between gap-3 rounded-md border border-hairline-soft bg-canvas p-4 sm:flex-row sm:items-center sm:p-5"
                                 >
-                                    <div className="space-y-1">
+                                    <div className="min-w-0 space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-mono text-xs font-semibold text-ink">{inv.invoice_number}</span>
+                                            <span className="font-mono text-xs font-semibold break-all text-ink">{inv.invoice_number}</span>
                                             <Badge variant={inv.status === 'paid' ? 'secondary' : inv.status === 'pending' ? 'popular' : 'destructive'}>
                                                 {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
                                             </Badge>
                                             <Badge variant="outline">{inv.provider}</Badge>
                                         </div>
-                                        <p className="text-sm text-body">
+                                        <p className="text-sm text-body [overflow-wrap:anywhere]">
                                             {inv.user_name} ({inv.user_email}) · Paket {inv.plan_name} ({inv.billing_cycle})
                                         </p>
-                                        {inv.notes && <p className="text-xs text-mute">Catatan: {inv.notes}</p>}
+                                        {inv.notes && <p className="text-xs break-words text-mute">Catatan: {inv.notes}</p>}
                                     </div>
-                                    <div className="text-left sm:text-right">
+                                    <div className="shrink-0 text-left sm:text-right">
                                         <p className="font-mono text-base font-semibold tabular-nums text-ink">{formatRupiah(inv.amount)}</p>
                                     </div>
                                 </div>

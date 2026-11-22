@@ -73,8 +73,8 @@ export default function InvoiceLookup({
 
             <BusinessHeader business={business} label={lookupTitle} widthClassName="box-content max-w-xl" />
 
-            <main className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 sm:px-6">
-                <div className="rounded-md border border-hairline-soft bg-canvas p-6 sm:p-8">
+            <main className="mx-auto box-content max-w-xl space-y-6 px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bone text-ink">
                             <FileText className="size-5" aria-hidden="true" />
@@ -150,9 +150,9 @@ export default function InvoiceLookup({
                                         key={item.booking_code}
                                         className="flex flex-col justify-between gap-3 rounded-md bg-canvas p-4 sm:flex-row sm:items-center"
                                     >
-                                        <div className="space-y-1">
+                                        <div className="min-w-0 space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-mono text-xs font-semibold text-ink">
+                                                <span className="font-mono text-xs font-semibold break-all text-ink">
                                                     {item.invoice_number || item.booking_code}
                                                 </span>
                                                 {isMatched && <Badge variant="popular">Dicari</Badge>}
@@ -165,18 +165,18 @@ export default function InvoiceLookup({
                                                     {PAYMENT_STATUS_LABELS[item.payment_status] ?? item.payment_status}
                                                 </Badge>
                                             </div>
-                                            <p className="text-sm font-semibold text-ink">
+                                            <p className="text-sm font-semibold break-words text-ink">
                                                 {item.service_name}
                                                 {item.booking_mode === 'dropoff'
                                                     ? ` (${item.quantity ?? 1} ${item.unit_label ?? 'item'})`
                                                     : ''}
                                             </p>
-                                            <p className="text-xs text-mute">
+                                            <p className="text-xs tabular-nums text-mute">
                                                 {formatDateIndo(item.booking_date)} · {item.schedule_label ?? item.start_time_local} · {formatRupiah(item.total_price)}
                                             </p>
                                         </div>
 
-                                        <Button asChild size="sm" variant={isMatched ? 'default' : 'outline'}>
+                                        <Button asChild size="sm" variant={isMatched ? 'default' : 'outline'} className="w-full shrink-0 sm:w-auto">
                                             <Link href={href}>
                                                 Lihat Invoice
                                                 <ArrowRight className="size-3.5" aria-hidden="true" />

@@ -104,11 +104,11 @@ export function BookingCalendarView({
     return (
         <div className="space-y-4">
             {/* Week Navigation & Day Strip */}
-            <div className="rounded-md border border-hairline-soft bg-canvas p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
+            <div className="rounded-md border border-hairline-soft bg-canvas p-3.5 sm:p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                         <p className="text-base font-semibold text-ink">{formatDateIndo(calendar.selected_date)}</p>
-                        <p className="text-xs text-mute">
+                        <p className="text-xs tabular-nums text-mute">
                             {calendar.is_open
                                 ? `Jam operasional: ${calendar.open_time.slice(0, 5)} – ${calendar.close_time.slice(0, 5)}`
                                 : 'Bisnis tutup pada hari ini'}
@@ -118,7 +118,7 @@ export function BookingCalendarView({
                         <Button
                             type="button"
                             variant="outline"
-                            size="icon-sm"
+                            size="icon"
                             aria-label="Minggu sebelumnya"
                             onClick={() => onSelectDate(shiftDate(calendar.selected_date, -7))}
                         >
@@ -128,6 +128,7 @@ export function BookingCalendarView({
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="flex-1 sm:flex-initial"
                             onClick={() => onSelectDate(todayString)}
                         >
                             Hari Ini
@@ -135,7 +136,7 @@ export function BookingCalendarView({
                         <Button
                             type="button"
                             variant="outline"
-                            size="icon-sm"
+                            size="icon"
                             aria-label="Minggu berikutnya"
                             onClick={() => onSelectDate(shiftDate(calendar.selected_date, 7))}
                         >
@@ -154,8 +155,10 @@ export function BookingCalendarView({
                             <button
                                 key={day.date}
                                 type="button"
+                                aria-pressed={isSelected}
+                                aria-label={`${formatDateIndo(day.date)}, ${day.count} jadwal`}
                                 onClick={() => onSelectDate(day.date)}
-                                className={`flex cursor-pointer flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors sm:rounded-sm sm:px-2 sm:py-2.5 ${
+                                className={`flex min-w-0 cursor-pointer flex-col items-center rounded-xl border px-0.5 py-2 text-center transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-sm sm:px-2 sm:py-2.5 ${
                                     isSelected
                                         ? 'border-ink bg-ink text-white'
                                         : isToday
@@ -163,12 +166,12 @@ export function BookingCalendarView({
                                           : 'border-hairline-soft bg-canvas text-ink hover:bg-bone'
                                 }`}
                             >
-                                <span className={`text-xs font-medium ${isSelected ? 'text-white/80' : 'text-mute'}`}>
+                                <span className={`text-[11px] font-medium sm:text-xs ${isSelected ? 'text-white/80' : 'text-mute'}`}>
                                     {SHORT_DAYS[day.day_of_week]}
                                 </span>
-                                <span className="mt-0.5 text-base font-semibold tabular-nums">{dayNum}</span>
+                                <span className="mt-0.5 text-sm font-semibold tabular-nums sm:text-base">{dayNum}</span>
                                 <span
-                                    className={`mt-1 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
+                                    className={`mt-1 rounded-full px-1 py-0.5 text-[11px] font-semibold tabular-nums sm:px-1.5 sm:text-xs ${
                                         isSelected
                                             ? 'bg-white/20 text-white'
                                             : day.count > 0
@@ -186,7 +189,7 @@ export function BookingCalendarView({
 
             {/* Staff / Resource Columns for Selected Day */}
             {calendar.bookings.length === 0 ? (
-                <div className="rounded-md bg-bone p-12 text-center">
+                <div className="rounded-md bg-bone p-8 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         Tidak ada {config.bookings.itemSingular.toLowerCase()} aktif pada {formatDateIndo(calendar.selected_date)}.
                     </p>
@@ -208,12 +211,12 @@ export function BookingCalendarView({
                                     colBookings.length === 0 ? 'hidden md:flex' : 'flex'
                                 }`}
                             >
-                                <div className="flex items-center justify-between border-b border-divider bg-bone/60 px-4 py-3 rounded-t-md">
-                                    <div>
-                                        <p className="text-sm font-semibold text-ink">{col.name}</p>
-                                        {col.title && <p className="text-xs text-mute">{col.title}</p>}
+                                <div className="flex items-center justify-between gap-2 rounded-t-md border-b border-divider bg-bone/60 px-4 py-3">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-ink">{col.name}</p>
+                                        {col.title && <p className="truncate text-xs text-mute">{col.title}</p>}
                                     </div>
-                                    <Badge variant="secondary" className="tabular-nums">
+                                    <Badge variant="secondary" className="shrink-0 tabular-nums">
                                         {colBookings.length} jadwal
                                     </Badge>
                                 </div>
@@ -227,9 +230,9 @@ export function BookingCalendarView({
                                                 key={b.id}
                                                 type="button"
                                                 onClick={() => onSelectBooking(b)}
-                                                className={`w-full cursor-pointer rounded-sm border p-3 text-left transition-colors ${statusPillClasses(b.reservation_status)}`}
+                                                className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${statusPillClasses(b.reservation_status)}`}
                                             >
-                                                <div className="flex items-center justify-between gap-2">
+                                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                                                     <span className="font-mono text-xs font-semibold tabular-nums">
                                                         {formatBookingScheduleShort(b)}
                                                     </span>
@@ -237,8 +240,8 @@ export function BookingCalendarView({
                                                         {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
                                                     </span>
                                                 </div>
-                                                <p className="mt-1 text-sm font-semibold">{b.customer_name}</p>
-                                                <p className="text-xs">
+                                                <p className="mt-1 break-words text-sm font-semibold">{b.customer_name}</p>
+                                                <p className="break-words text-xs">
                                                     {b.service_name}
                                                     {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
                                                         ? ` · ${b.quantity} ${b.unit_label ?? 'item'}`

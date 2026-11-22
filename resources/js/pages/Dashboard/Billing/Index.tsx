@@ -116,7 +116,7 @@ export default function BillingIndex({
 
                     {/* Billing Cycle Toggle */}
                     <div
-                        className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 rounded-md bg-canvas p-1 sm:rounded-full"
+                        className="grid w-full grid-cols-2 items-center gap-1 rounded-sm bg-canvas p-1 sm:inline-flex sm:w-auto sm:rounded-full"
                         role="group"
                         aria-label="Siklus penagihan"
                     >
@@ -125,7 +125,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'monthly'}
                             onClick={() => setBillingCycle('monthly')}
                             className={cn(
-                                'min-h-9 cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                'min-h-10 cursor-pointer rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
                                 billingCycle === 'monthly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -136,7 +136,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'yearly'}
                             onClick={() => setBillingCycle('yearly')}
                             className={cn(
-                                'min-h-9 cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                'min-h-10 cursor-pointer rounded-xl px-3 py-1.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
                                 billingCycle === 'yearly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -149,10 +149,10 @@ export default function BillingIndex({
                     {meters.map((m) => {
                         const pct = m.max ? Math.min(100, Math.round((m.used / m.max) * 100)) : 0;
                         return (
-                            <div key={m.label}>
+                            <div key={m.label} className="min-w-0">
                                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                                    <span className="text-mute">{m.label}</span>
-                                    <span className="font-semibold tabular-nums text-ink">
+                                    <span className="min-w-0 text-mute">{m.label}</span>
+                                    <span className="shrink-0 font-semibold tabular-nums text-ink">
                                         {m.used} / {m.max ?? '∞'}
                                     </span>
                                 </div>
@@ -203,7 +203,7 @@ export default function BillingIndex({
                                     <h3 className="text-xl font-semibold text-ink">{plan.name}</h3>
                                     {isPopular && <Badge variant="popular">Rekomendasi</Badge>}
                                 </div>
-                                <p className="mt-3 text-3xl font-semibold tabular-nums text-ink">
+                                <p className="mt-3 text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
                                     {formatRupiah(displayPrice)}
                                     <span className="text-sm font-normal text-mute">
                                         {billingCycle === 'yearly' ? ' / thn' : ' / bln'}
@@ -290,9 +290,9 @@ export default function BillingIndex({
                                 key={inv.id}
                                 className="flex flex-col justify-between gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
                             >
-                                <div className="space-y-1">
+                                <div className="min-w-0 space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="font-mono text-xs font-semibold text-ink">{inv.invoice_number}</span>
+                                        <span className="font-mono text-xs font-semibold break-all text-ink">{inv.invoice_number}</span>
                                         <Badge variant={inv.status === 'paid' ? 'secondary' : inv.status === 'pending' ? 'popular' : 'destructive'}>
                                             {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
                                         </Badge>
@@ -303,32 +303,35 @@ export default function BillingIndex({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                    <span className="mr-2 font-mono text-sm font-semibold tabular-nums text-ink">
+                                <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+                                    <span className="font-mono text-sm font-semibold tabular-nums text-ink sm:mr-2">
                                         {formatRupiah(inv.amount)}
                                     </span>
 
-                                    {inv.status === 'pending' && inv.payment_url && (
-                                        <Button asChild size="sm" variant="default">
-                                            <a href={inv.payment_url} target="_blank" rel="noreferrer">
-                                                Lanjutkan Bayar
-                                                <ExternalLink className="size-3.5" aria-hidden="true" />
-                                            </a>
-                                        </Button>
-                                    )}
+                                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                                        {inv.status === 'pending' && inv.payment_url && (
+                                            <Button asChild size="sm" variant="default" className="flex-1 sm:flex-initial">
+                                                <a href={inv.payment_url} target="_blank" rel="noreferrer">
+                                                    Lanjutkan Bayar
+                                                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                                                </a>
+                                            </Button>
+                                        )}
 
-                                    {inv.status === 'pending' && inv.provider === 'mayar' && isOwner && (
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={checkingInvoiceId === inv.id}
-                                            onClick={() => checkInvoiceStatus(inv.id)}
-                                        >
-                                            <RefreshCw className={cn('size-3.5', checkingInvoiceId === inv.id && 'animate-spin')} aria-hidden="true" />
-                                            Cek Status
-                                        </Button>
-                                    )}
+                                        {inv.status === 'pending' && inv.provider === 'mayar' && isOwner && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 sm:flex-initial"
+                                                disabled={checkingInvoiceId === inv.id}
+                                                onClick={() => checkInvoiceStatus(inv.id)}
+                                            >
+                                                <RefreshCw className={cn('size-3.5', checkingInvoiceId === inv.id && 'animate-spin')} aria-hidden="true" />
+                                                Cek Status
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

@@ -223,7 +223,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                 </Link>
             </BusinessHeader>
 
-            <main id="main-content" tabIndex={-1} className="mx-auto box-content max-w-xl space-y-6 px-4 py-8 outline-none sm:px-6 print:py-0">
+            <main id="main-content" tabIndex={-1} className="mx-auto box-content max-w-xl space-y-6 px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] outline-none sm:px-6 print:py-0">
                 {flash.success && (
                     <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink print:hidden">
                         {flash.success}
@@ -235,10 +235,10 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                     </div>
                 )}
 
-                <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-8 print:border-0 print:p-0">
+                <div className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8 print:border-0 print:p-0">
                     <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <p className="font-mono text-xs font-semibold text-mute">
+                        <div className="min-w-0">
+                            <p className="font-mono text-xs font-semibold break-all text-mute">
                                 INVOICE {invoiceLabel}
                             </p>
                             <div className="mt-1 flex items-center gap-2">
@@ -247,13 +247,13 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                 ) : (
                                     <CheckCircle2 className="size-6 shrink-0 text-ink" aria-hidden="true" />
                                 )}
-                                <h1 className="text-2xl font-semibold text-ink">
+                                <h1 className="text-xl font-semibold break-words text-ink sm:text-2xl">
                                     {isDropoff && booking.work_status && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show'
                                         ? (WORK_STATUS_LABELS[booking.work_status] ?? RESERVATION_STATUS_LABELS[booking.reservation_status])
                                         : (RESERVATION_STATUS_LABELS[booking.reservation_status] ?? booking.reservation_status)}
                                 </h1>
                             </div>
-                            <p className="mt-1 text-sm text-mute">{business.name}</p>
+                            <p className="mt-1 text-sm break-words text-mute">{business.name}</p>
                         </div>
 
                         <Badge variant="secondary">{PAYMENT_STATUS_LABELS[booking.payment_status] ?? booking.payment_status}</Badge>
@@ -262,7 +262,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                     {isDropoff && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show' && (
                         <div className="mt-6 rounded-sm bg-bone p-4" aria-label="Progres pengerjaan pesanan">
                             <p className="mb-3 text-xs font-semibold text-mute">Progres Pengerjaan</p>
-                            <ol className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                            <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
                                 {dropoffSteps.map((step, idx) => {
                                     const Icon = step.icon;
                                     const isDone = idx <= currentWorkIndex;
@@ -271,7 +271,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                         <li
                                             key={step.key}
                                             className={cn(
-                                                'flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold',
+                                                'flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold sm:px-3',
                                                 isCurrent
                                                     ? 'bg-ink text-canvas'
                                                     : isDone
@@ -280,7 +280,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                             )}
                                         >
                                             <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-                                            <span className="leading-tight">{step.label}</span>
+                                            <span className="min-w-0 leading-tight break-words">{step.label}</span>
                                         </li>
                                     );
                                 })}
@@ -294,75 +294,75 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             <span className="min-w-0 text-right font-mono font-semibold break-all text-ink">{invoiceLabel}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">Kode Booking</span>
-                            <span className="font-mono text-ink">{booking.booking_code}</span>
+                            <span className="shrink-0 text-mute">Kode Booking</span>
+                            <span className="min-w-0 text-right font-mono break-all text-ink">{booking.booking_code}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">Pelanggan</span>
-                            <span className="text-right font-semibold text-ink">
-                                {booking.customer_name} ({booking.customer_phone})
+                            <span className="shrink-0 text-mute">Pelanggan</span>
+                            <span className="min-w-0 text-right font-semibold break-words text-ink">
+                                {booking.customer_name} <span className="font-mono text-xs font-normal tabular-nums text-mute">({booking.customer_phone})</span>
                             </span>
                         </div>
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">{businessType === 'space_booking' ? 'Fasilitas / Paket' : 'Layanan'}</span>
-                            <span className="text-right font-semibold text-ink">
+                            <span className="shrink-0 text-mute">{businessType === 'space_booking' ? 'Fasilitas / Paket' : 'Layanan'}</span>
+                            <span className="min-w-0 text-right font-semibold break-words text-ink">
                                 {booking.service_name}
                                 {isDropoff ? ` (${qty} ${unitLabel})` : ''}
                             </span>
                         </div>
                         {isDropoff && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Metode</span>
-                                <span className="text-right font-semibold text-ink">
+                                <span className="shrink-0 text-mute">Metode</span>
+                                <span className="min-w-0 text-right font-semibold text-ink">
                                     {FULFILLMENT_TYPE_LABELS[booking.fulfillment_type ?? 'dropoff'] ?? 'Antar ke Toko'}
                                 </span>
                             </div>
                         )}
                         {isDropoff && booking.fulfillment_type === 'pickup' && booking.pickup_address && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Alamat Jemput</span>
-                                <span className="max-w-xs text-right text-body">{booking.pickup_address}</span>
+                                <span className="shrink-0 text-mute">Alamat Jemput</span>
+                                <span className="min-w-0 max-w-xs text-right break-words text-body">{booking.pickup_address}</span>
                             </div>
                         )}
                         {businessType === 'staff_appointment' && booking.staff_name && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Staff</span>
-                                <span className="text-right font-semibold text-ink">{booking.staff_name}</span>
+                                <span className="shrink-0 text-mute">Staff</span>
+                                <span className="min-w-0 text-right font-semibold break-words text-ink">{booking.staff_name}</span>
                             </div>
                         )}
                         <div className="flex justify-between gap-4">
-                            <span className="text-mute">{isDropoff ? 'Jadwal Drop-off / Jemput' : 'Jadwal'}</span>
-                            <span className="text-right font-semibold tabular-nums text-ink">
+                            <span className="shrink-0 text-mute">{isDropoff ? 'Jadwal Drop-off' : 'Jadwal'}</span>
+                            <span className="min-w-0 text-right font-semibold tabular-nums text-ink">
                                 {formatDateIndo(booking.booking_date)} · {scheduleLabel}
                             </span>
                         </div>
                         {isDropoff && booking.estimated_ready_date && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Estimasi Selesai</span>
-                                <span className="text-right font-semibold tabular-nums text-ink">
+                                <span className="shrink-0 text-mute">Estimasi Selesai</span>
+                                <span className="min-w-0 text-right font-semibold tabular-nums text-ink">
                                     {formatDateIndo(booking.estimated_ready_date)}
                                 </span>
                             </div>
                         )}
                         {booking.created_at_local && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Dibuat Pada</span>
-                                <span className="text-right tabular-nums text-mute">{booking.created_at_local}</span>
+                                <span className="shrink-0 text-mute">Dibuat Pada</span>
+                                <span className="min-w-0 text-right tabular-nums text-mute">{booking.created_at_local}</span>
                             </div>
                         )}
                         {booking.customer_notes && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Catatan</span>
-                                <span className="max-w-xs text-right text-body">{booking.customer_notes}</span>
+                                <span className="shrink-0 text-mute">Catatan</span>
+                                <span className="min-w-0 max-w-xs text-right break-words text-body">{booking.customer_notes}</span>
                             </div>
                         )}
                         <div className="flex justify-between gap-4 border-t border-divider pt-3">
-                            <span className="text-mute">Total Biaya</span>
+                            <span className="shrink-0 text-mute">Total Biaya</span>
                             <span className="font-semibold tabular-nums text-ink">{formatRupiah(booking.total_price)}</span>
                         </div>
                         {booking.dp_amount > 0 && (
                             <div className="flex justify-between gap-4">
-                                <span className="text-mute">Nominal DP</span>
+                                <span className="shrink-0 text-mute">Nominal DP</span>
                                 <span className="font-semibold tabular-nums text-electric">{formatRupiah(booking.dp_amount)}</span>
                             </div>
                         )}
@@ -394,8 +394,8 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                         <div key={idx} className="flex items-center justify-between gap-3 rounded-xl bg-canvas p-3 text-xs">
                                             <div className="min-w-0">
                                                 <p className="font-semibold text-ink">{acc.bank_name}</p>
-                                                <p className="font-mono text-sm font-semibold text-ink">{acc.account_number}</p>
-                                                <p className="text-mute">a.n. {acc.account_holder}</p>
+                                                <p className="font-mono text-sm font-semibold break-all tabular-nums text-ink">{acc.account_number}</p>
+                                                <p className="break-words text-mute">a.n. {acc.account_holder}</p>
                                             </div>
                                             <CopyButton value={acc.account_number} label={`nomor rekening ${acc.bank_name}`} />
                                         </div>
@@ -424,7 +424,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                     className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-4 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                                 >
                                     <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                    <span className="break-words">{file ? file.name : 'Pilih gambar bukti bayar (JPG/PNG)'}</span>
+                                    <span className="min-w-0 [overflow-wrap:anywhere]">{file ? file.name : 'Pilih gambar bukti bayar (JPG/PNG)'}</span>
                                     <input
                                         id="status-dp-proof"
                                         type="file"

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { formatDateIndo } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 interface StaffHourRow {
     day_of_week: number;
@@ -146,18 +147,19 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
 
     return (
         <Dialog open={staffId !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-2xl">
+            <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 shadow-none sm:max-w-2xl sm:p-6">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold text-ink">
-                        Jadwal Shift & Cuti — {staffName}
+                    <DialogTitle className="break-words text-lg font-semibold text-ink sm:text-xl">
+                        Jadwal Shift &amp; Cuti — {staffName}
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex gap-2 border-b border-divider pb-3">
+                <div className="flex flex-wrap gap-2 border-b border-divider pb-3">
                     <Button
                         type="button"
                         variant={activeTab === 'hours' ? 'default' : 'outline'}
                         size="sm"
+                        className="flex-1 sm:flex-initial"
                         onClick={() => setActiveTab('hours')}
                     >
                         <Clock className="size-3.5" aria-hidden="true" />
@@ -167,10 +169,11 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                         type="button"
                         variant={activeTab === 'time_offs' ? 'default' : 'outline'}
                         size="sm"
+                        className="flex-1 sm:flex-initial"
                         onClick={() => setActiveTab('time_offs')}
                     >
                         <CalendarOff className="size-3.5" aria-hidden="true" />
-                        Cuti / Libur ({timeOffs.length})
+                        <span className="tabular-nums">Cuti / Libur ({timeOffs.length})</span>
                     </Button>
                 </div>
 
@@ -178,9 +181,9 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                     <div className="py-10 text-center text-sm text-mute">Memuat jadwal staff…</div>
                 ) : activeTab === 'hours' ? (
                     <form onSubmit={handleSaveHours} className="space-y-4">
-                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
-                            <div>
-                                <Label htmlFor="staff-use-default" className="text-sm font-semibold text-ink">
+                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-3.5 sm:p-4">
+                            <div className="min-w-0">
+                                <Label htmlFor="staff-use-default" className="cursor-pointer text-sm font-semibold text-ink">
                                     Ikuti Jam Operasional Bisnis
                                 </Label>
                                 <p className="mt-0.5 text-xs text-mute">
@@ -189,6 +192,7 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                             </div>
                             <Switch
                                 id="staff-use-default"
+                                className="shrink-0"
                                 checked={hoursForm.data.use_business_default}
                                 onCheckedChange={(val) => hoursForm.setData('use_business_default', val)}
                             />
@@ -196,100 +200,129 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
 
                         {!hoursForm.data.use_business_default && (
                             <div className="space-y-2.5">
-                                {hoursForm.data.hours.map((row, idx) => (
-                                    <div
-                                        key={row.day_of_week}
-                                        className="rounded-sm border border-hairline-soft bg-canvas p-3"
-                                    >
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <Switch
-                                                    id={`staff-day-${row.day_of_week}`}
-                                                    checked={row.is_working}
-                                                    onCheckedChange={(val) => updateDay(idx, { is_working: val })}
-                                                />
-                                                <Label
-                                                    htmlFor={`staff-day-${row.day_of_week}`}
-                                                    className="w-16 text-sm font-semibold text-ink"
-                                                >
-                                                    {DAY_NAMES[row.day_of_week]}
-                                                </Label>
+                                {hoursForm.data.hours.map((row, idx) => {
+                                    const dayName = DAY_NAMES[row.day_of_week];
+                                    return (
+                                        <div
+                                            key={row.day_of_week}
+                                            className={cn(
+                                                'space-y-3 rounded-sm border p-3.5 transition-colors',
+                                                row.is_working
+                                                    ? 'border-hairline-soft bg-bone/70'
+                                                    : 'border-transparent bg-bone/45'
+                                            )}
+                                        >
+                                            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                                                <div className="flex min-w-0 items-center justify-between gap-3 sm:w-32 sm:justify-start">
+                                                    <div className="flex min-w-0 items-center gap-2.5">
+                                                        <Switch
+                                                            id={`staff-day-${row.day_of_week}`}
+                                                            aria-label={`Status kerja hari ${dayName}`}
+                                                            checked={row.is_working}
+                                                            onCheckedChange={(val) => updateDay(idx, { is_working: val })}
+                                                        />
+                                                        <Label
+                                                            htmlFor={`staff-day-${row.day_of_week}`}
+                                                            className="cursor-pointer text-sm font-semibold text-ink"
+                                                        >
+                                                            {dayName}
+                                                        </Label>
+                                                    </div>
+                                                    {row.is_working ? (
+                                                        <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success sm:hidden">
+                                                            Kerja
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ash sm:hidden">
+                                                            Libur / Off
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {row.is_working ? (
+                                                    <div className="min-w-0 space-y-1.5 sm:space-y-0">
+                                                        <span className="block text-xs font-medium text-mute sm:hidden">Jam Shift</span>
+                                                        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
+                                                            <Input
+                                                                type="time"
+                                                                aria-label={`Mulai shift ${dayName}`}
+                                                                className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                                value={row.start_time}
+                                                                onChange={(e) => updateDay(idx, { start_time: e.target.value })}
+                                                                required
+                                                            />
+                                                            <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
+                                                            <Input
+                                                                type="time"
+                                                                aria-label={`Selesai shift ${dayName}`}
+                                                                className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                                value={row.end_time}
+                                                                onChange={(e) => updateDay(idx, { end_time: e.target.value })}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="hidden rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ash sm:inline-flex">
+                                                        Libur / Off
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            {row.is_working ? (
-                                                <div className="flex w-full flex-col gap-2 text-xs sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-                                                    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
+                                            {row.is_working && (
+                                                <div className="space-y-1.5 border-t border-divider pt-2.5 sm:flex sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
+                                                    <span className="block text-xs font-medium text-mute">Istirahat (opsional)</span>
+                                                    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
                                                         <Input
                                                             type="time"
-                                                            aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
-                                                            value={row.start_time}
-                                                            onChange={(e) => updateDay(idx, { start_time: e.target.value })}
-                                                            required
-                                                        />
-                                                        <span className="text-mute">–</span>
-                                                        <Input
-                                                            type="time"
-                                                            aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
-                                                            value={row.end_time}
-                                                            onChange={(e) => updateDay(idx, { end_time: e.target.value })}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="grid w-full grid-cols-[auto_1fr_auto_1fr] items-center gap-2 sm:flex sm:w-auto">
-                                                        <span className="text-mute sm:ml-1">Istirahat:</span>
-                                                        <Input
-                                                            type="time"
-                                                            aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            aria-label={`Mulai istirahat ${dayName}`}
+                                                            className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
                                                             value={row.break_start}
                                                             onChange={(e) => updateDay(idx, { break_start: e.target.value })}
                                                         />
-                                                        <span className="text-mute">–</span>
+                                                        <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
                                                         <Input
                                                             type="time"
-                                                            aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-9 w-full rounded-xs px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                            aria-label={`Selesai istirahat ${dayName}`}
+                                                            className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
                                                             value={row.break_end}
                                                             onChange={(e) => updateDay(idx, { break_end: e.target.value })}
                                                         />
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                <span className="text-xs text-mute">Libur / Off</span>
                                             )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
 
                         {Object.values(hoursForm.errors).length > 0 && (
-                            <div className="rounded-xl bg-destructive-soft p-3 text-xs text-destructive">
+                            <div role="alert" className="rounded-xl bg-destructive-soft p-3 text-xs text-destructive">
                                 {Object.values(hoursForm.errors)[0]}
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button type="button" variant="outline" onClick={onClose}>
+                        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
                                 Tutup
                             </Button>
-                            <Button type="submit" disabled={hoursForm.processing}>
+                            <Button type="submit" className="w-full sm:w-auto" disabled={hoursForm.processing}>
                                 {hoursForm.processing ? 'Menyimpan…' : 'Simpan Jadwal Shift'}
                             </Button>
                         </div>
                     </form>
                 ) : (
                     <div className="space-y-5">
-                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-md bg-bone p-4">
+                        <form onSubmit={handleAddTimeOff} className="space-y-3 rounded-sm bg-bone p-3.5 sm:p-4">
                             <p className="text-sm font-semibold text-ink">Tambah Jadwal Cuti / Libur</p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="space-y-1">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="min-w-0 space-y-1">
                                     <Label htmlFor="timeoff-start">Tanggal Mulai</Label>
                                     <Input
                                         id="timeoff-start"
                                         type="date"
+                                        className="min-w-0 bg-canvas"
                                         value={timeOffForm.data.start_date}
                                         onChange={(e) => {
                                             timeOffForm.setData('start_date', e.target.value);
@@ -300,11 +333,12 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                         required
                                     />
                                 </div>
-                                <div className="space-y-1">
+                                <div className="min-w-0 space-y-1">
                                     <Label htmlFor="timeoff-end">Tanggal Selesai</Label>
                                     <Input
                                         id="timeoff-end"
                                         type="date"
+                                        className="min-w-0 bg-canvas"
                                         min={timeOffForm.data.start_date}
                                         value={timeOffForm.data.end_date}
                                         onChange={(e) => timeOffForm.setData('end_date', e.target.value)}
@@ -312,16 +346,17 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-1">
+                            <div className="min-w-0 space-y-1">
                                 <Label htmlFor="timeoff-reason">Alasan (Opsional)</Label>
                                 <Input
                                     id="timeoff-reason"
+                                    className="bg-canvas"
                                     placeholder="Contoh: Cuti tahunan, sakit, pelatihan…"
                                     value={timeOffForm.data.reason}
                                     onChange={(e) => timeOffForm.setData('reason', e.target.value)}
                                 />
                             </div>
-                            <Button type="submit" size="sm" disabled={timeOffForm.processing}>
+                            <Button type="submit" size="sm" className="w-full sm:w-auto" disabled={timeOffForm.processing}>
                                 <Plus className="size-3.5" aria-hidden="true" />
                                 {timeOffForm.processing ? 'Menambahkan…' : 'Tambah Cuti'}
                             </Button>
@@ -332,23 +367,23 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                 Belum ada jadwal cuti atau libur untuk staff ini.
                             </p>
                         ) : (
-                            <div className="divide-y divide-divider rounded-md border border-hairline-soft bg-canvas">
+                            <div className="divide-y divide-divider rounded-sm border border-hairline-soft bg-canvas">
                                 {timeOffs.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                                        <div>
+                                    <div key={item.id} className="flex items-center justify-between gap-3 px-3.5 py-3 sm:px-4">
+                                        <div className="min-w-0 flex-1">
                                             <p className="text-sm font-semibold text-ink">
                                                 {item.start_date === item.end_date
                                                     ? formatDateIndo(item.start_date)
                                                     : `${formatDateIndo(item.start_date)} – ${formatDateIndo(item.end_date)}`}
                                             </p>
-                                            {item.reason && <p className="text-xs text-mute">{item.reason}</p>}
+                                            {item.reason && <p className="mt-0.5 break-words text-xs text-mute">{item.reason}</p>}
                                         </div>
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            size="icon-sm"
-                                            aria-label="Hapus cuti"
-                                            className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                            size="icon"
+                                            aria-label={`Hapus cuti ${formatDateIndo(item.start_date)}`}
+                                            className="shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
                                             onClick={() => handleDeleteTimeOff(item.id)}
                                         >
                                             <Trash2 className="size-4" aria-hidden="true" />

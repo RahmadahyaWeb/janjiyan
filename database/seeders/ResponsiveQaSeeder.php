@@ -2,11 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Models\Booking;
 use App\Models\Business;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 use RuntimeException;
 
 /**
@@ -182,11 +188,77 @@ class ResponsiveQaSeeder extends Seeder
             ]);
         }
 
-        Customer::updateOrCreate(['business_id' => $soklenn->id, 'phone' => '6281299998888777'], [
+        $dropoffLongCustomer = Customer::updateOrCreate(['business_id' => $soklenn->id, 'phone' => '6281299998888777'], [
             'name' => 'Raden Ayu Kusumawardhani Prameswari Setyaningrum',
             'email' => 'raden.ayu.kusumawardhani.prameswari@contoh-domain-panjang.test',
             'notes' => $longDropoffDesc,
         ]);
+
+        // Dedicated drop-off owner user so parallel E2E tests can test dropoff dashboard without mutating owner@janjiyan.test.
+        $proPlan = SubscriptionPlan::where('slug', 'professional')->firstOrFail();
+        $dropoffOwner = User::updateOrCreate(
+            ['email' => 'dropoff@janjiyan.test'],
+            [
+                'name' => 'Siti Rahma (Drop-off Owner)',
+                'password' => Hash::make('password123'),
+                'email_verified_at' => now(),
+                'is_superadmin' => false,
+                'active_business_id' => $soklenn->id,
+            ]
+        );
+        Subscription::updateOrCreate(
+            ['user_id' => $dropoffOwner->id],
+            [
+                'subscription_plan_id' => $proPlan->id,
+                'status' => 'active',
+                'trial_ends_at' => null,
+                'current_period_ends_at' => now()->addDays(25),
+            ]
+        );
+        $soklenn->users()->syncWithoutDetaching([
+            $dropoffOwner->id => ['role' => 'owner', 'permissions' => json_encode(['*'])],
+        ]);
+
+        // Stress-test drop-off booking with long customer/service names & pickup address.
+        $dropoffStressService = Service::where('business_id', $soklenn->id)
+            ->where('name', 'Repaint Sepatu Kulit Full Warna Custom Sesuai Permintaan')
+            ->firstOrFail();
+        $qaToday = CarbonImmutable::now('Asia/Jakarta');
+        if ($qaToday->isSunday()) {
+            $qaToday = $qaToday->addDay();
+        }
+        Booking::updateOrCreate(
+            ['booking_code' => 'JNY-QADROP'],
+            [
+                'business_id' => $soklenn->id,
+                'service_id' => $dropoffStressService->id,
+                'staff_id' => null,
+                'customer_id' => $dropoffLongCustomer->id,
+                'booked_customer_name' => $dropoffLongCustomer->name,
+                'booked_customer_email' => $dropoffLongCustomer->email,
+                'booking_mode' => 'dropoff',
+                'quantity' => 4,
+                'unit_label' => 'pasang',
+                'fulfillment_type' => 'pickup',
+                'pickup_session' => 'afternoon',
+                'pickup_address' => 'Jl. Pangeran Antasari Komplek Ruko Mitra Plaza Blok C No. 123A, Kelurahan Pekapuran Raya, Banjarmasin Timur',
+                'invoice_number' => 'INV-'.$qaToday->format('Ymd').'-QADROP',
+                'invoice_token' => substr(hash('sha256', 'qa-JNY-QADROP'), 0, 32),
+                'booking_date' => $qaToday->toDateString(),
+                'start_at' => $qaToday->setTime(9, 0)->utc(),
+                'end_at' => $qaToday->setTime(18, 0)->utc(),
+                'buffer_end_at' => $qaToday->setTime(18, 0)->utc(),
+                'estimated_ready_date' => $qaToday->addDays(5)->toDateString(),
+                'total_price' => $dropoffStressService->price * 4,
+                'dp_amount' => 100000,
+                'reservation_status' => 'confirmed',
+                'work_status' => 'ready_for_pickup',
+                'payment_status' => 'waiting_verification',
+                'dp_proof_path' => 'dp-proofs/demo-dp-proof.png',
+                'dp_expires_at' => null,
+                'customer_notes' => '4 pasang sepatu kulit premium warna cokelat tua & sneakers putih suede.',
+            ]
+        );
 
         // 4. Bare profile (no logo, description, phone, address, gallery): how most new merchants look.
         $bare = Business::updateOrCreate(['slug' => 'toko-polos'], [

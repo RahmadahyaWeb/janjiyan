@@ -120,7 +120,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
             <form
                 ref={formRef}
                 onSubmit={handleSubmit}
-                className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
             >
                 <div className="flex items-start gap-3 rounded-sm border border-hairline-soft bg-bone/70 px-4 py-3 text-xs">
                     <Lock className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
@@ -192,7 +192,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                         className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
                     >
                         <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                        <span className="break-words">
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
                             {form.data.image
                                 ? form.data.image.name
                                 : 'Unggah thumbnail layanan (JPG/PNG/WebP, maks 3MB)'}
@@ -304,7 +304,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                         </div>
 
                         <div className="flex items-center justify-between gap-3 rounded-sm bg-bone px-4 py-3">
-                            <div>
+                            <div className="min-w-0">
                                 <Label htmlFor="service-supports-pickup" className="cursor-pointer text-sm font-semibold text-ink">
                                     Sediakan opsi Jemput &amp; Antar
                                 </Label>
@@ -314,6 +314,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             </div>
                             <Switch
                                 id="service-supports-pickup"
+                                className="shrink-0"
                                 checked={form.data.supports_pickup}
                                 onCheckedChange={(checked) => form.setData('supports_pickup', checked)}
                             />
@@ -411,7 +412,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                                     type="button"
                                                     aria-pressed={checked}
                                                     onClick={() => toggleStaff(st.id)}
-                                                    className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+                                                    className={`min-h-10 cursor-pointer rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                                         checked ? 'bg-ink text-canvas' : 'bg-bone text-ink'
                                                     }`}
                                                 >
@@ -472,8 +473,8 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                 </div>
 
                 {isEditing && (
-                    <div className="flex items-center justify-between rounded-sm bg-bone px-4 py-3">
-                        <div>
+                    <div className="flex items-center justify-between gap-3 rounded-sm bg-bone px-4 py-3">
+                        <div className="min-w-0">
                             <Label htmlFor="service-edit-active" className="cursor-pointer text-sm font-semibold text-ink">
                                 Tampilkan di portal booking
                             </Label>
@@ -481,6 +482,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                         </div>
                         <Switch
                             id="service-edit-active"
+                            className="shrink-0"
                             checked={form.data.is_active}
                             onCheckedChange={(checked) => form.setData('is_active', checked)}
                         />
@@ -498,10 +500,10 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                 )}
 
                 <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <Button asChild type="button" variant="outline">
+                    <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                         <Link href={route('dashboard.services')}>Batal</Link>
                     </Button>
-                    <Button type="submit" disabled={form.processing}>
+                    <Button type="submit" disabled={form.processing} className="w-full sm:w-auto">
                         {form.processing ? 'Menyimpan…' : 'Simpan Layanan'}
                     </Button>
                 </div>

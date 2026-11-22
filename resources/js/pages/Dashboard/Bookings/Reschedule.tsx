@@ -99,23 +99,24 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
             >
-                <div className="flex items-start gap-3 rounded-sm bg-bone p-4 text-xs">
+                <div className="flex items-start gap-3 rounded-sm bg-bone p-3.5 text-xs sm:p-4">
                     <CalendarClock className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <p className="font-mono font-semibold text-ink">{booking.booking_code}</p>
-                        <p className="mt-0.5 text-mute">
+                        <p className="mt-0.5 break-words text-mute">
                             {booking.customer_name} · {booking.service_name}
                         </p>
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                     <Label htmlFor="reschedule-date">Tanggal Baru</Label>
                     <Input
                         id="reschedule-date"
                         type="date"
+                        className="min-w-0"
                         min={todayString}
                         value={form.data.date}
                         onChange={(e) => form.setData('date', e.target.value)}
@@ -181,7 +182,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                         {showInitialLoading ? (
                             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 {Array.from({ length: 8 }).map((_, idx) => (
-                                    <div key={idx} className="h-9 rounded-xl bg-bone" />
+                                    <div key={idx} className="h-10 rounded-xl bg-bone" />
                                 ))}
                             </div>
                         ) : !hasLoaded ? (
@@ -195,6 +196,8 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                                 className={`grid grid-cols-3 gap-2 transition-opacity duration-150 sm:grid-cols-4 ${
                                     showRefreshing ? 'opacity-60' : ''
                                 }`}
+                                role="group"
+                                aria-label="Pilih slot waktu baru"
                             >
                                 {slots.map((slot) => {
                                     const selected = form.data.time === slot.time;
@@ -202,11 +205,12 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                                         <button
                                             key={slot.time}
                                             type="button"
+                                            aria-pressed={selected}
                                             onClick={() => {
                                                 setTimeError('');
                                                 form.setData('time', slot.time);
                                             }}
-                                            className={`cursor-pointer rounded-xl border px-3 py-2 text-center font-mono text-xs font-semibold transition-colors ${
+                                            className={`inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border px-2.5 py-2 text-center font-mono text-xs font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
                                                 selected
                                                     ? 'border-ink bg-ink text-white'
                                                     : 'border-hairline-soft bg-canvas text-ink hover:bg-bone'
@@ -226,12 +230,13 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                     </div>
                 )}
 
-                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <Button asChild type="button" variant="outline">
+                <div className="flex flex-col-reverse gap-2.5 pt-2 sm:flex-row sm:justify-end">
+                    <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                         <Link href={route('dashboard.bookings')}>Batal</Link>
                     </Button>
                     <Button
                         type="submit"
+                        className="w-full sm:w-auto"
                         disabled={
                             form.processing ||
                             (isDropoff

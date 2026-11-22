@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
 interface OperatingHourRow {
@@ -116,68 +117,89 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                             return (
                                 <div
                                     key={row.day_of_week}
-                                    className="space-y-2.5 rounded-sm bg-bone p-3.5"
+                                    className={cn(
+                                        'space-y-3 rounded-sm border p-3.5 transition-colors sm:p-4',
+                                        row.is_open
+                                            ? 'border-hairline-soft bg-bone/70'
+                                            : 'border-transparent bg-bone/45'
+                                    )}
                                 >
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex w-32 items-center gap-2.5">
-                                            <Switch
-                                                id={switchId}
-                                                aria-label={`Status buka hari ${dayName}`}
-                                                checked={row.is_open}
-                                                onCheckedChange={(val) => updateHour(idx, 'is_open', val)}
-                                            />
-                                            <Label htmlFor={switchId} className="cursor-pointer text-sm font-semibold text-ink">
-                                                {dayName}
-                                            </Label>
+                                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                                        <div className="flex min-w-0 items-center justify-between gap-3 sm:w-32 sm:justify-start">
+                                            <div className="flex min-w-0 items-center gap-2.5">
+                                                <Switch
+                                                    id={switchId}
+                                                    aria-label={`Status buka hari ${dayName}`}
+                                                    checked={row.is_open}
+                                                    onCheckedChange={(val) => updateHour(idx, 'is_open', val)}
+                                                />
+                                                <Label htmlFor={switchId} className="cursor-pointer text-sm font-semibold text-ink">
+                                                    {dayName}
+                                                </Label>
+                                            </div>
+                                            {row.is_open ? (
+                                                <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success sm:hidden">
+                                                    Buka
+                                                </span>
+                                            ) : (
+                                                <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ash sm:hidden">
+                                                    Tutup
+                                                </span>
+                                            )}
                                         </div>
 
                                         {row.is_open ? (
-                                            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs sm:flex sm:w-auto">
-                                                <Input
-                                                    type="time"
-                                                    aria-label={`Jam buka hari ${dayName}`}
-                                                    aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.open_time` as keyof typeof hoursForm.errors])}
-                                                    aria-describedby={errorId}
-                                                    className="h-10 w-full bg-canvas px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
-                                                    value={row.open_time}
-                                                    onChange={(e) => updateHour(idx, 'open_time', e.target.value)}
-                                                />
-                                                <span className="text-mute">s/d</span>
-                                                <Input
-                                                    type="time"
-                                                    aria-label={`Jam tutup hari ${dayName}`}
-                                                    aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.close_time` as keyof typeof hoursForm.errors])}
-                                                    aria-describedby={errorId}
-                                                    className="h-10 w-full bg-canvas px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
-                                                    value={row.close_time}
-                                                    onChange={(e) => updateHour(idx, 'close_time', e.target.value)}
-                                                />
+                                            <div className="min-w-0 space-y-1.5 sm:space-y-0">
+                                                <span className="block text-xs font-medium text-mute sm:hidden">Jam Buka</span>
+                                                <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
+                                                    <Input
+                                                        type="time"
+                                                        aria-label={`Jam buka hari ${dayName}`}
+                                                        aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.open_time` as keyof typeof hoursForm.errors])}
+                                                        aria-describedby={errorId}
+                                                        className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                        value={row.open_time}
+                                                        onChange={(e) => updateHour(idx, 'open_time', e.target.value)}
+                                                    />
+                                                    <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
+                                                    <Input
+                                                        type="time"
+                                                        aria-label={`Jam tutup hari ${dayName}`}
+                                                        aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.close_time` as keyof typeof hoursForm.errors])}
+                                                        aria-describedby={errorId}
+                                                        className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                        value={row.close_time}
+                                                        onChange={(e) => updateHour(idx, 'close_time', e.target.value)}
+                                                    />
+                                                </div>
                                             </div>
                                         ) : (
-                                            <span className="text-xs font-semibold text-ash">Tutup</span>
+                                            <span className="hidden rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ash sm:inline-flex">
+                                                Tutup
+                                            </span>
                                         )}
                                     </div>
 
                                     {row.is_open && (
-                                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-divider pt-2.5">
-                                            <span className="text-xs text-mute">Istirahat (opsional)</span>
-                                            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs sm:flex sm:w-auto">
+                                        <div className="space-y-1.5 border-t border-divider pt-2.5 sm:flex sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
+                                            <span className="block text-xs font-medium text-mute">Istirahat (opsional)</span>
+                                            <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
                                                 <Input
                                                     type="time"
                                                     aria-label={`Mulai istirahat hari ${dayName}`}
                                                     aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.break_start` as keyof typeof hoursForm.errors])}
                                                     aria-describedby={errorId}
-                                                    className="h-9 w-full bg-canvas px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                    className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
                                                     value={row.break_start}
                                                     onChange={(e) => updateHour(idx, 'break_start', e.target.value)}
                                                 />
-                                                <span className="text-mute">s/d</span>
+                                                <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
                                                 <Input
                                                     type="time"
                                                     aria-label={`Selesai istirahat hari ${dayName}`}
                                                     aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.break_end` as keyof typeof hoursForm.errors])}
                                                     aria-describedby={errorId}
-                                                    className="h-9 w-full bg-canvas px-2.5 text-base tabular-nums sm:w-28 md:text-sm"
+                                                    className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
                                                     value={row.break_end}
                                                     onChange={(e) => updateHour(idx, 'break_end', e.target.value)}
                                                 />
@@ -198,7 +220,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                             );
                         })}
                     </div>
-                    <Button type="submit" disabled={hoursForm.processing}>
+                    <Button type="submit" className="w-full sm:w-auto" disabled={hoursForm.processing}>
                         {hoursForm.processing ? 'Menyimpan…' : 'Simpan Jam Operasional'}
                     </Button>
                 </form>
@@ -207,11 +229,12 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                 <div className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-ink">Tanggal Libur Khusus</h2>
                     <form onSubmit={submitHoliday} className="space-y-3">
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="holiday-date">Tanggal Libur</Label>
                             <Input
                                 id="holiday-date"
                                 type="date"
+                                className="min-w-0"
                                 value={holidayForm.data.date}
                                 onChange={(e) => holidayForm.setData('date', e.target.value)}
                                 aria-invalid={Boolean(holidayForm.errors.date)}
@@ -221,7 +244,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                                 <p className="text-xs text-destructive">{holidayForm.errors.date}</p>
                             )}
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="holiday-reason">Keterangan (Opsional)</Label>
                             <Input
                                 id="holiday-reason"
@@ -241,24 +264,30 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                     </form>
 
                     <div className="space-y-2 pt-2">
-                        {holidays.map((h) => (
-                            <div key={h.id} className="flex items-center justify-between rounded-xl bg-bone px-4 py-2.5 text-sm">
-                                <div>
-                                    <p className="font-semibold text-ink">{formatDateIndo(h.date)}</p>
-                                    {h.reason && <p className="text-xs text-mute">{h.reason}</p>}
+                        {holidays.length === 0 ? (
+                            <p className="rounded-xl bg-bone/60 px-4 py-3 text-center text-xs text-mute">
+                                Belum ada tanggal libur khusus yang ditambahkan.
+                            </p>
+                        ) : (
+                            holidays.map((h) => (
+                                <div key={h.id} className="flex items-center justify-between gap-3 rounded-xl bg-bone px-3.5 py-2.5 text-sm">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-ink">{formatDateIndo(h.date)}</p>
+                                        {h.reason && <p className="mt-0.5 break-words text-xs text-mute">{h.reason}</p>}
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={`Hapus tanggal libur ${formatDateIndo(h.date)}`}
+                                        className="shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                        onClick={() => setDeletingHoliday(h)}
+                                    >
+                                        <Trash2 className="size-4" aria-hidden="true" />
+                                    </Button>
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={`Hapus tanggal libur ${formatDateIndo(h.date)}`}
-                                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                                    onClick={() => setDeletingHoliday(h)}
-                                >
-                                    <Trash2 className="size-3.5" aria-hidden="true" />
-                                </Button>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
@@ -266,7 +295,7 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
             <ConfirmDialog
                 open={deletingHoliday !== null}
                 onOpenChange={(open) => !open && setDeletingHoliday(null)}
-                title={`Hapus tanggal libur ${deletingHoliday?.date ?? ''}?`}
+                title={`Hapus tanggal libur ${deletingHoliday ? formatDateIndo(deletingHoliday.date) : ''}?`}
                 description="Setelah dihapus, pelanggan dapat kembali memesan jadwal pada tanggal tersebut."
                 confirmLabel="Hapus Tanggal Libur"
                 onConfirm={() => {

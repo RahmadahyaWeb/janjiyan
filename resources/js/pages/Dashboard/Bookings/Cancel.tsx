@@ -52,12 +52,12 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
+                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
             >
-                <div className="space-y-1 rounded-sm bg-bone p-4 text-sm">
+                <div className="space-y-1 rounded-sm bg-bone p-3.5 text-sm sm:p-4">
                     <p className="font-mono text-xs font-semibold text-mute">{booking.booking_code}</p>
-                    <p className="font-semibold text-ink">{booking.customer_name}</p>
-                    <p className="text-xs text-mute">
+                    <p className="break-words font-semibold text-ink">{booking.customer_name}</p>
+                    <p className="break-words text-xs text-mute">
                         {booking.service_name} · {formatDateIndo(booking.booking_date)}
                         {booking.booking_mode === 'dropoff'
                             ? ` · ${booking.quantity} ${unitLabel}`
@@ -87,11 +87,11 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
                     )}
                 </div>
 
-                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <Button asChild type="button" variant="outline">
+                <div className="flex flex-col-reverse gap-2.5 pt-2 sm:flex-row sm:justify-end">
+                    <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
                         <Link href={route('dashboard.bookings')}>Kembali</Link>
                     </Button>
-                    <Button type="submit" variant="destructive" disabled={form.processing}>
+                    <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={form.processing}>
                         {form.processing ? 'Memproses…' : `Batalkan ${itemSingular}`}
                     </Button>
                 </div>

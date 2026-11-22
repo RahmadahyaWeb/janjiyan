@@ -57,7 +57,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
             </p>
 
             {staffMembers.length === 0 ? (
-                <div className="space-y-3 rounded-md bg-bone p-12 text-center">
+                <div className="space-y-3 rounded-md bg-bone p-6 text-center sm:p-12">
                     <p className="text-base font-semibold text-ink">
                         {isStaffAppointment ? 'Belum ada staff terdaftar.' : 'Belum ada anggota tim terdaftar.'}
                     </p>
@@ -78,13 +78,13 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                     {staffMembers.map((st) => (
                         <div
                             key={st.id}
-                            className="flex flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
+                            className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
                         >
-                            <div>
+                            <div className="min-w-0">
                                 <div className="flex flex-col gap-2">
                                     <div className="min-w-0">
                                         <h2 className="text-lg font-semibold break-words text-ink">{st.name}</h2>
-                                        {st.title && <p className="text-sm text-mute">{st.title}</p>}
+                                        {st.title && <p className="text-sm break-words text-mute">{st.title}</p>}
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {!st.is_active && <Badge variant="danger">Nonaktif</Badge>}
@@ -101,10 +101,10 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                         )}
                                     </div>
                                 </div>
-                                {st.email && <p className="mt-3 text-xs text-mute">{st.email}</p>}
-                                {st.phone && <p className="text-xs text-mute">{st.phone}</p>}
+                                {st.email && <p className="mt-3 text-xs break-all text-mute">{st.email}</p>}
+                                {st.phone && <p className="font-mono text-xs tabular-nums text-mute">{st.phone}</p>}
                                 {isStaffAppointment && st.commission_type && st.commission_type !== 'none' && (
-                                    <p className="mt-2 inline-flex items-center rounded-full bg-bone px-2.5 py-0.5 font-mono text-xs font-medium text-ink">
+                                    <p className="mt-2 inline-flex items-center rounded-full bg-bone px-2.5 py-0.5 font-mono text-xs font-medium tabular-nums text-ink">
                                         Komisi:{' '}
                                         {st.commission_type === 'percentage'
                                             ? `${st.commission_value ?? 0}%`
@@ -113,13 +113,14 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                 )}
                             </div>
 
-                            <div className="mt-4 flex flex-wrap justify-end gap-1.5 border-t border-divider pt-3">
+                            <div className="mt-4 grid grid-cols-2 gap-1.5 border-t border-divider pt-3 sm:flex sm:flex-wrap sm:justify-end">
                                 {isStaffAppointment && (
                                     <>
                                         <Button
                                             asChild
-                                            variant="ghost"
+                                            variant="secondary"
                                             size="sm"
+                                            className="w-full px-2.5 text-xs sm:w-auto sm:bg-transparent sm:px-3 sm:text-sm sm:hover:bg-bone"
                                             aria-label={`Simpan jadwal ${st.name} ke kalender HP (file .ics)`}
                                         >
                                             <a
@@ -132,8 +133,9 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                         </Button>
                                         <Button
                                             asChild
-                                            variant="ghost"
+                                            variant="secondary"
                                             size="sm"
+                                            className="w-full px-2.5 text-xs sm:w-auto sm:bg-transparent sm:px-3 sm:text-sm sm:hover:bg-bone"
                                             aria-label={`Jadwal dan cuti ${st.name}`}
                                         >
                                             <Link href={route('dashboard.staff.schedule.edit', st.id)}>
@@ -145,8 +147,9 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                 )}
                                 <Button
                                     asChild
-                                    variant="ghost"
+                                    variant="secondary"
                                     size="sm"
+                                    className="w-full px-2.5 text-xs sm:w-auto sm:bg-transparent sm:px-3 sm:text-sm sm:hover:bg-bone"
                                     aria-label={`Edit ${isStaffAppointment ? 'staff' : 'anggota tim'} ${st.name}`}
                                 >
                                     <Link href={route('dashboard.staff.edit', st.id)}>
@@ -159,7 +162,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
                                     variant="ghost"
                                     size="sm"
                                     aria-label={`Hapus ${isStaffAppointment ? 'staff' : 'anggota tim'} ${st.name}`}
-                                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                    className="w-full px-2.5 text-xs text-destructive hover:bg-destructive-soft hover:text-destructive sm:w-auto sm:px-3 sm:text-sm"
                                     onClick={() => setDeletingStaff(st)}
                                 >
                                     <Trash2 className="size-3.5" aria-hidden="true" />

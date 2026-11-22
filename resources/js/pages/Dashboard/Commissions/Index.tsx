@@ -173,7 +173,7 @@ export default function CommissionsIndex({
                 <Card>
                     <CardContent>
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                            <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+                            <div className="grid grid-cols-1 items-end gap-3 sm:flex sm:flex-wrap">
                                 <div className="min-w-0">
                                     <Label htmlFor="comm-date-from" className="text-xs text-mute">
                                         Dari Tanggal
@@ -183,7 +183,7 @@ export default function CommissionsIndex({
                                         type="date"
                                         value={dateFrom}
                                         onChange={(e) => setDateFrom(e.target.value)}
-                                        className="mt-1 h-9 w-full rounded-full sm:w-40"
+                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5"
                                     />
                                 </div>
                                 <div className="min-w-0">
@@ -195,14 +195,14 @@ export default function CommissionsIndex({
                                         type="date"
                                         value={dateTo}
                                         onChange={(e) => setDateTo(e.target.value)}
-                                        className="mt-1 h-9 w-full rounded-full sm:w-40"
+                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5"
                                     />
                                 </div>
                                 <Button
                                     type="button"
                                     size="sm"
                                     onClick={() => applyFilters({})}
-                                    className="col-span-2 h-9 rounded-full px-4"
+                                    className="h-10 w-full rounded-full px-4 sm:w-auto"
                                 >
                                     Terapkan
                                 </Button>
@@ -214,7 +214,7 @@ export default function CommissionsIndex({
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => applyPreset('this_month')}
-                                    className="h-8 rounded-full text-xs"
+                                    className="min-h-10 rounded-full text-xs"
                                 >
                                     Bulan Ini
                                 </Button>
@@ -223,7 +223,7 @@ export default function CommissionsIndex({
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => applyPreset('last_month')}
-                                    className="h-8 rounded-full text-xs"
+                                    className="min-h-10 rounded-full text-xs"
                                 >
                                     Bulan Lalu
                                 </Button>
@@ -232,7 +232,7 @@ export default function CommissionsIndex({
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => applyPreset('last_7_days')}
-                                    className="h-8 rounded-full text-xs"
+                                    className="min-h-10 rounded-full text-xs"
                                 >
                                     7 Hari Terakhir
                                 </Button>
@@ -260,13 +260,13 @@ export default function CommissionsIndex({
                 </Card>
 
                 {/* KPI Summary Cards */}
-                <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-                    <Card className="gap-3">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-xs font-semibold text-mute">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                    <Card className="min-w-0 gap-3">
+                        <CardHeader className="flex flex-row items-start justify-between gap-1.5">
+                            <CardTitle className="min-w-0 text-xs leading-snug font-semibold text-mute">
                                 Reservasi Terhitung
                             </CardTitle>
-                            <Calendar className="size-4 text-mute" aria-hidden="true" />
+                            <Calendar className="size-4 shrink-0 text-mute" aria-hidden="true" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-semibold text-ink tabular-nums sm:text-3xl">
@@ -278,32 +278,32 @@ export default function CommissionsIndex({
                         </CardContent>
                     </Card>
 
-                    <Card className="gap-3">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-xs font-semibold text-mute">
+                    <Card className="min-w-0 gap-3">
+                        <CardHeader className="flex flex-row items-start justify-between gap-1.5">
+                            <CardTitle className="min-w-0 text-xs leading-snug font-semibold text-mute">
                                 Total Omzet Staff
                             </CardTitle>
-                            <TrendingUp className="size-4 text-mute" aria-hidden="true" />
+                            <TrendingUp className="size-4 shrink-0 text-mute" aria-hidden="true" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-semibold text-ink tabular-nums sm:text-3xl">
+                            <div className="text-2xl leading-tight font-semibold break-words text-ink tabular-nums sm:text-2xl lg:text-3xl">
                                 {formatRupiah(report.summary.total_revenue)}
                             </div>
-                            <p className="mt-1 text-xs text-mute">
+                            <p className="mt-1 text-xs tabular-nums text-mute">
                                 Periode {filters.date_from} s/d {filters.date_to}
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card className="gap-3 bg-bone/50">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-xs font-semibold text-mute">
+                    <Card className="min-w-0 gap-3 bg-bone/50">
+                        <CardHeader className="flex flex-row items-start justify-between gap-1.5">
+                            <CardTitle className="min-w-0 text-xs leading-snug font-semibold text-mute">
                                 Total Komisi Dibayarkan
                             </CardTitle>
-                            <BadgePercent className="size-4 text-ink" aria-hidden="true" />
+                            <BadgePercent className="size-4 shrink-0 text-ink" aria-hidden="true" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-semibold text-ink tabular-nums sm:text-3xl">
+                            <div className="text-2xl font-semibold break-words text-ink tabular-nums sm:text-3xl">
                                 {formatRupiah(report.summary.total_commission)}
                             </div>
                             <p className="mt-1 text-xs text-mute">
@@ -338,19 +338,19 @@ export default function CommissionsIndex({
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <p className="font-semibold text-ink">{row.staff_name}</p>
+                                                        <p className="font-semibold break-words text-ink">{row.staff_name}</p>
                                                         {!row.is_active && <Badge variant="secondary">Nonaktif</Badge>}
                                                     </div>
                                                     {row.staff_title && (
-                                                        <p className="text-xs text-mute">{row.staff_title}</p>
+                                                        <p className="text-xs break-words text-mute">{row.staff_title}</p>
                                                     )}
                                                 </div>
                                                 {row.commission_type === 'percentage' ? (
-                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs tabular-nums">
                                                         {row.commission_value}%
                                                     </Badge>
                                                 ) : row.commission_type === 'fixed' ? (
-                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                                                    <Badge variant="secondary" className="shrink-0 font-mono text-xs tabular-nums">
                                                         {formatRupiah(row.commission_value)} / sesi
                                                     </Badge>
                                                 ) : (
@@ -358,28 +358,28 @@ export default function CommissionsIndex({
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2 rounded-xl bg-bone p-3 text-xs">
-                                                <div>
+                                            <div className="grid grid-cols-2 gap-2.5 rounded-xl bg-bone p-3 text-xs">
+                                                <div className="min-w-0">
                                                     <span className="text-mute">Reservasi</span>
                                                     <p className="font-mono font-semibold tabular-nums text-ink">
                                                         {row.bookings_count}
                                                     </p>
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <span className="text-mute">Total Omzet</span>
-                                                    <p className="font-mono font-semibold tabular-nums text-ink">
+                                                    <p className="font-mono font-semibold break-words tabular-nums text-ink">
                                                         {formatRupiah(row.gross_revenue)}
                                                     </p>
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <span className="text-mute">Rata-rata</span>
-                                                    <p className="font-mono tabular-nums text-mute">
+                                                    <p className="font-mono break-words tabular-nums text-mute">
                                                         {formatRupiah(row.average_order_value)}
                                                     </p>
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <span className="text-mute">Total Komisi</span>
-                                                    <p className="font-mono font-semibold tabular-nums text-ink">
+                                                    <p className="font-mono font-semibold break-words tabular-nums text-ink">
                                                         {formatRupiah(row.total_commission)}
                                                     </p>
                                                 </div>

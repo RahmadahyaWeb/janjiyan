@@ -283,9 +283,15 @@ export default function CustomerShow({
                     <p className="text-xs font-medium text-mute">Dibatalkan</p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stats.cancelled_count}</p>
                 </div>
-                <div className="col-span-2 rounded-md border border-hairline-soft bg-canvas p-4 lg:col-span-1">
+                <div
+                    className={`min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 ${
+                        config.bookings.supportsNoShow ? 'col-span-2 lg:col-span-1' : ''
+                    }`}
+                >
                     <p className="text-xs font-medium text-mute">Total Transaksi</p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{formatRupiah(stats.total_spent)}</p>
+                    <p className="mt-1 text-lg leading-tight font-semibold break-words tabular-nums text-ink min-[360px]:text-xl sm:text-2xl">
+                        {formatRupiah(stats.total_spent)}
+                    </p>
                 </div>
             </div>
 
@@ -326,15 +332,15 @@ export default function CustomerShow({
                                     {form.data.name_aliases.map((alias) => (
                                         <div
                                             key={alias}
-                                            className="inline-flex items-center gap-1.5 rounded-full border border-hairline-soft bg-canvas px-2.5 py-1 text-xs text-ink"
+                                            className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-xl border border-hairline-soft bg-canvas px-2.5 py-1 text-xs text-ink"
                                         >
-                                            <span className="font-medium">{alias}</span>
+                                            <span className="min-w-0 font-medium break-words">{alias}</span>
                                             {canEdit && (
                                                 <>
                                                     <button
                                                         type="button"
                                                         onClick={() => promoteAliasToPrimaryName(alias)}
-                                                        className="cursor-pointer rounded-sm px-1 text-[11px] font-medium text-mute underline hover:text-ink"
+                                                        className="inline-flex min-h-8 cursor-pointer items-center rounded-xs px-1.5 text-xs font-medium text-mute underline hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                                     >
                                                         Jadikan Nama Utama
                                                     </button>
@@ -342,9 +348,9 @@ export default function CustomerShow({
                                                         type="button"
                                                         aria-label={`Hapus alias ${alias}`}
                                                         onClick={() => removeAlias(alias)}
-                                                        className="cursor-pointer rounded-full p-0.5 text-mute hover:bg-bone hover:text-ink"
+                                                        className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                                     >
-                                                        <X className="size-3" aria-hidden="true" />
+                                                        <X className="size-3.5" aria-hidden="true" />
                                                     </button>
                                                 </>
                                             )}
@@ -358,10 +364,12 @@ export default function CustomerShow({
                             <Label htmlFor="cust-phone">Nomor WhatsApp</Label>
                             <Input
                                 id="cust-phone"
+                                type="tel"
+                                inputMode="tel"
                                 value={form.data.phone}
                                 onChange={(e) => form.setData('phone', e.target.value)}
                                 disabled={!canEdit}
-                                className="font-mono text-xs"
+                                className="font-mono text-base tabular-nums md:text-sm"
                                 placeholder="62812xxxx atau 0812xxxx"
                                 required
                             />
@@ -409,7 +417,7 @@ export default function CustomerShow({
                                             disabled={!canEdit}
                                             aria-pressed={active}
                                             onClick={() => toggleTag(tag)}
-                                            className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+                                            className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none disabled:opacity-60 ${
                                                 active
                                                     ? 'bg-ink text-canvas'
                                                     : 'bg-bone text-ink hover:bg-hairline-soft'
@@ -436,7 +444,7 @@ export default function CustomerShow({
                                                         type="button"
                                                         aria-label={`Hapus tag ${tag}`}
                                                         onClick={() => toggleTag(tag)}
-                                                        className="cursor-pointer rounded-full hover:opacity-80"
+                                                        className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full hover:opacity-80 focus-visible:ring-2 focus-visible:ring-canvas focus-visible:outline-none"
                                                     >
                                                         <X className="size-3" aria-hidden="true" />
                                                     </button>
@@ -459,28 +467,29 @@ export default function CustomerShow({
                                         }}
                                         placeholder="Tambah tag khusus…"
                                         maxLength={30}
-                                        className="h-9 text-base md:text-sm"
+                                        className="h-10 min-w-0 flex-1 py-2 text-base md:text-sm"
                                     />
                                     <Button
                                         type="button"
                                         variant="secondary"
-                                        size="sm"
+                                        size="icon"
+                                        aria-label="Tambah tag khusus"
                                         onClick={addCustomTag}
                                         disabled={!customTag.trim() || form.data.tags.length >= 10}
                                     >
-                                        <Plus className="size-3.5" aria-hidden="true" />
+                                        <Plus className="size-4" aria-hidden="true" />
                                     </Button>
                                 </div>
                             )}
                         </div>
 
                         <div className="flex items-start justify-between gap-3 rounded-sm border border-hairline-soft bg-bone/60 p-3.5">
-                            <div className="space-y-0.5">
+                            <div className="min-w-0 space-y-0.5">
                                 <Label
                                     htmlFor="cust-blocked"
                                     className="flex items-center gap-1.5 text-xs font-semibold text-ink"
                                 >
-                                    <ShieldBan className="size-3.5 text-destructive" aria-hidden="true" />
+                                    <ShieldBan className="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
                                     Batasi Booking Online
                                 </Label>
                                 <p className="text-xs leading-relaxed text-mute">
@@ -489,6 +498,7 @@ export default function CustomerShow({
                             </div>
                             <Switch
                                 id="cust-blocked"
+                                className="shrink-0"
                                 checked={form.data.is_blocked}
                                 disabled={!canEdit}
                                 onCheckedChange={(val) => form.setData('is_blocked', val)}
@@ -562,7 +572,7 @@ export default function CustomerShow({
                                         value={mergeQuery}
                                         onChange={(e) => setMergeQuery(e.target.value)}
                                         placeholder="Ketik nama atau nomor WA duplikat…"
-                                        className="h-9 pl-9 text-xs"
+                                        className="h-10 py-2 pl-9 text-base md:text-sm"
                                     />
                                 </div>
 
@@ -621,11 +631,12 @@ export default function CustomerShow({
                                             Profil duplikat (+{selectedMergeSource.phone}) akan dihapus permanen.
                                         </li>
                                     </ul>
-                                    <div className="flex items-center justify-end gap-2 pt-1">
+                                    <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
+                                            className="w-full sm:w-auto"
                                             disabled={isMerging}
                                             onClick={() => setSelectedMergeSource(null)}
                                         >
@@ -635,6 +646,7 @@ export default function CustomerShow({
                                             type="button"
                                             variant="default"
                                             size="sm"
+                                            className="w-full sm:w-auto"
                                             disabled={isMerging}
                                             onClick={handleMergeConfirm}
                                         >
@@ -649,12 +661,12 @@ export default function CustomerShow({
 
                 <div className="min-w-0 space-y-4 lg:col-span-2">
                     <div className="rounded-md border border-hairline-soft bg-canvas">
-                        <div className="border-b border-divider px-6 py-4">
+                        <div className="border-b border-divider px-4 py-4 sm:px-6">
                             <h2 className="text-base font-semibold text-ink">Riwayat {config.bookings.pageTitle}</h2>
                         </div>
 
                         {bookings.length === 0 ? (
-                            <div className="p-10 text-center text-sm text-mute">
+                            <div className="p-8 text-center text-sm text-mute sm:p-10">
                                 Belum ada riwayat {itemLower} untuk pelanggan ini.
                             </div>
                         ) : (
@@ -665,8 +677,8 @@ export default function CustomerShow({
                                         <div key={b.id} className="space-y-2 p-4">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-mono text-xs font-semibold text-ink">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-mono text-xs font-semibold break-all text-ink">
                                                             {b.booking_code}
                                                         </span>
                                                         {b.invoice_url && (
@@ -674,14 +686,14 @@ export default function CustomerShow({
                                                                 href={b.invoice_url}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-sm text-mute hover:text-ink"
+                                                                className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                                                 aria-label={`Buka invoice ${b.booking_code}`}
                                                             >
                                                                 <ExternalLink className="size-3.5" aria-hidden="true" />
                                                             </a>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm font-medium text-ink">{b.service_name}</p>
+                                                    <p className="text-sm font-medium break-words text-ink">{b.service_name}</p>
                                                     {b.staff_name && <p className="text-xs text-mute">{b.staff_name}</p>}
                                                     {b.booked_customer_name &&
                                                         b.booked_customer_name.trim() !== '' &&

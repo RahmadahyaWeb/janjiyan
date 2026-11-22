@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -8,11 +9,12 @@ interface HorizontalScrollContainerProps {
     className?: string;
     wrapperClassName?: string;
     fadeBreakpointClass?: string;
+    showScrollCue?: boolean;
     children: ReactNode;
 }
 
 /**
- * Horizontal scroll strip with dynamic leading/trailing fade cues when off-screen items exist.
+ * Horizontal scroll strip with dynamic leading/trailing fade and chevron cues when off-screen items exist.
  */
 export function HorizontalScrollContainer({
     as: Tag = 'div',
@@ -21,6 +23,7 @@ export function HorizontalScrollContainer({
     className,
     wrapperClassName,
     fadeBreakpointClass = '',
+    showScrollCue = true,
     children,
 }: HorizontalScrollContainerProps) {
     const scrollerRef = useRef<HTMLDivElement>(null);
@@ -45,11 +48,38 @@ export function HorizontalScrollContainer({
             el.scrollLeft += activeBox.left - elBox.left - (elBox.width - activeBox.width) / 2;
         }
         syncScrollEdges();
-        if (!el || typeof ResizeObserver === 'undefined') return;
-        const observer = new ResizeObserver(syncScrollEdges);
-        observer.observe(el);
-        return () => observer.disconnect();
+        if (!el) return;
+
+        let cancelled = false;
+        document.fonts?.ready.then(() => {
+            if (!cancelled) syncScrollEdges();
+        });
+
+        let observer: ResizeObserver | undefined;
+        if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(syncScrollEdges);
+            observer.observe(el);
+            if (el.firstElementChild) {
+                observer.observe(el.firstElementChild);
+            }
+        } else {
+            window.addEventListener('resize', syncScrollEdges);
+        }
+
+        return () => {
+            cancelled = true;
+            if (observer) {
+                observer.disconnect();
+            } else {
+                window.removeEventListener('resize', syncScrollEdges);
+            }
+        };
     }, [syncScrollEdges]);
+
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(syncScrollEdges);
+        return () => window.cancelAnimationFrame(frame);
+    }, [children, syncScrollEdges]);
 
     return (
         <div className={cn('relative min-w-0', wrapperClassName)}>
@@ -58,7 +88,10 @@ export function HorizontalScrollContainer({
                 aria-label={ariaLabel}
                 role={role}
                 onScroll={syncScrollEdges}
-                className={cn('overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
+                className={cn(
+                    'touch-pan-x overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                    className
+                )}
             >
                 {children}
             </Tag>
@@ -67,19 +100,31 @@ export function HorizontalScrollContainer({
                 <div
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none absolute inset-y-0 left-0 w-7 bg-gradient-to-r from-canvas via-canvas/85 to-transparent',
+                        'pointer-events-none absolute inset-y-0 left-0 flex w-8 items-center justify-start bg-gradient-to-r from-canvas from-20% via-canvas/75 to-transparent pl-1',
                         fadeBreakpointClass
                     )}
-                />
+                >
+                    {showScrollCue && (
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
+                            <ChevronLeft className="size-3.5" />
+                        </span>
+                    )}
+                </div>
             )}
             {canScrollRight && (
                 <div
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none absolute inset-y-0 right-0 w-9 bg-gradient-to-l from-canvas via-canvas/85 to-transparent',
+                        'pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-canvas from-20% via-canvas/75 to-transparent pr-1',
                         fadeBreakpointClass
                     )}
-                />
+                >
+                    {showScrollCue && (
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
+                            <ChevronRight className="size-3.5" />
+                        </span>
+                    )}
+                </div>
             )}
         </div>
     );
