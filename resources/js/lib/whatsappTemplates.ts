@@ -36,9 +36,9 @@ export const WHATSAPP_TEMPLATE_META: Array<{
     },
     {
         key: 'dp_verified',
-        label: 'Konfirmasi DP Diterima',
-        shortLabel: 'DP Diverifikasi',
-        description: 'Dikirim setelah bukti transfer/QRIS DP diverifikasi.',
+        label: 'Konfirmasi Uang Muka Diterima',
+        shortLabel: 'Uang Muka Diverifikasi',
+        description: 'Dikirim setelah bukti transfer/QRIS uang muka diverifikasi.',
     },
     {
         key: 'confirmed',
@@ -71,7 +71,7 @@ export const WHATSAPP_PLACEHOLDERS: Array<{ token: string; label: string }> = [
     { token: '{time}', label: 'Jam / Mode' },
     { token: '{estimated_ready_date}', label: 'Est. Selesai' },
     { token: '{booking_code}', label: 'Kode Booking' },
-    { token: '{dp_amount}', label: 'Nominal DP' },
+    { token: '{dp_amount}', label: 'Nominal Uang Muka' },
     { token: '{total_price}', label: 'Total Harga' },
     { token: '{invoice_url}', label: 'Link Invoice' },
     { token: '{business_address}', label: 'Alamat Bisnis' },

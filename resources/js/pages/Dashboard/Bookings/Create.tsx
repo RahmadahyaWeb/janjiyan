@@ -90,12 +90,16 @@ export default function BookingCreate({ services }: BookingCreateProps) {
         customer_phone: '',
         customer_email: '',
         customer_notes: '',
-        initial_payment_status: 'dp_verified',
+        initial_payment_status: (services[0]?.dp_amount ?? 0) > 0 ? 'dp_verified' : 'settled',
     });
 
     const selectedService = services.find((s) => String(s.id) === form.data.service_id) ?? null;
     const isDropoff = isDropoffBusiness || selectedService?.booking_mode === 'dropoff';
     const unitLabel = selectedService?.unit_label ?? 'item';
+    const effectiveQty = isDropoff ? Math.max(1, Number(form.data.quantity || 1)) : 1;
+    const estimatedTotalPrice = (selectedService?.price ?? 0) * effectiveQty;
+    const estimatedDpAmount = Math.min(estimatedTotalPrice, (selectedService?.dp_amount ?? 0) * effectiveQty);
+    const serviceRequiresDp = estimatedDpAmount > 0;
 
     const slotUrl = useMemo(() => {
         if (!form.data.service_id || !form.data.date) {
@@ -223,7 +227,11 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                 return;
             }
         } else if (!form.data.time) {
-            setTimeError('Pilih jam reservasi yang tersedia terlebih dahulu.');
+            setTimeError(
+                config.type === 'space_booking'
+                    ? 'Pilih jam sesi yang tersedia terlebih dahulu.'
+                    : 'Pilih jam reservasi yang tersedia terlebih dahulu.'
+            );
             document.getElementById('manual-date')?.focus();
             return;
         }
@@ -253,7 +261,9 @@ export default function BookingCreate({ services }: BookingCreateProps) {
             {services.length === 0 ? (
                 <div className="max-w-xl space-y-3 rounded-md bg-bone p-8 text-center">
                     <p className="text-base font-semibold text-ink">Belum ada layanan aktif.</p>
-                    <p className="text-sm text-mute">Tambahkan minimal satu layanan aktif sebelum membuat booking manual.</p>
+                    <p className="text-sm text-mute">
+                        Tambahkan minimal satu layanan aktif sebelum membuat {config.bookings.itemSingular.toLowerCase()} manual.
+                    </p>
                     {canManageServices ? (
                         <Button asChild size="sm">
                             <Link href={route('dashboard.services.create')}>Tambah Layanan</Link>
@@ -275,12 +285,18 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                             value={form.data.service_id}
                             onChange={(e) => {
                                 setTimeError('');
+                                const nextId = e.target.value;
+                                const nextSvc = services.find((s) => String(s.id) === nextId);
                                 form.setData((prev) => ({
                                     ...prev,
-                                    service_id: e.target.value,
+                                    service_id: nextId,
                                     fulfillment_type: 'dropoff',
                                     staff_id: '',
                                     time: '',
+                                    initial_payment_status:
+                                        (nextSvc?.dp_amount ?? 0) === 0 && prev.initial_payment_status === 'dp_verified'
+                                            ? 'settled'
+                                            : prev.initial_payment_status,
                                 }));
                             }}
                             required
@@ -299,7 +315,13 @@ export default function BookingCreate({ services }: BookingCreateProps) {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                         <div className="min-w-0 space-y-1.5">
-                            <Label htmlFor="manual-date">{isDropoff ? 'Tanggal Drop-off *' : 'Tanggal *'}</Label>
+                            <Label htmlFor="manual-date">
+                                {isDropoff
+                                    ? selectedService?.supports_pickup && form.data.fulfillment_type === 'pickup'
+                                        ? 'Tanggal Penjemputan *'
+                                        : 'Tanggal Drop-off *'
+                                    : 'Tanggal *'}
+                            </Label>
                             <Input
                                 id="manual-date"
                                 type="date"
@@ -479,7 +501,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                         showRefreshing ? 'opacity-60' : ''
                                     }`}
                                     role="group"
-                                    aria-label="Pilih jam reservasi"
+                                    aria-label={config.type === 'space_booking' ? 'Pilih jam sesi' : 'Pilih jam reservasi'}
                                 >
                                     {slots.map((slot) => {
                                         const selected = form.data.time === slot.time;
@@ -641,7 +663,7 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                                         {tag}
                                                     </Badge>
                                                 ))}
-                                                {c.no_show_count > 0 && (
+                                                {config.bookings.supportsNoShow && c.no_show_count > 0 && (
                                                     <Badge variant="warning">{c.no_show_count}x no-show</Badge>
                                                 )}
                                                 {c.is_blocked && <Badge variant="danger">Diblokir Online</Badge>}
@@ -682,9 +704,17 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                                 value={form.data.initial_payment_status}
                                 onChange={(e) => form.setData('initial_payment_status', e.target.value)}
                             >
-                                <option value="dp_verified">DP Terverifikasi (Langsung Konfirmasi)</option>
+                                {serviceRequiresDp && (
+                                    <option value="dp_verified">Uang Muka Terverifikasi (Langsung Konfirmasi)</option>
+                                )}
                                 <option value="settled">Lunas (Langsung Konfirmasi)</option>
-                                <option value="unpaid">Belum Dibayar (Menunggu Konfirmasi)</option>
+                                <option value="unpaid">
+                                    {serviceRequiresDp
+                                        ? 'Belum Dibayar (Menunggu Konfirmasi)'
+                                        : isDropoff
+                                          ? 'Belum Dibayar (Bayar Saat Selesai / Di Toko)'
+                                          : 'Belum Dibayar (Bayar di Tempat)'}
+                                </option>
                             </NativeSelect>
                         </div>
                     </div>
@@ -693,11 +723,35 @@ export default function BookingCreate({ services }: BookingCreateProps) {
                         <Label htmlFor="manual-notes">Catatan (Opsional)</Label>
                         <Textarea
                             id="manual-notes"
-                            placeholder="Mis. Walk-in pelanggan tetap"
+                            placeholder={
+                                config.type === 'dropoff'
+                                    ? 'Mis. Ada noda di bagian sol, atau titip langsung di kasir'
+                                    : config.type === 'space_booking'
+                                      ? 'Mis. Pesan langsung di tempat atau butuh tambahan perlengkapan'
+                                      : 'Mis. Walk-in pelanggan tetap'
+                            }
                             value={form.data.customer_notes}
                             onChange={(e) => form.setData('customer_notes', e.target.value)}
                         />
                     </div>
+
+                    {selectedService && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm bg-bone px-4 py-3 text-sm">
+                            <span className="text-mute">
+                                Total biaya{isDropoff ? ` (${effectiveQty} ${unitLabel})` : ''}
+                            </span>
+                            <div className="text-right">
+                                <p className="font-semibold tabular-nums text-ink">
+                                    {formatRupiah(estimatedTotalPrice)}
+                                </p>
+                                {serviceRequiresDp && (
+                                    <p className="text-xs tabular-nums text-electric">
+                                        Uang muka: {formatRupiah(estimatedDpAmount)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {Object.keys(form.errors).length > 0 && (
                         <div

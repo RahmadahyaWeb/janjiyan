@@ -63,7 +63,7 @@ class SendTelegramBookingAlertJob implements ShouldQueue
         $businessType = $business->resolvedBusinessType();
 
         $header = $this->eventType === 'dp_uploaded'
-            ? '🧾 <b>Bukti DP Baru Diunggah</b>'
+            ? '🧾 <b>Bukti Uang Muka Baru Diunggah</b>'
             : match ($businessType) {
                 Business::TYPE_DROPOFF => '📦 <b>Pesanan Drop-off Baru Masuk</b>',
                 Business::TYPE_SPACE_BOOKING => '🏟️ <b>Booking Tempat / Sesi Baru</b>',
@@ -103,7 +103,7 @@ class SendTelegramBookingAlertJob implements ShouldQueue
         $lines[] = '<b>Total:</b> Rp '.number_format((int) $booking->total_price, 0, ',', '.');
 
         if ((int) $booking->dp_amount > 0) {
-            $lines[] = '<b>DP:</b> Rp '.number_format((int) $booking->dp_amount, 0, ',', '.');
+            $lines[] = '<b>Uang Muka:</b> Rp '.number_format((int) $booking->dp_amount, 0, ',', '.');
         }
 
         $lines[] = '';

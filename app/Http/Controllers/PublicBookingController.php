@@ -690,8 +690,8 @@ class PublicBookingController extends Controller
             Storage::disk('local')->delete($path);
 
             $errorMessage = $result['status'] === 'expired'
-                ? "Batas waktu pembayaran DP telah berakhir dan {$noun} dibatalkan."
-                : "{$nounTitle} ini tidak lagi menerima unggahan bukti DP.";
+                ? "Batas waktu pembayaran uang muka telah berakhir dan {$noun} dibatalkan."
+                : "{$nounTitle} ini tidak lagi menerima unggahan bukti uang muka.";
 
             return back()->with('error', $errorMessage);
         }
@@ -704,7 +704,7 @@ class PublicBookingController extends Controller
 
         $verifierLabel = $business->isStaffAppointment() ? 'staff' : 'admin';
 
-        return back()->with('success', "Bukti pembayaran DP berhasil diunggah dan menunggu verifikasi {$verifierLabel}.");
+        return back()->with('success', "Bukti pembayaran uang muka berhasil diunggah dan menunggu verifikasi {$verifierLabel}.");
     }
 
     private function maskPhone(?string $phone): string

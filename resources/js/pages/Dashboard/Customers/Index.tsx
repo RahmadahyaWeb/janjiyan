@@ -261,7 +261,7 @@ export default function CustomersIndex({
                                         {c.bookings_count}x {itemLower}
                                     </Badge>
                                     {c.has_duplicate_name && <Badge variant="outline">Nama Serupa</Badge>}
-                                    {c.no_show_count > 0 && (
+                                    {config.bookings.supportsNoShow && c.no_show_count > 0 && (
                                         <Badge variant="destructive" className="tabular-nums">
                                             {c.no_show_count}x no-show
                                         </Badge>
@@ -369,7 +369,7 @@ export default function CustomersIndex({
                                                 <Badge variant="secondary" className="tabular-nums">
                                                     {c.bookings_count}x {itemLower}
                                                 </Badge>
-                                                {c.no_show_count > 0 && (
+                                                {config.bookings.supportsNoShow && c.no_show_count > 0 && (
                                                     <Badge variant="destructive" className="tabular-nums">
                                                         {c.no_show_count}x no-show
                                                     </Badge>

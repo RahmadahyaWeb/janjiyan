@@ -370,7 +370,7 @@ export default function BusinessHome({
                                             ? `Kapasitas ${service.capacity}`
                                             : null,
                                         isDropoff && service.supports_pickup ? 'bisa jemput-antar' : null,
-                                        service.dp_amount > 0 ? `DP ${formatRupiah(service.dp_amount)}` : null,
+                                        service.dp_amount > 0 ? `Uang muka ${formatRupiah(service.dp_amount)}` : null,
                                     ].filter(Boolean);
                                     return (
                                         <li key={service.id}>

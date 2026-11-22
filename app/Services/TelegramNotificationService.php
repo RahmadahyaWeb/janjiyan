@@ -52,7 +52,7 @@ class TelegramNotificationService
                 ->asJson()
                 ->post("https://api.telegram.org/bot{$token}/sendMessage", [
                     'chat_id' => $chatId,
-                    'text' => "✅ <b>Koneksi Telegram Janjiyan Berhasil!</b>\n\nBisnis <b>{$safeName}</b> sekarang siap menerima notifikasi booking baru & bukti DP secara instan.",
+                    'text' => "✅ <b>Koneksi Telegram Janjiyan Berhasil!</b>\n\nBisnis <b>{$safeName}</b> sekarang siap menerima notifikasi pesanan baru & bukti uang muka secara instan.",
                     'parse_mode' => 'HTML',
                 ]);
 

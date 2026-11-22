@@ -32,7 +32,7 @@ export default function Terms({ legal }: TermsProps) {
                 <section className="space-y-2.5">
                     <h2 className="text-xl font-semibold text-ink">1. Ruang Lingkup Layanan</h2>
                     <p className="text-sm leading-relaxed text-body">
-                        Janjiyan menyediakan perangkat lunak berbasis cloud (SaaS) untuk pengelolaan jadwal layanan, portal reservasi publik, pencatatan pelanggan, serta verifikasi bukti uang muka (DP) bagi pelaku usaha jasa.
+                        Janjiyan menyediakan perangkat lunak berbasis cloud (SaaS) untuk pengelolaan jadwal layanan, portal reservasi publik, pencatatan pelanggan, serta verifikasi bukti uang muka bagi pelaku usaha jasa.
                     </p>
                 </section>
 
@@ -58,9 +58,9 @@ export default function Terms({ legal }: TermsProps) {
                 </section>
 
                 <section className="space-y-2.5">
-                    <h2 className="text-xl font-semibold text-ink">4. Transaksi Pembayaran DP &amp; Layanan Jasa</h2>
+                    <h2 className="text-xl font-semibold text-ink">4. Transaksi Pembayaran Uang Muka &amp; Layanan Jasa</h2>
                     <p className="text-sm leading-relaxed text-body">
-                        Pembayaran DP atau pelunasan layanan dilakukan secara langsung antara pelanggan dan merchant melalui rekening bank atau QRIS milik merchant. Janjiyan tidak memotong komisi transaksi (0% fee), tidak menampung dana pihak ketiga, dan tidak bertanggung jawab atas sengketa kualitas layanan maupun pengembalian dana (refund) antara merchant dan pelanggan.
+                        Pembayaran uang muka atau pelunasan layanan dilakukan secara langsung antara pelanggan dan merchant melalui rekening bank atau QRIS milik merchant. Janjiyan tidak memotong komisi transaksi (0% fee), tidak menampung dana pihak ketiga, dan tidak bertanggung jawab atas sengketa kualitas layanan maupun pengembalian dana (refund) antara merchant dan pelanggan.
                     </p>
                 </section>
 

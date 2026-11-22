@@ -240,8 +240,9 @@ class ServiceController extends Controller
 
         if ($service->bookings()->exists()) {
             $service->update(['is_active' => false]);
+            $noun = $business->isDropoff() ? 'pesanan' : ($business->isSpaceBooking() ? 'booking' : 'reservasi');
 
-            return back()->with('success', 'Layanan dinonaktifkan karena sudah memiliki riwayat reservasi.');
+            return back()->with('success', "Layanan dinonaktifkan karena sudah memiliki riwayat {$noun}.");
         }
 
         if ($service->image_path) {

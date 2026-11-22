@@ -49,7 +49,7 @@ export default function Privacy({ legal }: PrivacyProps) {
                 <section className="space-y-2.5">
                     <h2 className="text-xl font-semibold text-ink">2. Data yang Kami Kumpulkan</h2>
                     <p className="text-sm leading-relaxed text-body">
-                        Kami mengumpulkan data akun merchant (nama, alamat email, kata sandi terenkripsi, atau profil dasar Google apabila Anda memilih masuk dengan Google), profil bisnis (nama usaha, alamat, nomor WhatsApp, jam operasional, rekening tujuan DP), data langganan SaaS, serta data reservasi pelanggan (nama, nomor telepon/WhatsApp, email opsional, catatan, dan file bukti transfer DP).
+                        Kami mengumpulkan data akun merchant (nama, alamat email, kata sandi terenkripsi, atau profil dasar Google apabila Anda memilih masuk dengan Google), profil bisnis (nama usaha, alamat, nomor WhatsApp, jam operasional, rekening tujuan pembayaran), data langganan SaaS, serta data pesanan pelanggan (nama, nomor telepon/WhatsApp, email opsional, catatan, dan file bukti transfer uang muka).
                     </p>
                 </section>
 
@@ -76,10 +76,10 @@ export default function Privacy({ legal }: PrivacyProps) {
                 <section className="space-y-2.5">
                     <h2 className="text-xl font-semibold text-ink">5. Keamanan, Cookie &amp; Masa Retensi Data</h2>
                     <p className="text-sm leading-relaxed text-body">
-                        Gambar bukti transfer DP yang diunggah pelanggan disimpan pada penyimpanan privat yang hanya dapat diakses oleh pemilik bisnis dan staf berwenang. Kami menggunakan cookie sesi esensial (HTTP-only) semata-mata untuk autentikasi, perlindungan CSRF, dan pemilihan bisnis aktif—kami tidak menggunakan cookie pelacakan iklan pihak ketiga.
+                        Gambar bukti transfer uang muka yang diunggah pelanggan disimpan pada penyimpanan privat yang hanya dapat diakses oleh pemilik bisnis dan staf berwenang. Kami menggunakan cookie sesi esensial (HTTP-only) semata-mata untuk autentikasi, perlindungan CSRF, dan pemilihan bisnis aktif—kami tidak menggunakan cookie pelacakan iklan pihak ketiga.
                     </p>
                     <p className="text-sm leading-relaxed text-body">
-                        Data reservasi dan bukti DP disimpan selama akun bisnis aktif agar merchant dapat mengelola riwayat transaksi dan layanan pelanggan. Apabila merchant menghapus bisnisnya, seluruh data reservasi, pelanggan, dan file bukti DP terkait dihapus secara permanen dari sistem aktif kami (dan terhapus dari cadangan berkala maksimal dalam 30 hari).
+                        Data pesanan dan bukti uang muka disimpan selama akun bisnis aktif agar merchant dapat mengelola riwayat transaksi dan layanan pelanggan. Apabila merchant menghapus bisnisnya, seluruh data pesanan, pelanggan, dan file bukti uang muka terkait dihapus secara permanen dari sistem aktif kami (dan terhapus dari cadangan berkala maksimal dalam 30 hari).
                     </p>
                 </section>
 

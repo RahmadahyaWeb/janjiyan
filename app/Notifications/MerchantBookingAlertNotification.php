@@ -60,11 +60,11 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
         };
 
         $subject = $isDpUploaded
-            ? "[{$businessName}] Bukti DP Diunggah — {$booking->booking_code}"
+            ? "[{$businessName}] Bukti Uang Muka Diunggah — {$booking->booking_code}"
             : "[{$businessName}] {$nounTitle} Baru — {$booking->booking_code}";
 
         $intro = $isDpUploaded
-            ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer DP sebesar {$dpFormatted} untuk {$nounLower} {$booking->booking_code} dan menunggu verifikasi Anda."
+            ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer uang muka sebesar {$dpFormatted} untuk {$nounLower} {$booking->booking_code} dan menunggu verifikasi Anda."
             : "Ada {$nounLower} baru dari {$booking->customer->name} untuk {$booking->service->name}.";
 
         $serviceLine = $isDropoff
@@ -98,6 +98,6 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
 
         return $mail
             ->action($actionLabel, route('dashboard.bookings', ['search' => $booking->booking_code]))
-            ->line("Kelola verifikasi DP dan status {$nounLower} langsung dari dashboard Janjiyan.");
+            ->line("Kelola verifikasi pembayaran dan status {$nounLower} langsung dari dashboard Janjiyan.");
     }
 }

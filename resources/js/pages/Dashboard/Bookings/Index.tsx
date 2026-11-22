@@ -301,7 +301,7 @@ export default function BookingsIndex({
         const timeOrMode = b.schedule_label ?? formatBookingScheduleShort(b);
         let msg = `Halo ${b.customer_name}, kami dari ${businessName}.`;
         if (b.payment_status === 'unpaid' && b.reservation_status === 'pending') {
-            msg += ` Mengingatkan untuk menyelesaikan pembayaran DP ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+            msg += ` Mengingatkan untuk menyelesaikan pembayaran uang muka ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
         } else if (isDropoff && b.work_status === 'ready_for_pickup') {
             msg += ` Pesanan ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} ${unitLabel}) sudah selesai dan siap diambil/diantar.`;
         } else if (b.reservation_status === 'confirmed') {
@@ -392,9 +392,26 @@ export default function BookingsIndex({
 
     const paymentBadge = (status: string) => {
         const label = PAYMENT_STATUS_LABELS[status] ?? status;
-        if (status === 'dp_verified' || status === 'settled') return <Badge variant="success">{label}</Badge>;
-        if (status === 'waiting_verification') return <Badge variant="warning">{label}</Badge>;
-        return <Badge variant="secondary">{label}</Badge>;
+        const wrapClass = 'max-w-full whitespace-normal text-left';
+        if (status === 'dp_verified' || status === 'settled') {
+            return (
+                <Badge variant="success" className={wrapClass}>
+                    {label}
+                </Badge>
+            );
+        }
+        if (status === 'waiting_verification') {
+            return (
+                <Badge variant="warning" className={wrapClass}>
+                    {label}
+                </Badge>
+            );
+        }
+        return (
+            <Badge variant="secondary" className={wrapClass}>
+                {label}
+            </Badge>
+        );
     };
 
     const exportButton = canExportCsv ? (
@@ -523,7 +540,7 @@ export default function BookingsIndex({
                 {b.payment_status === 'waiting_verification' && canVerifyPayments ? (
                     <Button type="button" size="sm" className={primaryBtnClass} onClick={() => verifyDp(b.id)}>
                         <Check className="size-3.5" aria-hidden="true" />
-                        Verifikasi DP
+                        Verifikasi Uang Muka
                     </Button>
                 ) : b.booking_mode === 'dropoff' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
                     b.work_status === 'awaiting_dropoff' || !b.work_status ? (
@@ -580,7 +597,7 @@ export default function BookingsIndex({
                         onClick={() => setPreviewUrl(b.dp_proof_url)}
                     >
                         <Eye className="size-3.5" aria-hidden="true" />
-                        Bukti DP
+                        Bukti Uang Muka
                     </Button>
                 )}
 
@@ -882,8 +899,8 @@ export default function BookingsIndex({
                                     >
                                         <option value="">Semua Pembayaran</option>
                                         <option value="unpaid">Belum Dibayar</option>
-                                        <option value="waiting_verification">Menunggu Verifikasi DP</option>
-                                        <option value="dp_verified">DP Terverifikasi</option>
+                                        <option value="waiting_verification">Menunggu Verifikasi Uang Muka</option>
+                                        <option value="dp_verified">Uang Muka Terverifikasi</option>
                                         <option value="settled">Lunas</option>
                                     </NativeSelect>
                                 </div>
@@ -1008,8 +1025,8 @@ export default function BookingsIndex({
                             >
                                 <option value="">Semua Pembayaran</option>
                                 <option value="unpaid">Belum Dibayar</option>
-                                <option value="waiting_verification">Menunggu Verifikasi DP</option>
-                                <option value="dp_verified">DP Terverifikasi</option>
+                                <option value="waiting_verification">Menunggu Verifikasi Uang Muka</option>
+                                <option value="dp_verified">Uang Muka Terverifikasi</option>
                                 <option value="settled">Lunas</option>
                             </NativeSelect>
 
@@ -1211,7 +1228,7 @@ export default function BookingsIndex({
                                                 </p>
                                                 {b.dp_amount > 0 && (
                                                     <p className="text-xs tabular-nums text-mute">
-                                                        DP {formatRupiah(b.dp_amount)}
+                                                        Uang muka {formatRupiah(b.dp_amount)}
                                                     </p>
                                                 )}
                                             </div>
@@ -1290,7 +1307,7 @@ export default function BookingsIndex({
                                                     VIP
                                                 </Badge>
                                             )}
-                                            {(b.customer_no_show_count ?? 0) > 0 && (
+                                            {supportsNoShow && (b.customer_no_show_count ?? 0) > 0 && (
                                                 <Badge variant="warning" className="tabular-nums">
                                                     No-Show {b.customer_no_show_count}x
                                                 </Badge>
@@ -1367,7 +1384,7 @@ export default function BookingsIndex({
                                                     {b.customer_tags?.includes('VIP') && (
                                                         <Badge variant="popular">VIP</Badge>
                                                     )}
-                                                    {(b.customer_no_show_count ?? 0) > 0 && (
+                                                    {supportsNoShow && (b.customer_no_show_count ?? 0) > 0 && (
                                                         <Badge variant="warning" className="tabular-nums">
                                                             No-Show {b.customer_no_show_count}x
                                                         </Badge>
@@ -1481,7 +1498,7 @@ export default function BookingsIndex({
                                                             className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-bone px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                                         >
                                                             <Eye className="size-3" aria-hidden="true" />
-                                                            Bukti DP
+                                                            Bukti Uang Muka
                                                         </button>
                                                     )}
                                                 </div>
@@ -1493,7 +1510,7 @@ export default function BookingsIndex({
                                                 </p>
                                                 {b.dp_amount > 0 && (
                                                     <p className="mt-0.5 text-xs tabular-nums text-mute">
-                                                        DP {formatRupiah(b.dp_amount)}
+                                                        Uang muka {formatRupiah(b.dp_amount)}
                                                     </p>
                                                 )}
                                             </td>
@@ -1518,12 +1535,12 @@ export default function BookingsIndex({
             <Dialog open={previewUrl !== null} onOpenChange={(open) => !open && setPreviewUrl(null)}>
                 <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-semibold text-ink">Bukti Pembayaran DP</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold text-ink">Bukti Pembayaran Uang Muka</DialogTitle>
                     </DialogHeader>
                     {previewUrl && (
                         <img
                             src={previewUrl}
-                            alt="Bukti pembayaran DP pelanggan"
+                            alt="Bukti pembayaran uang muka pelanggan"
                             className="max-h-[70dvh] w-full rounded-sm bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
                         />
                     )}
@@ -1607,7 +1624,7 @@ export default function BookingsIndex({
                                         }}
                                     >
                                         <Check className="size-3.5" aria-hidden="true" />
-                                        Verifikasi DP
+                                        Verifikasi Uang Muka
                                     </Button>
                                 )}
 

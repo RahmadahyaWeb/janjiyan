@@ -164,7 +164,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                             </>
                                         ) : config.type === 'space_booking' ? (
                                             <Badge variant="outline" className="tabular-nums">
-                                                Maks {s.capacity} orang/sesi
+                                                Kapasitas {s.capacity} / sesi
                                             </Badge>
                                         ) : (
                                             <Badge variant="secondary">Per staff</Badge>
@@ -186,7 +186,7 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                                     </span>
                                     {s.dp_type !== 'none' && (
                                         <span className="rounded-full bg-bone px-3 py-1 font-semibold tabular-nums text-electric">
-                                            DP {s.dp_type === 'fixed' ? formatRupiah(s.dp_value) : `${s.dp_value}%`}
+                                            Uang muka {s.dp_type === 'fixed' ? formatRupiah(s.dp_value) : `${s.dp_value}%`}
                                         </span>
                                     )}
                                 </div>

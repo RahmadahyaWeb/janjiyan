@@ -265,7 +265,7 @@ export default function BookingPortal({
         setPickupAddressError('');
 
         if (requiresDp && dpMode === 'now' && !dpProof) {
-            setDpProofError('Unggah bukti transfer DP terlebih dahulu, atau pilih opsi Bayar DP nanti.');
+            setDpProofError('Unggah bukti transfer uang muka terlebih dahulu, atau pilih opsi Bayar nanti.');
             document.getElementById('dp-proof-upload')?.focus();
             return;
         }
@@ -425,11 +425,11 @@ export default function BookingPortal({
                                                     <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-mute">
                                                         <span className="inline-flex items-center gap-1 tabular-nums">
                                                             <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                                                            {service.booking_mode === 'dropoff'
+                                                            {businessType === 'dropoff' || service.booking_mode === 'dropoff'
                                                                 ? formatTurnaroundLabel(service.turnaround_days ?? 1)
                                                                 : `${service.duration_minutes} mnt`}
                                                         </span>
-                                                        {service.booking_mode === 'dropoff' ? (
+                                                        {businessType === 'dropoff' || service.booking_mode === 'dropoff' ? (
                                                             <>
                                                                 <span className="inline-flex items-center gap-1 tabular-nums">
                                                                     <PackageCheck className="size-3.5 shrink-0" aria-hidden="true" />
@@ -453,7 +453,7 @@ export default function BookingPortal({
                                                         {service.dp_amount > 0 && (
                                                             <span className="inline-flex items-center gap-1 tabular-nums">
                                                                 <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
-                                                                DP {formatRupiah(service.dp_amount)}
+                                                                Uang muka {formatRupiah(service.dp_amount)}
                                                             </span>
                                                         )}
                                                     </span>
@@ -869,7 +869,7 @@ export default function BookingPortal({
                                                 {showStaffStep ? '04' : '03'}
                                             </span>
                                             <h2 id="step-customer-heading" className="text-xl font-semibold text-ink">
-                                                Detail pemesan.
+                                                {requiresDp ? 'Data pemesan & uang muka.' : `${typeConfig.publicPortal.steps.detailsLabel}.`}
                                             </h2>
                                         </div>
                                         <p className="mt-1 text-sm text-mute">
@@ -965,13 +965,13 @@ export default function BookingPortal({
                                         </div>
                                     </div>
 
-                                    {/* DP Payment Section */}
+                                    {/* Uang Muka Payment Section */}
                                     {requiresDp && selectedService && (
                                         <div className="space-y-4 rounded-xs border border-hairline-soft bg-canvas p-5">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
                                                     <h3 className="text-base font-semibold text-ink">
-                                                        Down payment (DP) diperlukan
+                                                        Uang muka diperlukan
                                                     </h3>
                                                     <p className="text-xs text-mute">
                                                         Transfer langsung ke rekening toko.
@@ -1014,7 +1014,7 @@ export default function BookingPortal({
                                             )}
 
                                             {/* Segmented Choice: Upload Now vs Pay Later */}
-                                            <div className="grid w-full grid-cols-2 rounded-sm bg-bone p-1 sm:inline-flex sm:h-11 sm:w-auto sm:items-center sm:rounded-full" role="group" aria-label="Metode unggah bukti DP">
+                                            <div className="grid w-full grid-cols-2 rounded-sm bg-bone p-1 sm:inline-flex sm:h-11 sm:w-auto sm:items-center sm:rounded-full" role="group" aria-label="Metode unggah bukti uang muka">
                                                 <button
                                                     type="button"
                                                     aria-pressed={dpMode === 'now'}
@@ -1039,7 +1039,7 @@ export default function BookingPortal({
                                                         dpMode === 'later' ? 'bg-canvas text-ink' : 'text-mute'
                                                     )}
                                                 >
-                                                    Bayar DP nanti ({business.dp_expiry_minutes} mnt)
+                                                    Bayar nanti ({business.dp_expiry_minutes} mnt)
                                                 </button>
                                             </div>
 
@@ -1078,7 +1078,7 @@ export default function BookingPortal({
                                             ) : (
                                                 <p className="text-xs text-mute">
                                                     {isDropoffService ? 'Kuota' : 'Slot'} akan ditahan selama{' '}
-                                                    <strong>{business.dp_expiry_minutes} menit</strong>. Jika bukti DP belum diunggah hingga batas waktu,{' '}
+                                                    <strong>{business.dp_expiry_minutes} menit</strong>. Jika bukti uang muka belum diunggah hingga batas waktu,{' '}
                                                     {bookingNoun} otomatis dibatalkan.
                                                 </p>
                                             )}
@@ -1218,7 +1218,7 @@ export default function BookingPortal({
                                     </div>
                                     {requiresDp && selectedService && (
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="text-mute">Nominal DP</span>
+                                            <span className="text-mute">Nominal uang muka</span>
                                             <span className="font-semibold tabular-nums text-electric">
                                                 {formatRupiah(computedDpAmount)}
                                             </span>
@@ -1239,7 +1239,7 @@ export default function BookingPortal({
                                                 : 'Slot terkunci otomatis dan bebas bentrok jadwal.'}
                                         </li>
                                         {requiresDp && (
-                                            <li>• Transfer DP langsung ke rekening toko.</li>
+                                            <li>• Transfer uang muka langsung ke rekening toko.</li>
                                         )}
                                         <li>• Halaman status & ringkasan WhatsApp tersedia setelah submit.</li>
                                     </ul>

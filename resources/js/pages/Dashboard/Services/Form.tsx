@@ -437,7 +437,7 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                        <Label htmlFor="service-dp-type">Uang Muka (DP)</Label>
+                        <Label htmlFor="service-dp-type">Uang Muka</Label>
                         <NativeSelect
                             id="service-dp-type"
                             value={form.data.dp_type}
@@ -445,15 +445,20 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 form.setData('dp_type', e.target.value as 'none' | 'fixed' | 'percentage')
                             }
                         >
-                            <option value="none">Tanpa DP</option>
+                            <option value="none">Tanpa Uang Muka</option>
                             <option value="fixed">Nominal Tetap (Rp)</option>
                             <option value="percentage">Persentase (%)</option>
                         </NativeSelect>
+                        <p className="text-xs text-mute">
+                            {isDropoff
+                                ? 'Opsional. Aktifkan jika pelanggan perlu membayar uang muka untuk mengunci kuota harian.'
+                                : 'Opsional. Aktifkan untuk mengunci jadwal dengan uang muka saat pemesanan.'}
+                        </p>
                     </div>
                     {form.data.dp_type !== 'none' && (
                         <div className="space-y-1.5">
                             <Label htmlFor="service-dp-value">
-                                {form.data.dp_type === 'fixed' ? 'Nominal DP (Rp)' : 'Persen DP (%)'}
+                                {form.data.dp_type === 'fixed' ? 'Nominal Uang Muka (Rp)' : 'Persentase Uang Muka (%)'}
                             </Label>
                             <Input
                                 id="service-dp-value"

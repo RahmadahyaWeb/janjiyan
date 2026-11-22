@@ -31,6 +31,9 @@ class CustomerController extends Controller
         if (! in_array($segment, ['all', 'vip', 'has_no_show', 'repeat', 'blocked', 'duplicates'], true)) {
             $segment = 'all';
         }
+        if ($business && $business->isDropoff() && $segment === 'has_no_show') {
+            $segment = 'all';
+        }
         if (! in_array($sort, ['latest', 'top_spent', 'most_bookings'], true)) {
             $sort = 'latest';
         }
@@ -501,23 +504,33 @@ class CustomerController extends Controller
             ->latest();
 
         $bookingNoun = $business->isDropoff() ? 'Pesanan' : ($business->isSpaceBooking() ? 'Booking' : 'Reservasi');
+        $includeNoShow = ! $business->isDropoff();
 
-        return response()->streamDownload(function () use ($customersQuery, $bookingNoun) {
+        return response()->streamDownload(function () use ($customersQuery, $bookingNoun, $includeNoShow) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama', 'Telepon', 'Email', 'Tag', 'Status Booking Online', "Total {$bookingNoun}", 'No-Show', 'Catatan Internal', 'Terdaftar']);
+            $headers = ['Nama', 'Telepon', 'Email', 'Tag', 'Status Booking Online', "Total {$bookingNoun}"];
+            if ($includeNoShow) {
+                $headers[] = 'No-Show';
+            }
+            $headers[] = 'Catatan Internal';
+            $headers[] = 'Terdaftar';
+            fputcsv($handle, $headers);
             foreach ($customersQuery->lazy(500) as $c) {
                 $tagsText = is_array($c->tags) && count($c->tags) > 0 ? implode(', ', $c->tags) : '-';
-                fputcsv($handle, CsvHelper::sanitizeRow([
+                $row = [
                     $c->name,
                     $c->phone,
                     $c->email ?? '-',
                     $tagsText,
                     $c->is_blocked ? 'Diblokir' : 'Aktif',
                     $c->bookings_count,
-                    $c->no_show_count ?? 0,
-                    $c->notes ?? '-',
-                    $c->created_at?->toDateString(),
-                ]));
+                ];
+                if ($includeNoShow) {
+                    $row[] = $c->no_show_count ?? 0;
+                }
+                $row[] = $c->notes ?? '-';
+                $row[] = $c->created_at?->toDateString();
+                fputcsv($handle, CsvHelper::sanitizeRow($row));
             }
             fclose($handle);
         }, "janjiyan-customers-{$business->slug}.csv");

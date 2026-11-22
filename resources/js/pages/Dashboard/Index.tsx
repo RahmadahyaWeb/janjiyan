@@ -275,13 +275,13 @@ export default function DashboardIndex({
                     )}
                 >
                     <div className="flex items-start justify-between gap-1.5 text-mute">
-                        <span className="min-w-0 text-xs leading-snug font-semibold">Perlu Verifikasi DP</span>
+                        <span className="min-w-0 text-xs leading-snug font-semibold">Perlu Verifikasi Uang Muka</span>
                         <Clock className="size-4 shrink-0" aria-hidden="true" />
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:mt-3">
                         <p className="text-2xl font-semibold tabular-nums text-ink sm:text-3xl">{stats.pending_dp}</p>
                         <span className="text-xs font-semibold text-electric">
-                            {stats.pending_dp > 0 ? 'Cek DP' : 'Lihat'}
+                            {stats.pending_dp > 0 ? 'Cek Bukti' : 'Lihat'}
                         </span>
                     </div>
                 </Link>

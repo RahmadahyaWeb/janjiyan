@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { CalendarClock } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
+import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
+import type { PageProps } from '@/types';
 
 export interface ReschedulableBooking {
     id: number;
@@ -46,6 +48,8 @@ export function BookingRescheduleDialog({
     staffOptions,
     onClose,
 }: BookingRescheduleDialogProps) {
+    const { activeBusiness } = usePage<PageProps>().props;
+    const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const [timeError, setTimeError] = useState('');
 
     const form = useForm({
@@ -122,7 +126,7 @@ export function BookingRescheduleDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-ink sm:text-xl">
                         <CalendarClock className="size-5 shrink-0" aria-hidden="true" />
-                        Ubah Jadwal Reservasi
+                        Ubah Jadwal {config.bookings.itemSingular}
                     </DialogTitle>
                 </DialogHeader>
 

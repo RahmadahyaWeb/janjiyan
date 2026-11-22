@@ -131,7 +131,7 @@ export default function Onboarding() {
                                 }
                             />
                             <p id="onboarding-phone-hint" className="text-xs text-mute">
-                                Opsional. Ditampilkan ke pelanggan untuk konfirmasi DP.
+                                Opsional. Ditampilkan ke pelanggan untuk konfirmasi pesanan dan pembayaran.
                             </p>
                             {form.errors.phone && (
                                 <p id="onboarding-phone-error" className="text-xs text-destructive">

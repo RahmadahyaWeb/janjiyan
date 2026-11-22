@@ -358,7 +358,7 @@ class DemoSeeder extends Seeder
         $svcGrooming->staff()->sync([$staffAndi->id, $staffBima->id]);
 
         $svcBasicCut = Service::updateOrCreate(
-            ['business_id' => $barbershop->id, 'name' => 'Express Cut (Tanpa DP)'],
+            ['business_id' => $barbershop->id, 'name' => 'Express Cut (Tanpa Uang Muka)'],
             [
                 'description' => 'Potong rambut cepat tanpa keramas, bayar di tempat.',
                 'image_path' => $svcExpressPath,
@@ -474,7 +474,7 @@ class DemoSeeder extends Seeder
             ['name' => 'Dimas Pratama', 'phone' => '6281222223333', 'email' => 'dimas@example.test', 'notes' => 'Alergi parfum beraroma kuat, gunakan tonic netral.'],
             ['name' => 'Siti Nurhaliza', 'phone' => '6281233334444', 'email' => 'siti@example.test', 'notes' => 'Booking untuk anaknya setiap awal bulan.'],
             ['name' => 'Fajar Ramadhan', 'phone' => '6281244445555', 'email' => 'fajar@example.test', 'notes' => null],
-            ['name' => 'Hendra Kusuma', 'phone' => '6281255556666', 'email' => null, 'notes' => 'Pernah no-show 1x, wajib DP sebelum konfirmasi.'],
+            ['name' => 'Hendra Kusuma', 'phone' => '6281255556666', 'email' => null, 'notes' => 'Pernah no-show 1x, wajib uang muka sebelum konfirmasi.'],
         ];
 
         $customers = [];

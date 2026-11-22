@@ -43,8 +43,8 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
         },
         {
             key: 'verify_payments',
-            label: 'Verifikasi DP',
-            hint: 'Cek bukti DP, tandai lunas',
+            label: 'Verifikasi Uang Muka',
+            hint: 'Cek bukti uang muka, tandai lunas',
         },
         {
             key: 'manage_services',

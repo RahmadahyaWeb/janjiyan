@@ -52,34 +52,42 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
             ? route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
             : ($business ? route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]) : url('/'));
 
+        $hasDp = (int) $booking->dp_amount > 0;
+
         [$nounTitle, $nounLower, $servicePrefix, $actionLabel, $closingLine] = match ($businessType) {
             Business::TYPE_DROPOFF => [
                 'Pesanan',
                 'pesanan',
                 'Layanan',
                 'Lihat Status & Invoice Pesanan',
-                'Simpan tautan di atas untuk memantau progres pesanan atau mengunggah bukti DP Anda.',
+                $hasDp
+                    ? 'Simpan tautan di atas untuk memantau progres pesanan atau mengunggah bukti uang muka Anda.'
+                    : 'Simpan tautan di atas untuk memantau progres dan detail invoice pesanan Anda.',
             ],
             Business::TYPE_SPACE_BOOKING => [
                 'Booking',
                 'booking',
                 'Fasilitas / Paket',
                 'Lihat Status & Invoice Booking',
-                'Simpan tautan di atas untuk memantau status booking atau mengunggah bukti DP Anda.',
+                $hasDp
+                    ? 'Simpan tautan di atas untuk memantau status booking atau mengunggah bukti uang muka Anda.'
+                    : 'Simpan tautan di atas untuk memantau status dan detail invoice booking Anda.',
             ],
             default => [
                 'Reservasi',
                 'reservasi',
                 'Layanan',
                 'Lihat Status & Invoice Reservasi',
-                'Simpan tautan di atas untuk memantau status reservasi atau mengunggah bukti DP Anda.',
+                $hasDp
+                    ? 'Simpan tautan di atas untuk memantau status reservasi atau mengunggah bukti uang muka Anda.'
+                    : 'Simpan tautan di atas untuk memantau status dan detail invoice reservasi Anda.',
             ],
         };
 
         [$subject, $headline] = match ($this->eventType) {
             'dp_verified' => [
-                "[{$businessName}] DP Terverifikasi & {$nounTitle} Dikonfirmasi — {$booking->booking_code}",
-                "Pembayaran DP Anda telah diverifikasi dan {$nounLower} Anda sudah dikonfirmasi.",
+                "[{$businessName}] Uang Muka Terverifikasi & {$nounTitle} Dikonfirmasi — {$booking->booking_code}",
+                "Pembayaran uang muka Anda telah diverifikasi dan {$nounLower} Anda sudah dikonfirmasi.",
             ],
             'confirmed' => [
                 "[{$businessName}] {$nounTitle} Dikonfirmasi — {$booking->booking_code}",
@@ -134,7 +142,7 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
         if ($booking->dp_amount > 0 && $booking->payment_status === 'unpaid' && $booking->dp_expires_at) {
             $deadline = $booking->dp_expires_at->setTimezone($tz)->format('d M Y H:i');
             $dpFormatted = 'Rp '.number_format($booking->dp_amount, 0, ',', '.');
-            $mail->line("Batas pembayaran DP ({$dpFormatted}): {$deadline}.");
+            $mail->line("Batas pembayaran uang muka ({$dpFormatted}): {$deadline}.");
         }
 
         return $mail

@@ -161,7 +161,7 @@ export default function InvoiceLookup({
                                                         ? (WORK_STATUS_LABELS[item.work_status] ?? item.work_status)
                                                         : (RESERVATION_STATUS_LABELS[item.reservation_status] ?? item.reservation_status)}
                                                 </Badge>
-                                                <Badge variant="outline">
+                                                <Badge variant="outline" className="max-w-full whitespace-normal text-left">
                                                     {PAYMENT_STATUS_LABELS[item.payment_status] ?? item.payment_status}
                                                 </Badge>
                                             </div>

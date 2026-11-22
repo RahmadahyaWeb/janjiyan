@@ -53,7 +53,7 @@ export default function StaffIndex({ staffMembers }: StaffIndexProps) {
             <p className="max-w-2xl text-sm text-mute">
                 {isStaffAppointment
                     ? 'Staff di sini bisa dipilih pelanggan saat booking. Akun login dashboard bersifat opsional, cukup untuk staff yang perlu membuka jadwal dan reservasi.'
-                    : 'Tambahkan anggota tim, kasir, atau admin untuk membantu mengelola operasional dashboard, memverifikasi DP, dan memproses transaksi.'}
+                    : 'Tambahkan anggota tim, kasir, atau admin untuk membantu mengelola operasional dashboard, memverifikasi uang muka, dan memproses transaksi.'}
             </p>
 
             {staffMembers.length === 0 ? (

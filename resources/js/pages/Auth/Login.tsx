@@ -29,7 +29,7 @@ export default function Login({ googleEnabled }: LoginProps) {
 
             <h1 className="text-3xl font-semibold text-ink">Selamat datang kembali.</h1>
             <p className="mt-2 text-sm text-mute">
-                Masuk untuk mengelola jadwal, layanan, dan verifikasi DP bisnis Anda.
+                Masuk untuk mengelola jadwal, layanan, dan verifikasi uang muka bisnis Anda.
             </p>
 
             {flash.success && (

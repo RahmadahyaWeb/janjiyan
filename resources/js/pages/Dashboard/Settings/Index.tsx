@@ -488,7 +488,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                 </NativeSelect>
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="settings-dp-expiry">Batas Waktu Bayar DP Nanti (Menit)</Label>
+                                <Label htmlFor="settings-dp-expiry">Batas Waktu Bayar Uang Muka Nanti (Menit)</Label>
                                 <Input
                                     id="settings-dp-expiry"
                                     type="number"
@@ -499,6 +499,9 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     aria-invalid={Boolean(form.errors.dp_expiry_minutes)}
                                     required
                                 />
+                                <p className="text-xs text-mute">
+                                    Berlaku untuk layanan yang mengaktifkan uang muka dengan opsi bayar nanti.
+                                </p>
                                 {form.errors.dp_expiry_minutes && (
                                     <p className="text-xs text-destructive">{form.errors.dp_expiry_minutes}</p>
                                 )}
@@ -779,10 +782,10 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                                 className="flex items-center gap-1.5 text-sm font-semibold text-ink"
                                             >
                                                 <ShieldAlert className="size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                Proteksi No-Show Otomatis (Wajib DP 100%)
+                                                Proteksi No-Show Otomatis (Wajib Uang Muka 100%)
                                             </Label>
                                             <p className="mt-0.5 text-xs text-mute">
-                                                Jika pelanggan pernah tidak hadir (no-show) mencapai batas tertentu, sistem otomatis mewajibkan DP 100% pada {businessConfig.bookings.itemSingular.toLowerCase()} online berikutnya.
+                                                Jika pelanggan pernah tidak hadir (no-show) mencapai batas tertentu, sistem otomatis mewajibkan uang muka 100% pada {businessConfig.bookings.itemSingular.toLowerCase()} online berikutnya.
                                             </p>
                                         </div>
                                         <Switch
@@ -928,7 +931,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     <span>Notifikasi Instan Telegram Bot</span>
                                 </h2>
                                 <p className="mt-0.5 text-xs text-mute">
-                                    Terima notifikasi real-time gratis di HP Anda setiap kali ada {businessConfig.bookings.itemSingular.toLowerCase()} baru atau bukti DP diunggah.
+                                    Terima notifikasi real-time gratis di HP Anda setiap kali ada {businessConfig.bookings.itemSingular.toLowerCase()} baru atau bukti uang muka diunggah.
                                 </p>
                             </div>
                             <Switch
@@ -1025,7 +1028,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">
                                 <h2 className="text-lg font-semibold text-ink">Rekening Bank & QRIS</h2>
-                                <p className="text-xs text-mute">Ditampilkan ke pelanggan saat melakukan DP (0% fee).</p>
+                                <p className="text-xs text-mute">Ditampilkan ke pelanggan saat melakukan transfer uang muka atau pembayaran (0% fee).</p>
                             </div>
                             <Button type="button" variant="secondary" size="sm" className="w-full sm:w-auto" onClick={addBank}>
                                 <Plus className="size-3.5" aria-hidden="true" />

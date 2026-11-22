@@ -687,4 +687,97 @@ class BusinessTypeArchitectureTest extends TestCase
             return str_contains($text, '(3 kg)') && ! str_contains($text, '(3 pcs)');
         });
     }
+
+    public function test_dropoff_copy_sanitizes_no_show_segment_and_uses_uang_muka_wording(): void
+    {
+        [$owner, $business] = $this->createVerifiedOwnerWithBusiness(Business::TYPE_DROPOFF, 'laundry-copy');
+
+        $service = Service::create([
+            'business_id' => $business->id,
+            'name' => 'Cuci Sepatu Tanpa Uang Muka',
+            'price' => 40000,
+            'duration_minutes' => 60,
+            'buffer_minutes' => 0,
+            'capacity' => 10,
+            'assignment_mode' => 'capacity',
+            'booking_mode' => 'dropoff',
+            'unit_label' => 'pasang',
+            'turnaround_days' => 2,
+            'dp_type' => 'none',
+            'dp_value' => 0,
+            'is_active' => true,
+        ]);
+
+        $customer = Customer::create([
+            'business_id' => $business->id,
+            'name' => 'Sari Laundry',
+            'phone' => '6281234500009',
+            'email' => 'sari@example.test',
+        ]);
+
+        $day = $this->nextOpenWeekday();
+        $bookingWithoutDp = Booking::create([
+            'business_id' => $business->id,
+            'customer_id' => $customer->id,
+            'service_id' => $service->id,
+            'booking_mode' => 'dropoff',
+            'unit_label' => 'pasang',
+            'quantity' => 1,
+            'fulfillment_type' => 'dropoff',
+            'booking_code' => 'JNY-NOUM1',
+            'invoice_number' => 'INV-20261123-NOUM1',
+            'invoice_token' => bin2hex(random_bytes(16)),
+            'booking_date' => $day->toDateString(),
+            'start_at' => $day->setTime(9, 0)->utc(),
+            'end_at' => $day->setTime(10, 0)->utc(),
+            'buffer_end_at' => $day->setTime(10, 0)->utc(),
+            'total_price' => 40000,
+            'dp_amount' => 0,
+            'reservation_status' => 'confirmed',
+            'work_status' => 'awaiting_dropoff',
+            'payment_status' => 'unpaid',
+        ]);
+
+        // 1. Customer mail for booking without uang muka should not ask to upload proof or say DP
+        $mailNoDp = (new CustomerBookingStatusNotification($bookingWithoutDp, 'confirmed'))->toMail($customer);
+        $mailNoDpText = implode("\n", array_merge($mailNoDp->introLines, $mailNoDp->outroLines));
+        $this->assertStringNotContainsString('bukti uang muka', $mailNoDpText);
+        $this->assertStringNotContainsString('DP', $mailNoDpText);
+
+        // 2. Customer segment=has_no_show is sanitized to 'all' on dropoff businesses
+        $this->actingAs($owner)
+            ->get(route('dashboard.customers', ['segment' => 'has_no_show']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.segment', 'all')
+            );
+
+        // 3. Verify DP flash message uses 'Uang muka' and type-aware noun ('pesanan')
+        $bookingWithDp = Booking::create([
+            'business_id' => $business->id,
+            'customer_id' => $customer->id,
+            'service_id' => $service->id,
+            'booking_mode' => 'dropoff',
+            'unit_label' => 'pasang',
+            'quantity' => 1,
+            'fulfillment_type' => 'dropoff',
+            'booking_code' => 'JNY-WUM01',
+            'invoice_number' => 'INV-20261123-WUM01',
+            'invoice_token' => bin2hex(random_bytes(16)),
+            'booking_date' => $day->toDateString(),
+            'start_at' => $day->setTime(9, 0)->utc(),
+            'end_at' => $day->setTime(10, 0)->utc(),
+            'buffer_end_at' => $day->setTime(10, 0)->utc(),
+            'total_price' => 40000,
+            'dp_amount' => 20000,
+            'reservation_status' => 'pending',
+            'work_status' => 'awaiting_dropoff',
+            'payment_status' => 'waiting_verification',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('dashboard.bookings.verify-dp', $bookingWithDp->id))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Uang muka untuk JNY-WUM01 berhasil diverifikasi & pesanan dikonfirmasi.');
+    }
 }

@@ -459,8 +459,10 @@ class BookingController extends Controller
             }
         } else {
             if (empty($validated['time'])) {
+                $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
+
                 return back()
-                    ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                    ->withErrors(['time' => $timePrompt])
                     ->withInput();
             }
 
@@ -534,8 +536,10 @@ class BookingController extends Controller
         ]);
 
         if (! $booking->isDropoff() && empty($validated['time'])) {
+            $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
+
             return back()
-                ->withErrors(['time' => 'Jam reservasi wajib dipilih.'])
+                ->withErrors(['time' => $timePrompt])
                 ->withInput();
         }
 
@@ -638,7 +642,9 @@ class BookingController extends Controller
 
         $notificationService->notifyCustomerStatusChanged($booking, 'dp_verified');
 
-        return back()->with('success', "DP untuk {$booking->booking_code} berhasil diverifikasi & reservasi dikonfirmasi.");
+        $noun = $booking->isDropoff() ? 'pesanan' : ($business->isSpaceBooking() ? 'booking' : 'reservasi');
+
+        return back()->with('success', "Uang muka untuk {$booking->booking_code} berhasil diverifikasi & {$noun} dikonfirmasi.");
     }
 
     public function proof(Request $request, Booking $booking): BinaryFileResponse
@@ -688,7 +694,7 @@ class BookingController extends Controller
 
         return response()->streamDownload(function () use ($bookingsQuery, $tz) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jadwal / Jam', 'Jumlah', 'Satuan', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'DP', 'Status Reservasi', 'Status Pembayaran']);
+            fputcsv($handle, ['No. Invoice', 'Booking Code', 'Tanggal', 'Jadwal / Jam', 'Jumlah', 'Satuan', 'Pelanggan', 'Telepon', 'Layanan', 'Staff', 'Total', 'Uang Muka', 'Status', 'Status Pembayaran']);
             foreach ($bookingsQuery->lazy(500) as $b) {
                 fputcsv($handle, CsvHelper::sanitizeRow([
                     $b->invoice_number ?? '-',

@@ -48,7 +48,7 @@ class IcsCalendarService
                 ? 'Staff: '.$booking->staff->name
                 : null,
             'Total: Rp '.number_format((int) $booking->total_price, 0, ',', '.'),
-            $booking->dp_amount > 0 ? 'DP: Rp '.number_format((int) $booking->dp_amount, 0, ',', '.') : null,
+            $booking->dp_amount > 0 ? 'Uang Muka: Rp '.number_format((int) $booking->dp_amount, 0, ',', '.') : null,
             ($business && $booking->invoice_token)
                 ? 'Detail & Status: '.route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
                 : null,

@@ -89,7 +89,7 @@ class Business extends Model
         if ($type === self::TYPE_DROPOFF) {
             return [
                 'reminder' => "Halo {customer_name}, kami dari {business_name} mengingatkan jadwal pengantaran/penjemputan pesanan Anda:\n\n• Layanan: {service_name}\n• Jumlah: {quantity} {unit_label}\n• Tanggal: {date}\n• Estimasi Selesai: {estimated_ready_date}\n• Kode Pesanan: {booking_code}\n\nTerima kasih!",
-                'dp_verified' => "Halo {customer_name}, pembayaran DP sebesar {dp_amount} untuk pesanan {booking_code} ({service_name} · {quantity} {unit_label}, {date}) telah kami verifikasi.\n\nPesanan Anda di {business_name} segera kami proses. Terima kasih!",
+                'dp_verified' => "Halo {customer_name}, pembayaran uang muka sebesar {dp_amount} untuk pesanan {booking_code} ({service_name} · {quantity} {unit_label}, {date}) telah kami verifikasi.\n\nPesanan Anda di {business_name} segera kami proses. Terima kasih!",
                 'confirmed' => "Halo {customer_name}, pesanan Anda di {business_name} telah dikonfirmasi:\n\n• Layanan: {service_name}\n• Jumlah: {quantity} {unit_label}\n• Tanggal Drop-off: {date}\n• Estimasi Selesai: {estimated_ready_date}\n• Detail Invoice: {invoice_url}\n\nTerima kasih!",
                 'ready_for_pickup' => "Halo {customer_name}, pesanan {service_name} ({quantity} {unit_label}, kode {booking_code}) di {business_name} sudah selesai dan siap diambil/diantar.\n\n• Total Biaya: {total_price}\n• Detail Invoice: {invoice_url}\n\nTerima kasih sudah mempercayakan pesanan Anda kepada kami!",
                 'follow_up' => 'Halo {customer_name}, terima kasih sudah mempercayakan pesanan {service_name} ({quantity} {unit_label}) kepada {business_name}. Semoga hasilnya memuaskan. Jika ingin order lagi, silakan balas pesan ini.',
@@ -99,7 +99,7 @@ class Business extends Model
         if ($type === self::TYPE_SPACE_BOOKING) {
             return [
                 'reminder' => "Halo {customer_name}, kami dari {business_name} mengingatkan jadwal sesi Anda:\n\n• Paket/Fasilitas: {service_name}\n• Tanggal: {date}\n• Jam Sesi: {time}\n• Kode Booking: {booking_code}\n\nMohon hadir tepat waktu sesuai jadwal sesi. Terima kasih!",
-                'dp_verified' => "Halo {customer_name}, pembayaran DP sebesar {dp_amount} untuk booking {booking_code} ({service_name}, {date} · {time}) telah kami verifikasi.\n\nJadwal sesi Anda di {business_name} sudah dikonfirmasi. Terima kasih!",
+                'dp_verified' => "Halo {customer_name}, pembayaran uang muka sebesar {dp_amount} untuk booking {booking_code} ({service_name}, {date} · {time}) telah kami verifikasi.\n\nJadwal sesi Anda di {business_name} sudah dikonfirmasi. Terima kasih!",
                 'confirmed' => "Halo {customer_name}, jadwal sesi Anda di {business_name} telah dikonfirmasi:\n\n• Paket/Fasilitas: {service_name}\n• Tanggal: {date} · {time}\n• Detail Invoice: {invoice_url}\n\nTerima kasih!",
                 'follow_up' => 'Halo {customer_name}, terima kasih sudah booking {service_name} di {business_name}. Semoga sesi Anda berjalan lancar. Jika ingin memesan sesi berikutnya, silakan balas pesan ini.',
             ];
@@ -107,7 +107,7 @@ class Business extends Model
 
         return [
             'reminder' => "Halo {customer_name}, kami dari {business_name} mengingatkan janji temu Anda:\n\n• Layanan: {service_name}\n• Tanggal: {date}\n• Jam: {time}\n• Staff: {staff_name}\n• Kode Booking: {booking_code}\n\nMohon hadir 10 menit sebelum jadwal. Terima kasih!",
-            'dp_verified' => "Halo {customer_name}, pembayaran DP sebesar {dp_amount} untuk reservasi {booking_code} ({service_name}, {date} · {time}) telah kami verifikasi.\n\nJanji temu Anda di {business_name} sudah dikonfirmasi. Sampai jumpa!",
+            'dp_verified' => "Halo {customer_name}, pembayaran uang muka sebesar {dp_amount} untuk reservasi {booking_code} ({service_name}, {date} · {time}) telah kami verifikasi.\n\nJanji temu Anda di {business_name} sudah dikonfirmasi. Sampai jumpa!",
             'confirmed' => "Halo {customer_name}, janji temu Anda di {business_name} telah dikonfirmasi:\n\n• Layanan: {service_name}\n• Tanggal: {date} · {time}\n• Staff: {staff_name}\n• Detail Invoice: {invoice_url}\n\nTerima kasih!",
             'follow_up' => 'Halo {customer_name}, terima kasih sudah berkunjung ke {business_name} untuk layanan {service_name}. Semoga hasilnya sesuai harapan Anda. Jika ingin membuat janji temu berikutnya, silakan balas pesan ini.',
         ];

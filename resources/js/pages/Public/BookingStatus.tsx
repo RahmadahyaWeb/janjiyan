@@ -174,7 +174,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
         isDropoff && booking.estimated_ready_date
             ? `Estimasi Selesai: ${formatDateIndo(booking.estimated_ready_date)}`
             : '',
-        booking.dp_amount > 0 ? `DP: ${formatRupiah(booking.dp_amount)}` : '',
+        booking.dp_amount > 0 ? `Uang Muka: ${formatRupiah(booking.dp_amount)}` : '',
         `Link Invoice: ${typeof window !== 'undefined' ? window.location.href : ''}`,
     ]
         .filter(Boolean)
@@ -256,7 +256,9 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             <p className="mt-1 text-sm break-words text-mute">{business.name}</p>
                         </div>
 
-                        <Badge variant="secondary">{PAYMENT_STATUS_LABELS[booking.payment_status] ?? booking.payment_status}</Badge>
+                        <Badge variant="secondary" className="max-w-full whitespace-normal text-center">
+                            {PAYMENT_STATUS_LABELS[booking.payment_status] ?? booking.payment_status}
+                        </Badge>
                     </div>
 
                     {isDropoff && booking.reservation_status !== 'cancelled' && booking.reservation_status !== 'no_show' && (
@@ -362,17 +364,17 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                         </div>
                         {booking.dp_amount > 0 && (
                             <div className="flex justify-between gap-4">
-                                <span className="shrink-0 text-mute">Nominal DP</span>
+                                <span className="shrink-0 text-mute">Nominal Uang Muka</span>
                                 <span className="font-semibold tabular-nums text-electric">{formatRupiah(booking.dp_amount)}</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Pay-Later DP Upload Box */}
+                    {/* Pay-Later Uang Muka Upload Box */}
                     {booking.dp_amount > 0 && booking.payment_status === 'unpaid' && booking.reservation_status !== 'cancelled' && (
                         <div className="mt-6 space-y-4 rounded-md bg-bone p-5 print:hidden">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-semibold text-ink">{dpExpired ? 'Pembayaran DP' : 'Unggah Bukti Transfer DP'}</p>
+                                <p className="text-sm font-semibold text-ink">{dpExpired ? 'Pembayaran Uang Muka' : 'Unggah Bukti Transfer Uang Muka'}</p>
                                 {remainingText && !dpExpired && (
                                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-canvas px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap tabular-nums text-electric">
                                         <Clock className="size-3.5" aria-hidden="true" />
@@ -384,7 +386,7 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                             {/* Server rejects uploads after expiry, so show what to do instead of a dead form */}
                             {dpExpired && (
                                 <p role="alert" className="rounded-xl bg-destructive-soft p-3 text-sm text-destructive">
-                                    Batas waktu unggah DP sudah lewat. Hubungi bisnis lewat WhatsApp untuk mengatur ulang jadwal.
+                                    Batas waktu unggah bukti uang muka sudah lewat. Hubungi bisnis lewat WhatsApp untuk mengatur ulang jadwal.
                                 </p>
                             )}
 

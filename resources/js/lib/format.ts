@@ -44,8 +44,8 @@ export const RESERVATION_STATUS_LABELS: Record<string, string> = {
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
     unpaid: 'Belum Dibayar',
-    waiting_verification: 'Menunggu Verifikasi DP',
-    dp_verified: 'DP Terverifikasi',
+    waiting_verification: 'Menunggu Verifikasi',
+    dp_verified: 'Uang Muka Terverifikasi',
     settled: 'Lunas',
 };
 
