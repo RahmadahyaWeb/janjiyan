@@ -240,13 +240,25 @@ export default function BillingIndex({
                                         <span>{plan.max_customers_per_business ?? 'Unlimited'} Pelanggan / bisnis</span>
                                     </li>
                                     <li className="flex items-center gap-2">
+                                        {plan.slug !== 'basic' || plan.can_export_csv ? (
+                                            <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        ) : (
+                                            <X className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                                        )}
+                                        <span className={plan.slug !== 'basic' || plan.can_export_csv ? 'text-body' : 'text-mute'}>
+                                            Multi-layanan Drop-off &amp; rincian kasir harian:{' '}
+                                            {plan.slug !== 'basic' || plan.can_export_csv ? 'Tersedia' : 'Tidak tersedia'}
+                                        </span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
                                         {plan.can_export_csv ? (
                                             <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
                                         ) : (
                                             <X className="size-4 shrink-0 text-mute" aria-hidden="true" />
                                         )}
                                         <span className={plan.can_export_csv ? 'text-body' : 'text-mute'}>
-                                            Export CSV: {plan.can_export_csv ? 'Tersedia' : 'Tidak tersedia'}
+                                            Export CSV (Pesanan, Pelanggan, Kasir &amp; Komisi):{' '}
+                                            {plan.can_export_csv ? 'Tersedia' : 'Tidak tersedia'}
                                         </span>
                                     </li>
                                     <li className="flex items-center gap-2">

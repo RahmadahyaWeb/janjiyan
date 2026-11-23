@@ -11,8 +11,10 @@ import {
     Pause,
     Play,
     QrCode,
+    ReceiptText,
     Scissors,
     ShieldCheck,
+    Star,
     X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -50,37 +52,37 @@ const BUSINESS_TYPE_SHOWCASE = [
         icon: Scissors,
         badge: 'Barber · Salon · Klinik · Grooming',
         title: 'Janji Temu & Staff',
-        desc: 'Pelanggan pilih layanan, pilih kapster atau terapis favorit, lalu ambil jam yang masih kosong.',
+        desc: 'Pelanggan pilih layanan dan add-on, pilih kapster atau terapis favorit, lalu ambil jam yang masih kosong.',
         points: [
-            'Kalender per staff, lengkap dengan shift dan cuti',
-            'Jeda antar tamu supaya jadwal tidak bentrok',
-            'Komisi staff (% atau nominal tetap) langsung direkap tiap selesai',
+            'Kalender visual per staff lengkap dengan shift, cuti, dan sinkron ke Google & Apple Calendar',
+            'Jeda antar tamu dan durasi add-on otomatis dihitung agar jadwal tidak bentrok',
+            'Komisi staff (% atau nominal tetap) termasuk add-on langsung direkap tiap selesai',
         ],
-        flow: 'Layanan → Pilih Staff → Jam Datang → Uang Muka',
+        flow: 'Layanan (+ Add-on) → Pilih Staff → Jam Datang → Uang Muka',
     },
     {
         icon: MapPin,
         badge: 'Padel · Studio · Kelas · Meeting',
         title: 'Booking Tempat / Sesi',
-        desc: 'Pelanggan langsung pilih lapangan, ruangan, atau kelas, lalu lihat jam main dan sisa tempatnya.',
+        desc: 'Pelanggan langsung pilih lapangan, ruangan, atau kelas beserta sewa perlengkapan tambahan, lalu lihat jam dan sisa tempatnya.',
         points: [
             'Atur kapasitas per sesi tanpa perlu pilih staff',
-            'Jeda bersih-bersih atau persiapan di antara pemakaian',
-            'Cocok buat sewa lapangan, studio foto, sampai kelas rutin',
+            'Opsi add-on sewa alat (misal raket atau perlengkapan) dan jeda bersih-bersih antar sesi',
+            'Pelunasan sisa tagihan dan cetak struk langsung di kasir saat tamu datang',
         ],
-        flow: 'Fasilitas / Paket → Tanggal & Jam → Uang Muka',
+        flow: 'Fasilitas (+ Add-on) → Tanggal & Jam → Uang Muka',
     },
     {
         icon: Package,
         badge: 'Laundry · Sepatu · Servis · Bengkel',
         title: 'Layanan Titip / Drop-off',
-        desc: 'Pelanggan pilih layanan (item, pasang, kg, pcs, atau unit), pilih tanggal titip atau jemput, lalu cek statusnya di link invoice.',
+        desc: 'Pelanggan pilih satu atau beberapa layanan sekaligus (item, pasang, kg, pcs, atau unit), pilih tanggal titip atau jemput, lalu pantau progresnya.',
         points: [
-            'Batas terima barang harian biar kerjaan tidak numpuk',
-            'Bisa antar langsung ke toko atau pilih jemput-antar',
-            'Progres dari Dikerjakan sampai Siap Diambil terlihat di invoice',
+            'Batas terima barang harian plus pantauan pesanan jatuh tempo dan yang terlambat',
+            'Keranjang multi-layanan dalam 1 invoice (paket Pro ke atas) serta opsi jemput-antar',
+            'Cetak tag barang 58mm supaya titipan tidak tertukar, dan progres terlihat di invoice',
         ],
-        flow: 'Layanan & Jumlah → Tanggal Titip → Pantau Invoice',
+        flow: 'Layanan & Jumlah → Tanggal Titip → Tag & Pantau Invoice',
     },
 ];
 
@@ -98,42 +100,72 @@ const OUTCOMES = [
         illustration: '/images/editorial-feature-qr.jpg',
         illustrationAlt: 'Ilustrasi pelanggan memindai poster QR booking di meja kasir studio',
         title: 'Satu link untuk Instagram dan meja kasir',
-        desc: 'Taruh link halaman toko di bio Instagram, atau cetak poster QR dari dashboard buat meja kasir. Tampilannya pakai warna khas usaha kamu sendiri, lengkap dengan foto tempat dan galeri hasil kerja. Pelanggan bisa pesan sekaligus cek status invoice lewat browser, tanpa install aplikasi.',
-        highlights: ['Link toko & warna merek sendiri', 'Poster QR siap cetak', 'Cek status di invoice', 'Tanpa install aplikasi'],
+        desc: 'Taruh link halaman toko di bio Instagram, atau cetak poster QR dari dashboard buat meja kasir. Tampilannya pakai warna khas usaha kamu sendiri, lengkap dengan foto tempat, galeri hasil kerja, serta pilihan add-on saat checkout. Pelanggan bisa pesan sekaligus cek riwayat invoice sendiri lewat browser, tanpa install aplikasi.',
+        highlights: ['Link toko & warna merek sendiri', 'Poster QR siap cetak', 'Add-on & cek riwayat invoice', 'Tanpa install aplikasi'],
     },
     {
         icon: Calendar,
         illustration: '/images/editorial-feature-calendar.jpg',
         illustrationAlt: 'Ilustrasi tim memantau papan jadwal harian dan menerima notifikasi booking di smartphone',
         title: 'Semua jadwal dan titipan dalam satu layar',
-        desc: 'Lihat jadwal harian tiap staff, sisa kapasitas sesi, sampai daftar titipan yang lagi dikerjakan. Begitu ada pesanan baru atau bukti transfer masuk, kabarnya langsung dikirim ke Telegram dan email—lengkap dengan tombol chat WhatsApp yang pesannya sudah terisi otomatis.',
-        highlights: ['Kalender & daftar titipan', 'Kuota harian per satuan', 'Notif Telegram & email', 'Template chat WhatsApp'],
+        desc: 'Pantau papan kalender harian per staff, sisa kapasitas sesi, sampai antrean titipan lengkap dengan peringatan jatuh tempo. Begitu ada pesanan baru, bukti transfer, atau ulasan masuk, kabarnya langsung muncul di lonceng notifikasi dashboard, Telegram, dan email—lengkap dengan template chat WhatsApp siap kirim.',
+        highlights: ['Papan kalender & pantauan jatuh tempo', 'Kuota harian per satuan', 'Notif dashboard, Telegram & email', 'Template chat WhatsApp'],
     },
     {
         icon: BadgePercent,
         illustration: '/images/editorial-feature-commission.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis dan tim melihat grafik rekap komisi bulanan otomatis di laptop',
         title: 'Data pelanggan rapi, tim dan komisi gampang dicek',
-        desc: 'Simpan riwayat order, catatan khusus pelanggan, sampai gabungkan profil ganda kalau ada nama yang sama atau nomornya ganti. Kamu bisa bikin akun kasir atau admin di semua tipe usaha, hitung komisi staff janji temu otomatis, dan pegang sampai 10 cabang (paket Enterprise).',
-        highlights: ['Catatan & gabung profil ganda', 'Akun kasir & admin', 'Komisi staff otomatis', 'Multi-cabang (hingga 10)'],
+        desc: 'Simpan riwayat order, jumlah no-show, tag pelanggan (misal VIP atau Langganan), blokir nomor bermasalah, sampai gabungkan profil ganda. Saat tamu datang langsung (walk-in), data pelanggan lama tinggal dicari cepat. Kamu juga bisa bikin akun kasir atau admin, hitung komisi staff otomatis, dan pegang sampai 10 cabang.',
+        highlights: ['Tag, riwayat & gabung profil', 'Akun kasir & admin', 'Komisi staff & add-on', 'Multi-cabang (hingga 10)'],
+    },
+];
+
+const EXTRA_CAPABILITIES = [
+    {
+        icon: ReceiptText,
+        badge: 'Tersedia sejak paket Basic',
+        title: 'Kasir meja, struk termal, dan tag barang',
+        desc: 'Saat pelanggan datang atau mengambil barang, tim kamu langsung catat pelunasan di Janjiyan tanpa perlu langganan aplikasi kasir terpisah. Bisa terima cicilan, metode Tunai (hitung kembalian otomatis), QRIS, Transfer, maupun EDC—termasuk tambah layanan atau add-on di tempat.',
+        points: [
+            'Cetak langsung ke printer termal 58mm atau 80mm lengkap dengan QR invoice',
+            'Format khusus Tag Barang 58mm untuk ditempel di sepatu, laundry, atau barang servis',
+            'Unduh struk jadi gambar PNG 1-klik untuk dikirim lewat WhatsApp',
+            'Ringkasan kasir harian per metode bayar & export CSV (mulai paket Professional)',
+        ],
+    },
+    {
+        icon: Star,
+        badge: 'Mulai paket Professional',
+        title: 'Pengumpul ulasan Google Maps & stiker QR meja',
+        desc: 'Bantu usaha kamu dapat lebih banyak ulasan bagus di Google Maps, sementara masukan yang kurang puas tetap masuk ke tim kamu dulu untuk ditindaklanjuti. Link ulasan muncul di halaman invoice setelah selesai dan bisa disisipkan ke pesan follow-up WhatsApp.',
+        points: [
+            'Rating tinggi (misal 4–5 bintang) diarahkan ke Google Maps Review dengan tombol salin komentar',
+            'Rating rendah masuk sebagai masukan privat di dashboard plus notifikasi Telegram ke pemilik',
+            'Cetak stiker QR kotak PNG, tent card meja A6, atau lembar stiker A4 (2×2 dan 3×3) dari dashboard',
+        ],
     },
 ];
 
 const INCLUDED_IN_ALL_PLANS = [
     'Uang muka langsung ke rekening atau QRIS, tanpa potongan',
     'Wajib bayar penuh buat yang sering batal (Janji Temu & Tempat)',
-    'Jadwal staff, sesi tempat, atau kuota drop-off',
+    'Kasir meja: pelunasan, cicilan, ubah item & hitung kembalian',
+    'Cetak struk termal 58/80mm, tag barang 58mm & struk PNG',
+    'Jadwal staff, sesi tempat, atau kuota drop-off harian',
+    'Add-on layanan di halaman pesan & meja kasir',
     'Email pengingat H-1 (plus H-2 jam untuk jadwal/sesi)',
-    'Halaman toko kustom & poster QR siap cetak',
-    'Notifikasi Telegram & template chat WhatsApp',
+    'Halaman toko kustom, cek invoice mandiri & poster QR',
+    'Notifikasi dashboard, Telegram & template chat WhatsApp',
     'Akun login tim kasir & admin (plus komisi staff)',
-    'Simpan jadwal ke Google & Apple Calendar',
+    'Simpan jadwal ke Google & Apple Calendar (tamu & staff)',
+    'Tag, catatan, blokir & gabung profil pelanggan ganda',
 ];
 
 const PLAN_TAGLINES: Record<string, string> = {
-    basic: 'Cocok kalau kamu baru mulai merapikan pesanan atau masih melayani sendiri.',
-    professional: 'Cocok kalau kamu sudah punya admin, kasir, atau beberapa staff dengan rekap komisi.',
-    enterprise: 'Cocok kalau kamu punya lebih dari satu cabang.',
+    basic: 'Cocok kalau kamu baru mulai merapikan pesanan, jadwal, dan kasir toko sendiri.',
+    professional: 'Cocok kalau kamu sudah punya tim atau kasir, butuh rekap komisi, multi-layanan, dan pengumpul ulasan Google Maps.',
+    enterprise: 'Cocok kalau kamu punya banyak cabang dan jumlah pesanan bulanan tanpa batas.',
 };
 
 const STEPS = [
@@ -196,11 +228,19 @@ const FAQS = [
     },
     {
         q: 'Notifikasi pesanan baru dikirim ke mana?',
-        a: 'Langsung ke email dan grup/chat Telegram kamu lewat bot Telegram yang kamu hubungkan di Pengaturan, setiap ada pesanan baru atau bukti transfer masuk. Untuk follow up ke pelanggan, sudah tersedia tombol chat WhatsApp yang pesannya terisi otomatis.',
+        a: 'Langsung muncul di lonceng notifikasi dashboard secara real-time, serta terkirim ke email dan grup/chat Telegram lewat bot yang kamu hubungkan di Pengaturan—setiap ada pesanan baru, bukti uang muka masuk, atau ulasan baru. Untuk follow up ke pelanggan, sudah tersedia tombol chat WhatsApp yang pesannya terisi otomatis.',
+    },
+    {
+        q: 'Apakah perlu aplikasi kasir atau printer khusus?',
+        a: 'Tidak perlu aplikasi kasir tambahan. Di dalam Janjiyan sudah ada kasir meja untuk mencatat pelunasan atau cicilan (Tunai dengan hitung kembalian, QRIS, Transfer, dan EDC) serta menambah layanan atau add-on di tempat. Struk bisa dicetak langsung ke printer termal 58mm/80mm (termasuk Tag Barang 58mm untuk usaha drop-off), atau diunduh jadi gambar PNG untuk dikirim via WhatsApp.',
+    },
+    {
+        q: 'Bagaimana cara kerja fitur ulasan dan Google Maps Review?',
+        a: 'Pelanggan bisa scan stiker QR ulasan di meja kasir atau klik tombol Beri Ulasan di link invoice setelah pesanan selesai. Jika pelanggan memberi rating tinggi (misalnya 4–5 bintang), mereka diarahkan ke halaman Google Maps Review usaha kamu dengan tombol salin komentar. Jika ratingnya rendah, masukan tersimpan sebagai kritik privat di dashboard dan dikirim ke Telegram kamu supaya bisa langsung ditangani.',
     },
     {
         q: 'Satu akun bisa dipakai untuk beberapa cabang?',
-        a: 'Bisa—paket Professional mendukung hingga 3 cabang, dan paket Enterprise hingga 10 cabang dalam satu akun. Link halaman toko, daftar layanan, data pelanggan, dan rekening tiap cabang tetap terpisah rapi.',
+        a: 'Bisa—paket Professional mendukung hingga 3 cabang, dan paket Enterprise hingga 10 cabang dalam satu akun. Link halaman toko, daftar layanan, data pelanggan, kasir, dan rekening tiap cabang tetap terpisah rapi.',
     },
 ];
 
@@ -265,6 +305,7 @@ export default function Landing({ plans }: LandingProps) {
             const staggerGroups = [
                 { selector: '[data-business-type-card]', trigger: '#tipe-bisnis' },
                 { selector: '[data-outcome-card]', trigger: '#fitur' },
+                { selector: '[data-extra-feature-card]', trigger: '[data-extra-features-grid]' },
                 { selector: '[data-pricing-card]', trigger: '#harga' },
                 { selector: '[data-testimonial-card]', trigger: '[data-testimonials-grid]' },
             ];
@@ -291,11 +332,11 @@ export default function Landing({ plans }: LandingProps) {
 
     return (
         <div ref={pageRef} className="min-h-screen bg-canvas text-ink">
-            <Head title="Sistem booking, uang muka, dan pesanan untuk bisnis jasa">
+            <Head title="Sistem booking, uang muka, dan kasir untuk bisnis jasa">
                 <meta
                     head-key="description"
                     name="description"
-                    content="Kelola janji temu, sewa lapangan atau studio, sampai titipan laundry lewat satu link. Uang muka langsung masuk ke rekening kamu tanpa potongan, plus pengingat sebelum jadwal. Coba gratis 14 hari."
+                    content="Kelola janji temu, sewa lapangan atau studio, titipan laundry, sampai kasir meja dan ulasan Google Maps lewat satu link. Uang muka masuk utuh ke rekening kamu tanpa potongan. Coba gratis 14 hari."
                 />
             </Head>
 
@@ -528,6 +569,51 @@ export default function Landing({ plans }: LandingProps) {
                             );
                         })}
                     </div>
+
+                    {/* POS Cashier & Google Maps Review Spotlight */}
+                    <div
+                        data-extra-features-grid
+                        className="mt-6 grid gap-6 md:grid-cols-2"
+                    >
+                        {EXTRA_CAPABILITIES.map((cap) => {
+                            const Icon = cap.icon;
+                            return (
+                                <div
+                                    key={cap.title}
+                                    data-extra-feature-card
+                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
+                                >
+                                    <div>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
+                                                <Icon className="size-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
+                                                {cap.badge}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                            {cap.title}
+                                        </h3>
+
+                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                            {cap.desc}
+                                        </p>
+
+                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                            {cap.points.map((point) => (
+                                                <li key={point} className="flex items-start gap-2.5">
+                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </section>
 
                 {/* Cost of no-show — 2-Column Editorial Story Banner + Simulator */}
@@ -726,6 +812,51 @@ export default function Landing({ plans }: LandingProps) {
                             );
                         })}
                     </div>
+
+                    {/* POS Cashier & Google Maps Review Spotlight */}
+                    <div
+                        data-extra-features-grid
+                        className="mt-6 grid gap-6 md:grid-cols-2"
+                    >
+                        {EXTRA_CAPABILITIES.map((cap) => {
+                            const Icon = cap.icon;
+                            return (
+                                <div
+                                    key={cap.title}
+                                    data-extra-feature-card
+                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
+                                >
+                                    <div>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
+                                                <Icon className="size-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
+                                                {cap.badge}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                            {cap.title}
+                                        </h3>
+
+                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                            {cap.desc}
+                                        </p>
+
+                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                            {cap.points.map((point) => (
+                                                <li key={point} className="flex items-start gap-2.5">
+                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </section>
 
                 {/* How to start — 3 Editorial Story Cards */}
@@ -785,8 +916,8 @@ export default function Landing({ plans }: LandingProps) {
                         <h2 id="heading-harga" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Pilih paket sesuai ukuran usaha kamu
                         </h2>
-                        <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Semua paket bisa dicoba gratis 14 hari. Fitur uang muka tanpa potongan, pengingat email, dan aturan bayar penuh buat yang sering batal sudah aktif sejak paket Basic.
+                        <p className="mx-auto mt-4 max-w-2xl text-lg text-mute text-pretty">
+                            Semua akun baru dapat coba gratis 14 hari dengan akses fitur paket Professional. Uang muka tanpa potongan, kasir meja, struk termal, pengingat email, dan aturan bayar penuh sudah aktif sejak paket Basic.
                         </p>
 
                         {/* Segmented Control */}
@@ -861,6 +992,14 @@ export default function Landing({ plans }: LandingProps) {
                                             </li>
                                             <li className="flex items-start gap-2.5">
                                                 <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                <span>
+                                                    {plan.max_addons_per_business != null
+                                                        ? `Maks. ${plan.max_addons_per_business} add-on layanan`
+                                                        : 'Add-on layanan unlimited'}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-start gap-2.5">
+                                                <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
                                                 <span>{plan.max_staff_per_business ?? 'Unlimited'} Akun tim / staff</span>
                                             </li>
                                             <li className="flex items-start gap-2.5">
@@ -872,16 +1011,48 @@ export default function Landing({ plans }: LandingProps) {
                                                 <span>{plan.max_customers_per_business?.toLocaleString('id-ID') ?? 'Unlimited'} Data pelanggan</span>
                                             </li>
                                             <li className="flex items-start gap-2.5">
-                                                {plan.can_export_csv ? (
+                                                {plan.slug !== 'basic' || plan.can_export_csv ? (
                                                     <>
                                                         <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                        <span className="text-body">Export CSV (Pesanan, Pelanggan &amp; Komisi)</span>
+                                                        <span className="text-body">Keranjang multi-layanan Drop-off &amp; rincian kasir harian</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
                                                         <span className="text-mute line-through">
-                                                            Export CSV (Pesanan, Pelanggan &amp; Komisi)
+                                                            Keranjang multi-layanan Drop-off &amp; rincian kasir harian
+                                                        </span>
+                                                        <span className="sr-only">(Tidak tersedia di paket ini)</span>
+                                                    </>
+                                                )}
+                                            </li>
+                                            <li className="flex items-start gap-2.5">
+                                                {plan.can_export_csv ? (
+                                                    <>
+                                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                        <span className="text-body">Export CSV (Pesanan, Pelanggan, Kasir &amp; Komisi)</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
+                                                        <span className="text-mute line-through">
+                                                            Export CSV (Pesanan, Pelanggan, Kasir &amp; Komisi)
+                                                        </span>
+                                                        <span className="sr-only">(Tidak tersedia di paket ini)</span>
+                                                    </>
+                                                )}
+                                            </li>
+                                            <li className="flex items-start gap-2.5">
+                                                {plan.can_use_google_review ? (
+                                                    <>
+                                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                        <span className="text-body">Google Maps Review &amp; Stiker QR</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
+                                                        <span className="text-mute line-through">
+                                                            Google Maps Review &amp; Stiker QR
                                                         </span>
                                                         <span className="sr-only">(Tidak tersedia di paket ini)</span>
                                                     </>
@@ -1014,6 +1185,51 @@ export default function Landing({ plans }: LandingProps) {
                                                 {item.a}
                                             </p>
                                         </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* POS Cashier & Google Maps Review Spotlight */}
+                    <div
+                        data-extra-features-grid
+                        className="mt-6 grid gap-6 md:grid-cols-2"
+                    >
+                        {EXTRA_CAPABILITIES.map((cap) => {
+                            const Icon = cap.icon;
+                            return (
+                                <div
+                                    key={cap.title}
+                                    data-extra-feature-card
+                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
+                                >
+                                    <div>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
+                                                <Icon className="size-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
+                                                {cap.badge}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                            {cap.title}
+                                        </h3>
+
+                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                            {cap.desc}
+                                        </p>
+
+                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                            {cap.points.map((point) => (
+                                                <li key={point} className="flex items-start gap-2.5">
+                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 </div>
                             );
