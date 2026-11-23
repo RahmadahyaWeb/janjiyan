@@ -303,12 +303,21 @@ class PosAndCashierFlowTest extends TestCase
         $day = $this->nextOpenWeekday(3);
 
         // Operating hours close at 18:00, break 12:00-13:00. Without add-on, 17:00 slot (60m) fits; with 60m add-on (120m total), 17:00 must NOT fit!
-        $baseSlots = $this->getJson("/b/{$salon->slug}/slots?service_id={$service->id}&date={$day->toDateString()}")
+        $baseSlots = $this->getJson(route('public.booking.slots', [
+            'slug' => $salon->slug,
+            'service_id' => $service->id,
+            'date' => $day->toDateString(),
+        ]))
             ->assertOk()
             ->json('slots');
         $this->assertContains('17:00', array_column($baseSlots, 'time'));
 
-        $addonSlots = $this->getJson("/b/{$salon->slug}/slots?service_id={$service->id}&date={$day->toDateString()}&addons[0][service_addon_id]={$addonHairSpa->id}&addons[0][quantity]=1")
+        $addonSlots = $this->getJson(route('public.booking.slots', [
+            'slug' => $salon->slug,
+            'service_id' => $service->id,
+            'date' => $day->toDateString(),
+            'addons' => [['service_addon_id' => $addonHairSpa->id, 'quantity' => 1]],
+        ]))
             ->assertOk()
             ->json('slots');
         $this->assertNotContains('17:00', array_column($addonSlots, 'time'));
@@ -620,7 +629,7 @@ class PosAndCashierFlowTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('booking.can_review', true)
                 ->where('booking.has_review', false)
-                ->where('booking.review_url', fn ($url) => is_string($url) && str_contains($url, "/b/{$salon->slug}/review"))
+                ->where('booking.review_url', fn ($url) => is_string($url) && str_contains($url, "{$salon->slug}.") && str_contains($url, '/review'))
             );
 
         // Once reviewed -> has_review = true, can_review = false

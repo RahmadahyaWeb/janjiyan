@@ -81,7 +81,7 @@ class BusinessHomePageTest extends TestCase
 
     public function test_hub_and_booking_form_render_separate_pages(): void
     {
-        $this->get('/b/cuci-hub')
+        $this->get(route('public.booking', 'cuci-hub'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BusinessHome')
@@ -92,7 +92,7 @@ class BusinessHomePageTest extends TestCase
                 // No cover and no gallery: falls back to the first service photo.
                 ->where('business.cover_url', Storage::url('services/deep.jpg')));
 
-        $this->get('/b/cuci-hub/pesan')
+        $this->get(route('public.booking.form', 'cuci-hub'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/BookingPortal')
@@ -114,10 +114,10 @@ class BusinessHomePageTest extends TestCase
             'capacity' => 1, 'assignment_mode' => 'capacity', 'dp_type' => 'none', 'dp_value' => 0, 'is_active' => true,
         ]);
 
-        $this->get("/b/cuci-hub/pesan?layanan={$deep->id}")
+        $this->get(route('public.booking.form', ['slug' => 'cuci-hub', 'layanan' => $deep->id]))
             ->assertInertia(fn (Assert $page) => $page->where('selectedServiceId', $deep->id));
 
-        $this->get("/b/cuci-hub/pesan?layanan={$other->id}")
+        $this->get(route('public.booking.form', ['slug' => 'cuci-hub', 'layanan' => $other->id]))
             ->assertInertia(fn (Assert $page) => $page->where('selectedServiceId', null));
     }
 
@@ -126,7 +126,7 @@ class BusinessHomePageTest extends TestCase
         $this->business->galleries()->create(['image_path' => 'gallery/a.jpg']);
         $this->business->galleries()->create(['image_path' => 'gallery/b.jpg']);
 
-        $this->get('/b/cuci-hub')->assertInertia(fn (Assert $page) => $page
+        $this->get(route('public.booking', 'cuci-hub'))->assertInertia(fn (Assert $page) => $page
             ->where('business.cover_url', Storage::url('gallery/a.jpg'))
             ->has('galleries', 1)
             ->where('galleries.0.image_url', Storage::url('gallery/b.jpg')));
@@ -136,7 +136,7 @@ class BusinessHomePageTest extends TestCase
     {
         $this->business->update(['cover_path' => 'covers/own.jpg']);
 
-        $this->get('/b/cuci-hub')->assertInertia(fn (Assert $page) => $page
+        $this->get(route('public.booking', 'cuci-hub'))->assertInertia(fn (Assert $page) => $page
             ->where('business.cover_url', Storage::url('covers/own.jpg')));
     }
 
@@ -144,7 +144,7 @@ class BusinessHomePageTest extends TestCase
     {
         $this->business->update(['suspended_at' => now(), 'suspension_reason' => 'Spam']);
 
-        foreach (['/b/cuci-hub', '/b/cuci-hub/pesan'] as $url) {
+        foreach ([route('public.booking', 'cuci-hub'), route('public.booking.form', 'cuci-hub')] as $url) {
             $this->get($url)
                 ->assertStatus(403)
                 ->assertInertia(fn (Assert $page) => $page->component('Public/BusinessUnavailable'));

@@ -140,6 +140,8 @@ export interface BusinessSummary {
     id: number;
     name: string;
     slug: string;
+    public_url?: string;
+    public_review_url?: string;
     category: string;
     business_type: BusinessType;
     qr_poster_subtitle?: string | null;
@@ -180,6 +182,7 @@ export interface PageProps {
     };
     activeBusiness: BusinessSummary | null;
     businesses: BusinessSummary[];
+    tenantBaseDomain?: string;
     subscription: ActiveSubscription | null;
     pendingBookingsCount?: number;
     unreadNotificationsCount?: number;

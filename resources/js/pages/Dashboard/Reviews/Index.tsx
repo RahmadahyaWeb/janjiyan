@@ -429,6 +429,7 @@ export default function ReviewsIndex({
                     businessName={business.name}
                     businessCategory={business.category}
                     businessSlug={business.slug}
+                    publicReviewUrl={publicReviewUrl}
                     businessType={business.business_type}
                     businessAddress={business.address}
                     reviewSubtitle={resolvedStickerSubtitle}

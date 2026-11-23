@@ -123,7 +123,7 @@ export default function SettingsIndex({
     review_enabled: propReviewEnabled,
     review_sticker_subtitle: propReviewStickerSubtitle,
 }: SettingsIndexProps) {
-    const { subscription } = usePage<PageProps>().props;
+    const { subscription, tenantBaseDomain = 'janjiyan.web.id' } = usePage<PageProps>().props;
     const resolvedCanUseGoogleReview =
         canUseGoogleReview ?? subscription?.capabilities?.can_use_google_review ?? false;
 
@@ -463,7 +463,7 @@ export default function SettingsIndex({
                             </div>
                             <div className="min-w-0 space-y-1.5">
                                 <Label htmlFor="settings-slug" className="block break-all">
-                                    Slug URL (/b/{form.data.slug})
+                                    {`Slug URL (${form.data.slug || business.slug}.${tenantBaseDomain})`}
                                 </Label>
                                 <Input
                                     id="settings-slug"
@@ -555,7 +555,7 @@ export default function SettingsIndex({
                                     Portal Booking Publik Aktif
                                 </Label>
                                 <p className="mt-0.5 text-xs text-mute [overflow-wrap:anywhere]">
-                                    Jika dinonaktifkan, link /b/{form.data.slug} tidak dapat diakses pelanggan sementara.
+                                    Jika dinonaktifkan, link {form.data.slug || business.slug}.{tenantBaseDomain} tidak dapat diakses pelanggan sementara.
                                 </p>
                             </div>
                             <Switch
@@ -572,7 +572,7 @@ export default function SettingsIndex({
                         <div>
                             <h2 className="text-lg font-semibold text-ink">Tampilan halaman toko</h2>
                             <p className="mt-1 text-sm text-mute [overflow-wrap:anywhere]">
-                                Warna dan foto ini muncul di /b/{form.data.slug}. Warna teks di atasnya diatur otomatis supaya tetap terbaca.
+                                Warna dan foto ini muncul di {form.data.slug || business.slug}.{tenantBaseDomain}. Warna teks di atasnya diatur otomatis supaya tetap terbaca.
                             </p>
                         </div>
 
@@ -937,8 +937,8 @@ export default function SettingsIndex({
                                     booking_code: 'JNJ-8A2F1C',
                                     dp_amount: 25000,
                                     total_price: 75000,
-                                    invoice_url: `https://janjiyan.id/b/${form.data.slug || business.slug}/invoice/contoh`,
-                                    review_url: `https://janjiyan.id/b/${form.data.slug || business.slug}/review?token=contoh`,
+                                    invoice_url: `https://${form.data.slug || business.slug}.janjiyan.web.id/invoice/contoh`,
+                                    review_url: `https://${form.data.slug || business.slug}.janjiyan.web.id/review?token=contoh`,
                                     business_address: form.data.address || 'Jl. Kemang Raya No. 12',
                                 })}
                             </p>
@@ -1192,7 +1192,7 @@ export default function SettingsIndex({
                                     Aktifkan Halaman Ulasan Publik
                                 </Label>
                                 <p className="mt-0.5 text-xs text-mute [overflow-wrap:anywhere]">
-                                    Izinkan pelanggan mengisi rating &amp; masukan melalui /b/{form.data.slug || business.slug}/review atau link di invoice.
+                                    Izinkan pelanggan mengisi rating &amp; masukan melalui {form.data.slug || business.slug}.{tenantBaseDomain}/review atau link di invoice.
                                 </p>
                             </div>
                             <Switch
@@ -1476,6 +1476,7 @@ export default function SettingsIndex({
                 businessName={form.data.name || business.name}
                 businessCategory={form.data.category || business.category}
                 businessSlug={form.data.slug || business.slug}
+                publicUrl={route('public.booking', form.data.slug || business.slug)}
                 businessType={business.business_type}
                 businessAddress={form.data.address || business.address}
                 qrSubtitle={business.qr_poster_subtitle}
@@ -1487,6 +1488,7 @@ export default function SettingsIndex({
                 businessName={form.data.name || business.name}
                 businessCategory={form.data.category || business.category}
                 businessSlug={form.data.slug || business.slug}
+                publicReviewUrl={route('public.review.show', form.data.slug || business.slug)}
                 businessType={business.business_type}
                 businessAddress={form.data.address || business.address}
                 reviewSubtitle={form.data.review_sticker_subtitle}

@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'tenant_domain' => env('APP_TENANT_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+
+    'tenant_scheme' => env('APP_TENANT_SCHEME', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_SCHEME) ?: 'http'),
+
     /*
     |--------------------------------------------------------------------------
     | Trusted Proxies

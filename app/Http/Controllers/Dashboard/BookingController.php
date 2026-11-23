@@ -1439,18 +1439,7 @@ class BookingController extends Controller
 
     private function buildReviewUrl(Business $business, Booking $booking): string
     {
-        $params = ['slug' => $business->slug];
-        if ($booking->invoice_token) {
-            $params['token'] = $booking->invoice_token;
-        }
-
-        if (Route::has('public.review.show')) {
-            return route('public.review.show', $params);
-        }
-
-        $query = $booking->invoice_token ? '?token='.urlencode($booking->invoice_token) : '';
-
-        return url("/b/{$business->slug}/review{$query}");
+        return $business->publicReviewUrl($booking->invoice_token);
     }
 
     private function normalizeAddonQueryInputs(Request $request): void

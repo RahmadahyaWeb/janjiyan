@@ -99,7 +99,7 @@ export default function DashboardIndex({
     dropoffPipeline = null,
     topServices,
 }: DashboardIndexProps) {
-    const { activeBusiness } = usePage<PageProps>().props;
+    const { activeBusiness, tenantBaseDomain = 'janjiyan.web.id' } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const isDropoff = config.type === 'dropoff';
     const bookingsItemLower = config.bookings.itemSingular.toLowerCase();
@@ -109,7 +109,7 @@ export default function DashboardIndex({
     const [bookingListTab, setBookingListTab] = useState<'schedule' | 'recent'>('schedule');
 
     const publicUrl = activeBusiness
-        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/b/${activeBusiness.slug}`
+        ? activeBusiness.public_url || route('public.booking', activeBusiness.slug)
         : '';
 
     const copyLink = () => {
@@ -223,7 +223,7 @@ export default function DashboardIndex({
                     <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
                         <p className="text-xs font-semibold text-mute">Link Booking Publik:</p>
                         <p className="truncate font-mono text-sm font-semibold text-ink">
-                            /b/{activeBusiness.slug}
+                            {`${activeBusiness.slug}.${tenantBaseDomain}`}
                         </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
@@ -236,7 +236,7 @@ export default function DashboardIndex({
                             {copied ? 'Tersalin' : 'Salin Link'}
                         </Button>
                         <Button asChild size="sm" className="w-full sm:w-auto">
-                            <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
+                            <a href={publicUrl} target="_blank" rel="noreferrer">
                                 Buka Portal
                                 <ArrowUpRight className="size-3.5" aria-hidden="true" />
                             </a>

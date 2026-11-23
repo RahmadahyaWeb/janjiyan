@@ -6,12 +6,63 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class Business extends Model
 {
     public const DEFAULT_QR_POSTER_SUBTITLE = 'Scan QR untuk Booking Online';
 
     public const DEFAULT_REVIEW_STICKER_SUBTITLE = 'Scan QR untuk Beri Ulasan & Rating';
+
+    public const SLUG_REGEX = '/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/';
+
+    /**
+     * Reserved subdomain labels that must never be assigned to a tenant business.
+     *
+     * @var list<string>
+     */
+    public const RESERVED_SLUGS = [
+        'www',
+        'app',
+        'api',
+        'admin',
+        'superadmin',
+        'dashboard',
+        'auth',
+        'login',
+        'register',
+        'mail',
+        'smtp',
+        'imap',
+        'pop',
+        'webmail',
+        'ftp',
+        'cdn',
+        'static',
+        'assets',
+        'storage',
+        'media',
+        'files',
+        'billing',
+        'pay',
+        'payment',
+        'webhook',
+        'webhooks',
+        'support',
+        'help',
+        'docs',
+        'blog',
+        'status',
+        'dev',
+        'staging',
+        'test',
+        'demo',
+        'localhost',
+        'ns1',
+        'ns2',
+        'mx',
+    ];
 
     public const TYPE_STAFF_APPOINTMENT = 'staff_appointment';
 
@@ -143,6 +194,74 @@ class Business extends Model
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    public static function generateUniqueSlug(string $name): string
+    {
+        $baseSlug = Str::slug($name) ?: 'bisnis';
+        if (strlen($baseSlug) < 3) {
+            $baseSlug .= '-bisnis';
+        }
+        $baseSlug = rtrim(substr($baseSlug, 0, 55), '-') ?: 'bisnis';
+
+        $slug = $baseSlug;
+        $counter = 1;
+        while (in_array($slug, self::RESERVED_SLUGS, true) || self::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * @param  array<string, scalar|null>  $query
+     */
+    public function publicUrl(string $path = '', array $query = []): string
+    {
+        $scheme = (string) config('app.tenant_scheme', 'http');
+        $domain = (string) config('app.tenant_domain', 'localhost');
+        $port = null;
+
+        if (app()->bound('request')) {
+            $reqPort = (int) request()->getPort();
+            if ($reqPort > 0 && ! in_array($reqPort, [80, 443], true)) {
+                $port = $reqPort;
+            }
+        }
+
+        if ($port === null) {
+            $appUrlPort = parse_url((string) config('app.url', ''), PHP_URL_PORT);
+            if ($appUrlPort && ! in_array((int) $appUrlPort, [80, 443], true) && $domain === (parse_url((string) config('app.url', ''), PHP_URL_HOST) ?: 'localhost')) {
+                $port = (int) $appUrlPort;
+            }
+        }
+
+        $portSuffix = $port !== null ? ":{$port}" : '';
+        $normalizedPath = trim($path, '/');
+        $url = "{$scheme}://{$this->slug}.{$domain}{$portSuffix}".($normalizedPath !== '' ? "/{$normalizedPath}" : '');
+
+        if ($query !== []) {
+            $queryString = http_build_query($query);
+            if ($queryString !== '') {
+                $url .= '?'.$queryString;
+            }
+        }
+
+        return $url;
+    }
+
+    public function publicReviewUrl(?string $invoiceToken = null): string
+    {
+        $query = ($invoiceToken !== null && trim($invoiceToken) !== '')
+            ? ['token' => trim($invoiceToken)]
+            : [];
+
+        if (Route::has('public.review.show')) {
+            return route('public.review.show', ['slug' => $this->slug, ...$query]);
+        }
+
+        return $this->publicUrl('review', $query);
     }
 
     public function owner(): BelongsTo

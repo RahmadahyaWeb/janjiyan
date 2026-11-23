@@ -46,6 +46,7 @@ interface QrReviewStickerDialogProps {
     businessName: string;
     businessCategory: string;
     businessSlug: string;
+    publicReviewUrl?: string;
     businessType?: BusinessType;
     businessAddress?: string | null;
     reviewSubtitle?: string | null;
@@ -131,6 +132,7 @@ export function QrReviewStickerDialog({
     businessName,
     businessCategory,
     businessSlug,
+    publicReviewUrl: propPublicReviewUrl,
     businessType = 'staff_appointment',
     businessAddress,
     reviewSubtitle,
@@ -156,9 +158,10 @@ export function QrReviewStickerDialog({
     const subtitleChanged = resolvedSubtitle !== savedSubtitle;
 
     const publicReviewUrl =
-        typeof window !== 'undefined'
-            ? `${window.location.origin}/b/${businessSlug}/review`
-            : `/b/${businessSlug}/review`;
+        propPublicReviewUrl ||
+        (typeof route === 'function'
+            ? route('public.review.show', businessSlug)
+            : `https://${businessSlug}.janjiyan.web.id/review`);
     const displayUrl = publicReviewUrl.replace(/^https?:\/\//, '');
 
     useEffect(() => {

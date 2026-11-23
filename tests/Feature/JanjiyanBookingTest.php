@@ -114,8 +114,8 @@ class JanjiyanBookingTest extends TestCase
     public function test_landing_page_and_public_booking_portal_render(): void
     {
         $this->get('/')->assertStatus(200);
-        $this->get("/b/{$this->staffBusiness->slug}")->assertStatus(200);
-        $this->get("/b/{$this->capacityBusiness->slug}")->assertStatus(200);
+        $this->get(route('public.booking', $this->staffBusiness->slug))->assertStatus(200);
+        $this->get(route('public.booking', $this->capacityBusiness->slug))->assertStatus(200);
     }
 
     public function test_slot_availability_returns_slots_for_valid_date(): void
@@ -126,7 +126,11 @@ class JanjiyanBookingTest extends TestCase
         }
         $tomorrow = $targetCarbon->toDateString();
 
-        $response = $this->getJson("/b/{$this->staffBusiness->slug}/slots?service_id={$this->staffService->id}&date={$tomorrow}");
+        $response = $this->getJson(route('public.booking.slots', [
+            'slug' => $this->staffBusiness->slug,
+            'service_id' => $this->staffService->id,
+            'date' => $tomorrow,
+        ]));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -147,7 +151,7 @@ class JanjiyanBookingTest extends TestCase
         $targetDate = $targetCarbon->toDateString();
 
         // Book without DP proof (Pay Later)
-        $response = $this->post("/b/{$this->staffBusiness->slug}/book", [
+        $response = $this->post(route('public.booking.store', $this->staffBusiness->slug), [
             'service_id' => $this->staffService->id,
             'date' => $targetDate,
             'time' => '10:00',
@@ -164,7 +168,7 @@ class JanjiyanBookingTest extends TestCase
         $this->assertNotNull($booking->dp_expires_at);
 
         // Attempt double-booking the exact same staff & time -> must fail
-        $doubleResponse = $this->post("/b/{$this->staffBusiness->slug}/book", [
+        $doubleResponse = $this->post(route('public.booking.store', $this->staffBusiness->slug), [
             'service_id' => $this->staffService->id,
             'date' => $targetDate,
             'time' => '10:00',
@@ -189,7 +193,7 @@ class JanjiyanBookingTest extends TestCase
 
         $targetDate = now('Asia/Jakarta')->addDays(4)->toDateString();
 
-        $this->post("/b/{$this->staffBusiness->slug}/book", [
+        $this->post(route('public.booking.store', $this->staffBusiness->slug), [
             'service_id' => $this->staffService->id,
             'date' => $targetDate,
             'time' => '14:00',

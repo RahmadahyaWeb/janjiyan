@@ -9,6 +9,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const WIDTHS = [320, 375, 390, 768, 1280];
+const TENANT_PORT = 8010;
+const tenantUrl = (slug: string, path = '') => `http://${slug}.localhost:${TENANT_PORT}${path}`;
 
 type Role = 'guest' | 'owner' | 'dropoff' | 'admin';
 
@@ -47,18 +49,18 @@ const ROUTES: Route[] = [
     { name: 'reset-password', path: '/reset-password/x?email=a@b.test', as: 'guest' },
     { name: 'terms', path: '/terms', as: 'guest' },
     { name: 'privacy', path: '/privacy', as: 'guest' },
-    { name: 'portal', path: '/b/rapi-studio', as: 'guest' },
-    { name: 'portal-padel', path: '/b/arena-padel', as: 'guest' },
-    { name: 'portal-dropoff', path: '/b/soklenn-shoes', as: 'guest' },
-    { name: 'portal-empty', path: '/b/toko-polos', as: 'guest' },
-    { name: 'pesan', path: '/b/rapi-studio/pesan', as: 'guest' },
-    { name: 'pesan-padel', path: '/b/arena-padel/pesan', as: 'guest' },
-    { name: 'pesan-dropoff', path: '/b/soklenn-shoes/pesan', as: 'guest' },
-    { name: 'pesan-empty', path: '/b/toko-polos/pesan', as: 'guest' },
-    { name: 'invoice-lookup', path: '/b/rapi-studio/invoices', as: 'guest' },
-    { name: 'invoice', path: '/b/rapi-studio/invoice/6bf5568fc1a844a8bace598d02a23afa', as: 'guest' },
-    { name: 'invoice-confirmed', path: '/b/rapi-studio/invoice/581d0ca7937ab3b02ce14ed6d07f7781', as: 'guest' },
-    { name: 'review', path: '/b/rapi-studio/review', as: 'guest' },
+    { name: 'portal', path: tenantUrl('rapi-studio'), as: 'guest' },
+    { name: 'portal-padel', path: tenantUrl('arena-padel'), as: 'guest' },
+    { name: 'portal-dropoff', path: tenantUrl('soklenn-shoes'), as: 'guest' },
+    { name: 'portal-empty', path: tenantUrl('toko-polos'), as: 'guest' },
+    { name: 'pesan', path: tenantUrl('rapi-studio', '/pesan'), as: 'guest' },
+    { name: 'pesan-padel', path: tenantUrl('arena-padel', '/pesan'), as: 'guest' },
+    { name: 'pesan-dropoff', path: tenantUrl('soklenn-shoes', '/pesan'), as: 'guest' },
+    { name: 'pesan-empty', path: tenantUrl('toko-polos', '/pesan'), as: 'guest' },
+    { name: 'invoice-lookup', path: tenantUrl('rapi-studio', '/invoices'), as: 'guest' },
+    { name: 'invoice', path: tenantUrl('rapi-studio', '/invoice/6bf5568fc1a844a8bace598d02a23afa'), as: 'guest' },
+    { name: 'invoice-confirmed', path: tenantUrl('rapi-studio', '/invoice/581d0ca7937ab3b02ce14ed6d07f7781'), as: 'guest' },
+    { name: 'review', path: tenantUrl('rapi-studio', '/review'), as: 'guest' },
 
     // Time-slot / Staff Appointment Merchant Dashboard (rapi-studio)
     { name: 'dashboard', path: '/dashboard', as: 'owner' },

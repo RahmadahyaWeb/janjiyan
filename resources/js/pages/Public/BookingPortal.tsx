@@ -269,7 +269,7 @@ export default function BookingPortal({
                 params.set(`addons[${idx}][quantity]`, String(line.quantity));
             });
         }
-        return `/b/${business.slug}/slots?${params.toString()}`;
+        return `${route('public.booking.slots', business.slug)}?${params.toString()}`;
     }, [
         isMultiDropoffMode,
         business.slug,
@@ -350,7 +350,7 @@ export default function BookingPortal({
                     service_id: String(id),
                     date: selectedDate,
                 });
-                return fetch(`/b/${business.slug}/slots?${params.toString()}`, {
+                return fetch(`${route('public.booking.slots', business.slug)}?${params.toString()}`, {
                     headers: { Accept: 'application/json' },
                     signal: controller.signal,
                 })

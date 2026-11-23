@@ -43,6 +43,7 @@ interface QrPosterDialogProps {
     businessName: string;
     businessCategory: string;
     businessSlug: string;
+    publicUrl?: string;
     businessType?: BusinessType;
     businessAddress?: string | null;
     qrSubtitle?: string | null;
@@ -118,6 +119,7 @@ export function QrPosterDialog({
     businessName,
     businessCategory,
     businessSlug,
+    publicUrl: propPublicUrl,
     businessType = 'staff_appointment',
     businessAddress,
     qrSubtitle,
@@ -142,9 +144,10 @@ export function QrPosterDialog({
     const subtitleChanged = resolvedSubtitle !== savedSubtitle;
 
     const publicUrl =
-        typeof window !== 'undefined'
-            ? `${window.location.origin}/b/${businessSlug}`
-            : `/b/${businessSlug}`;
+        propPublicUrl ||
+        (typeof route === 'function'
+            ? route('public.booking', businessSlug)
+            : `https://${businessSlug}.janjiyan.web.id`);
 
     useEffect(() => {
         if (!open) return;

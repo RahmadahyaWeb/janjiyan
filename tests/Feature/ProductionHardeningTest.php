@@ -302,8 +302,8 @@ class ProductionHardeningTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=utf-8');
 
-        $sitemap->assertSee('/b/active-salon');
-        $sitemap->assertDontSee('/b/suspended-salon');
+        $sitemap->assertSee(route('public.booking', ['slug' => 'active-salon']));
+        $sitemap->assertDontSee(route('public.booking', ['slug' => 'suspended-salon']));
     }
 
     public function test_legal_pages_receive_env_driven_legal_config(): void

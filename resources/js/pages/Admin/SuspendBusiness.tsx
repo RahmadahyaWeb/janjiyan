@@ -1,10 +1,11 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { FormEvent } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { PageProps } from '@/types';
 
 interface SuspendBusinessProps {
     business: {
@@ -15,6 +16,7 @@ interface SuspendBusinessProps {
 }
 
 export default function AdminSuspendBusiness({ business }: SuspendBusinessProps) {
+    const { tenantBaseDomain = 'janjiyan.web.id' } = usePage<PageProps>().props;
     const form = useForm({ reason: '' });
 
     const handleSubmit = (e: FormEvent) => {
@@ -48,7 +50,7 @@ export default function AdminSuspendBusiness({ business }: SuspendBusinessProps)
                     <div>
                         <h1 className="text-xl font-semibold text-ink">Tangguhkan Bisnis</h1>
                         <p className="mt-1 text-sm text-mute [overflow-wrap:anywhere]">
-                            Portal publik <span className="font-mono text-ink">/b/{business.slug}</span> ({business.name}) dan operasional dashboard akan diblokir.
+                            Portal publik <span className="font-mono text-ink">{`${business.slug}.${tenantBaseDomain}`}</span> ({business.name}) dan operasional dashboard akan diblokir.
                         </p>
                     </div>
                     <div className="space-y-1.5">

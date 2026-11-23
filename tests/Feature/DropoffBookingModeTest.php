@@ -191,7 +191,11 @@ class DropoffBookingModeTest extends TestCase
     {
         $targetDate = $this->nextOpenWeekday(2);
 
-        $availRes = $this->getJson("/b/{$this->business->slug}/slots?service_id={$this->dropoffService->id}&date={$targetDate->toDateString()}");
+        $availRes = $this->getJson(route('public.booking.slots', [
+            'slug' => $this->business->slug,
+            'service_id' => $this->dropoffService->id,
+            'date' => $targetDate->toDateString(),
+        ]));
         $availRes->assertOk()
             ->assertJsonPath('booking_mode', 'dropoff')
             ->assertJsonPath('dropoff.available', true)
@@ -201,7 +205,7 @@ class DropoffBookingModeTest extends TestCase
             ->assertJsonPath('slots', []);
 
         // Book 3 pairs without specifying time
-        $bookRes = $this->post("/b/{$this->business->slug}/book", [
+        $bookRes = $this->post(route('public.booking.store', $this->business->slug), [
             'service_id' => $this->dropoffService->id,
             'date' => $targetDate->toDateString(),
             'quantity' => 3,
@@ -225,11 +229,15 @@ class DropoffBookingModeTest extends TestCase
         $this->assertNotNull($booking->estimated_ready_date);
 
         // Remaining quota should now be 2
-        $afterAvail = $this->getJson("/b/{$this->business->slug}/slots?service_id={$this->dropoffService->id}&date={$targetDate->toDateString()}");
+        $afterAvail = $this->getJson(route('public.booking.slots', [
+            'slug' => $this->business->slug,
+            'service_id' => $this->dropoffService->id,
+            'date' => $targetDate->toDateString(),
+        ]));
         $afterAvail->assertOk()->assertJsonPath('dropoff.remaining_capacity', 2);
 
         // Requesting 3 more pairs must fail because only 2 quota left
-        $overRes = $this->post("/b/{$this->business->slug}/book", [
+        $overRes = $this->post(route('public.booking.store', $this->business->slug), [
             'service_id' => $this->dropoffService->id,
             'date' => $targetDate->toDateString(),
             'quantity' => 3,
@@ -246,7 +254,7 @@ class DropoffBookingModeTest extends TestCase
     {
         $targetDate = $this->nextOpenWeekday(2);
 
-        $missingAddress = $this->post("/b/{$this->business->slug}/book", [
+        $missingAddress = $this->post(route('public.booking.store', $this->business->slug), [
             'service_id' => $this->dropoffService->id,
             'date' => $targetDate->toDateString(),
             'quantity' => 1,
@@ -258,7 +266,7 @@ class DropoffBookingModeTest extends TestCase
 
         $missingAddress->assertSessionHasErrors('pickup_address');
 
-        $validPickup = $this->post("/b/{$this->business->slug}/book", [
+        $validPickup = $this->post(route('public.booking.store', $this->business->slug), [
             'service_id' => $this->dropoffService->id,
             'date' => $targetDate->toDateString(),
             'quantity' => 2,
@@ -332,22 +340,26 @@ class DropoffBookingModeTest extends TestCase
         $this->assertSame('pasang', $dropoffBooking->unit_label);
 
         // Time-slot service must still have slots available on the exact same day
-        $slotsRes = $this->getJson("/b/{$slotBusiness->slug}/slots?service_id={$expressService->id}&date={$targetDate->toDateString()}");
+        $slotsRes = $this->getJson(route('public.booking.slots', [
+            'slug' => $slotBusiness->slug,
+            'service_id' => $expressService->id,
+            'date' => $targetDate->toDateString(),
+        ]));
         $slotsRes->assertOk()->assertJsonStructure(['slots']);
         $this->assertNotEmpty($slotsRes->json('slots'));
 
         // Progress dropoff work_status -> in_progress -> ready_for_pickup -> picked_up
-        $this->actingAs($this->owner)->patch("/dashboard/bookings/{$dropoffBooking->id}/status", [
+        $this->actingAs($this->owner)->patch(route('dashboard.bookings.status', $dropoffBooking->id), [
             'work_status' => 'in_progress',
         ])->assertRedirect();
         $this->assertSame('in_progress', $dropoffBooking->fresh()->work_status);
 
-        $this->actingAs($this->owner)->patch("/dashboard/bookings/{$dropoffBooking->id}/status", [
+        $this->actingAs($this->owner)->patch(route('dashboard.bookings.status', $dropoffBooking->id), [
             'work_status' => 'ready_for_pickup',
         ])->assertRedirect();
         $this->assertSame('ready_for_pickup', $dropoffBooking->fresh()->work_status);
 
-        $this->actingAs($this->owner)->patch("/dashboard/bookings/{$dropoffBooking->id}/status", [
+        $this->actingAs($this->owner)->patch(route('dashboard.bookings.status', $dropoffBooking->id), [
             'work_status' => 'picked_up',
         ])->assertRedirect();
         $fresh = $dropoffBooking->fresh();

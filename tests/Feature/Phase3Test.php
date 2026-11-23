@@ -79,7 +79,7 @@ class Phase3Test extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Legal/Privacy'));
 
-        $notFound = $this->get('/b/bisnis-yang-tidak-ada');
+        $notFound = $this->get(route('public.booking', 'bisnis-yang-tidak-ada'));
         $notFound->assertNotFound();
         $notFound->assertSee('Halaman tidak ditemukan', false);
         $notFound->assertSee('Kembali ke Beranda', false);

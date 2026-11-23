@@ -8,7 +8,6 @@ use App\Services\PlanLimitService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -38,13 +37,7 @@ class BusinessController extends Controller
         ]);
 
         $business = DB::transaction(function () use ($user, $validated): Business {
-            $baseSlug = Str::slug($validated['name']) ?: 'bisnis';
-            $slug = $baseSlug;
-            $counter = 1;
-            while (Business::where('slug', $slug)->exists()) {
-                $slug = "{$baseSlug}-{$counter}";
-                $counter++;
-            }
+            $slug = Business::generateUniqueSlug($validated['name']);
 
             $business = Business::create([
                 'owner_id' => $user->id,

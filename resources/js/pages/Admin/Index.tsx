@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Ban, CheckCircle2, Clock, CreditCard, LogOut } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { SelectField } from '@/components/ui/select';
 import { formatRupiah, INVOICE_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import type { PageProps } from '@/types';
 
 interface AdminMerchantRow {
     id: number;
@@ -100,6 +101,7 @@ export default function AdminIndex({
     plans,
     filters,
 }: AdminIndexProps) {
+    const { tenantBaseDomain = 'janjiyan.web.id' } = usePage<PageProps>().props;
     const [activeTab, setActiveTab] = useState<'merchants' | 'businesses' | 'invoices'>('merchants');
     const [search, setSearch] = useState(filters.search);
     const [statusFilter, setStatusFilter] = useState(filters.status);
@@ -311,7 +313,9 @@ export default function AdminIndex({
                                     <div className="min-w-0 space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-base font-semibold break-words text-ink">{b.name}</p>
-                                            <span className="font-mono text-xs break-all text-mute">/b/{b.slug}</span>
+                                            <span className="font-mono text-xs break-all text-mute">
+                                                {`${b.slug}.${tenantBaseDomain}`}
+                                            </span>
                                             {b.is_suspended ? (
                                                 <Badge variant="destructive">Ditangguhkan</Badge>
                                             ) : b.is_active ? (

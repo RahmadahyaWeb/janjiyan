@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const TENANT_PORT = 8010;
+const tenantUrl = (slug: string, path = '') => `http://${slug}.localhost:${TENANT_PORT}${path}`;
+
 const VIEWPORTS = [
     { name: 'desktop', width: 1280, height: 800 },
     { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
 async function submitPublicMultiServiceDropoffOrder(page: Page, vpName: string) {
-    await page.goto('/b/soklenn-shoes/pesan');
+    await page.goto(tenantUrl('soklenn-shoes', '/pesan'));
     await page.waitForLoadState('networkidle');
 
     // Toggle first two visible drop-off service cards
@@ -37,15 +40,16 @@ async function submitPublicMultiServiceDropoffOrder(page: Page, vpName: string) 
     let foundOpenQuotaDate = false;
     for (let i = 1; i < dateCount; i++) {
         await dateButtons.nth(i).click();
-        await page.waitForLoadState('networkidle');
-        if (await page.getByText(/Datang kapan saja pukul/i).isVisible()) {
+        try {
+            await expect(page.getByText(/Datang kapan saja pukul/i)).toBeVisible({ timeout: 2500 });
             foundOpenQuotaDate = true;
             break;
+        } catch {
+            // Try next open date
         }
     }
     if (!foundOpenQuotaDate) {
         await dateButtons.nth(0).click();
-        await page.waitForLoadState('networkidle');
         await expect(page.getByText(/Datang kapan saja pukul/i)).toBeVisible();
     }
 
@@ -65,7 +69,7 @@ async function submitPublicMultiServiceDropoffOrder(page: Page, vpName: string) 
     await expect(visibleSubmit).toBeVisible();
     await visibleSubmit.click();
 
-    await page.waitForURL(/\/b\/soklenn-shoes\/invoice\/[a-zA-Z0-9]+/);
+    await page.waitForURL(/http:\/\/soklenn-shoes\.localhost:8010\/invoice\/[a-zA-Z0-9]+/);
     await expect(page.getByText('Anti-Waterproof Coating')).toBeVisible();
     await expect(page.getByText('Total Biaya')).toBeVisible();
 }
@@ -79,7 +83,7 @@ for (const vp of VIEWPORTS) {
         });
 
         test('public review submission + smart Google Maps redirect flow', async ({ page }) => {
-            await page.goto('/b/rapi-studio/review');
+            await page.goto(tenantUrl('rapi-studio', '/review'));
             await page.waitForLoadState('networkidle');
 
             await page.getByRole('radio', { name: '5 bintang' }).click();

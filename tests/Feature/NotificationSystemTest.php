@@ -124,7 +124,7 @@ class NotificationSystemTest extends TestCase
             $targetCarbon = $targetCarbon->addDay();
         }
 
-        $this->post("/b/{$this->business->slug}/book", [
+        $this->post(route('public.booking.store', $this->business->slug), [
             'service_id' => $this->service->id,
             'staff_id' => $this->staffRecord->id,
             'date' => $targetCarbon->toDateString(),
@@ -145,7 +145,10 @@ class NotificationSystemTest extends TestCase
         $this->assertSame($this->business->id, $bookingNotif->data['business_id']);
         $this->assertStringContainsString($booking->booking_code, $bookingNotif->data['title']);
 
-        $this->post("/b/{$this->business->slug}/invoice/{$booking->invoice_token}/proof", [
+        $this->post(route('public.booking.invoice.proof', [
+            'slug' => $this->business->slug,
+            'token' => $booking->invoice_token,
+        ]), [
             'dp_proof' => UploadedFile::fake()->image('bukti.jpg', 400, 400),
         ])->assertRedirect();
 

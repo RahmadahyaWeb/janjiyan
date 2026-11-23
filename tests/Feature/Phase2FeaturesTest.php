@@ -235,7 +235,7 @@ class Phase2FeaturesTest extends TestCase
         $this->assertNull($business->qris_path);
         $this->assertFalse($business->is_active);
         Storage::disk('public')->assertMissing($qrisPath);
-        $this->get('/b/studio-uji')->assertNotFound();
+        $this->get(route('public.booking', 'studio-uji'))->assertNotFound();
 
         // Wrong confirmation name fails deletion
         $this->actingAs($owner)->delete(route('dashboard.businesses.destroy', $business->id), [

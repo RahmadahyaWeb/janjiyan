@@ -11,7 +11,7 @@ export default defineConfig({
     workers: 4,
     reporter: [['list']],
     use: {
-        baseURL: `http://127.0.0.1:${PORT}`,
+        baseURL: `http://localhost:${PORT}`,
     },
     projects: [
         {
@@ -46,12 +46,14 @@ export default defineConfig({
     ],
     webServer: {
         command: `php artisan serve --port=${PORT}`,
-        url: `http://127.0.0.1:${PORT}/login`,
+        url: `http://localhost:${PORT}/login`,
         reuseExistingServer: false,
         env: {
             DB_CONNECTION: 'sqlite',
             DB_DATABASE: `${process.cwd()}/database/qa.sqlite`,
-            APP_URL: `http://127.0.0.1:${PORT}`,
+            APP_URL: `http://localhost:${PORT}`,
+            APP_TENANT_DOMAIN: 'localhost',
+            APP_TENANT_SCHEME: 'http',
             // php artisan serve workers share this; avoid throttling the sweep.
             PHP_CLI_SERVER_WORKERS: '4',
         },

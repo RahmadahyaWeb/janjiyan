@@ -86,6 +86,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
         auth,
         activeBusiness,
         businesses,
+        tenantBaseDomain = 'janjiyan.web.id',
         subscription,
         pendingBookingsCount = 0,
         unreadNotificationsCount = 0,
@@ -131,11 +132,13 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
     const secondaryNav = orderedNav.length <= 5 ? [] : orderedNav.slice(4);
     const moreActive = secondaryNav.some((item) => isNavActive(item.routeName));
     const [copiedLink, setCopiedLink] = useState(false);
+    const activePublicUrl = activeBusiness
+        ? activeBusiness.public_url || route('public.booking', activeBusiness.slug)
+        : '';
 
     const copyPublicBookingLink = () => {
-        if (!activeBusiness || typeof window === 'undefined') return;
-        const url = `${window.location.origin}/b/${activeBusiness.slug}`;
-        navigator.clipboard?.writeText(url);
+        if (!activePublicUrl || typeof window === 'undefined') return;
+        navigator.clipboard?.writeText(activePublicUrl);
         setCopiedLink(true);
         setTimeout(() => setCopiedLink(false), 2000);
     };
@@ -172,7 +175,9 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         >
                             <div className="flex min-w-0 flex-col">
                                 <span className="truncate">{b.name}</span>
-                                <span className="truncate text-xs text-mute">/b/{b.slug}</span>
+                                <span className="truncate text-xs text-mute">
+                                    {`${b.slug}.${tenantBaseDomain}`}
+                                </span>
                             </div>
                         </DropdownMenuItem>
                     ))}
@@ -207,7 +212,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         {copiedLink ? 'Link Tersalin' : 'Salin Link Booking'}
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink">
-                        <a href={`/b/${activeBusiness.slug}`} target="_blank" rel="noreferrer">
+                        <a href={activePublicUrl} target="_blank" rel="noreferrer">
                             <ExternalLink className="mr-2 size-4" aria-hidden="true" />
                             Buka Link Booking
                         </a>
@@ -425,7 +430,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
 
                                 <Button asChild variant="outline" size="sm" className="hidden h-10 px-4 sm:inline-flex">
                                     <a
-                                        href={`/b/${activeBusiness.slug}`}
+                                        href={activePublicUrl}
                                         target="_blank"
                                         rel="noreferrer"
                                         aria-label={`Buka link booking ${activeBusiness.name} di tab baru`}
@@ -713,6 +718,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                     businessName={activeBusiness.name}
                     businessCategory={activeBusiness.category}
                     businessSlug={activeBusiness.slug}
+                    publicUrl={activePublicUrl}
                     businessType={activeBusiness.business_type}
                     qrSubtitle={activeBusiness.qr_poster_subtitle}
                     canSaveSubtitle={

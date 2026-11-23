@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { ShieldAlert } from 'lucide-react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export default function BusinessUnavailable({ businessName, reason }: BusinessUn
                 </div>
 
                 <Button asChild variant="outline" className="w-full">
-                    <Link href={route('home')}>Kembali ke Beranda Janjiyan</Link>
+                    <a href={route('home')}>Kembali ke Beranda Janjiyan</a>
                 </Button>
             </main>
 

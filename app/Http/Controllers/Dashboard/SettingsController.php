@@ -78,9 +78,23 @@ class SettingsController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless($business && $user->hasBusinessPermission($business, 'manage_settings'), 403);
 
+        if ($request->has('slug')) {
+            $request->merge([
+                'slug' => strtolower(trim((string) $request->input('slug', ''))),
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('businesses', 'slug')->ignore($business->id)],
+            'slug' => [
+                'required',
+                'string',
+                'min:3',
+                'max:63',
+                'regex:'.Business::SLUG_REGEX,
+                Rule::notIn(Business::RESERVED_SLUGS),
+                Rule::unique('businesses', 'slug')->ignore($business->id),
+            ],
             'category' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:500'],
             'qr_poster_subtitle' => ['nullable', 'string', 'max:120'],
