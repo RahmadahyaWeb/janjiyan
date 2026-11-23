@@ -20,6 +20,7 @@ import {
     Settings,
     Share2,
     ShieldAlert,
+    Star,
     User as UserIcon,
     Users,
     UserSquare2,
@@ -27,6 +28,7 @@ import {
 import { ReactNode, useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
+import { NotificationBell } from '@/components/NotificationBell';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,12 +61,13 @@ const NAV_ITEMS: {
     need?: BusinessPermission[];
 }[] = [
     { label: 'Ringkasan', routeName: 'dashboard', icon: LayoutDashboard },
-    { label: 'Reservasi', routeName: 'dashboard.bookings', icon: CalendarDays },
+    { label: 'Reservasi', routeName: 'dashboard.bookings', icon: CalendarDays, need: ['manage_bookings', 'verify_payments'] },
     { label: 'Layanan', routeName: 'dashboard.services', icon: Scissors, need: ['manage_services'] },
     { label: 'Jadwal & Libur', mobileLabel: 'Jadwal', routeName: 'dashboard.schedule', icon: Clock, need: ['manage_settings'] },
     { label: 'Tim & Staff', mobileLabel: 'Tim', routeName: 'dashboard.staff', icon: UserSquare2, need: ['manage_staff'] },
     { label: 'Komisi Staff', mobileLabel: 'Komisi', routeName: 'dashboard.commissions', icon: BadgePercent, need: ['manage_staff'] },
     { label: 'Pelanggan', routeName: 'dashboard.customers', icon: Users, need: ['manage_bookings'] },
+    { label: 'Ulasan', routeName: 'dashboard.reviews', icon: Star, need: ['manage_settings', 'manage_bookings'] },
     { label: 'Pengaturan', routeName: 'dashboard.settings', icon: Settings, need: ['manage_settings'] },
     { label: 'Paket & Billing', mobileLabel: 'Billing', routeName: 'dashboard.billing', icon: CreditCard, need: ['manage_settings'] },
 ];
@@ -79,8 +82,14 @@ const isNavActive = (routeName: string) =>
     route().current(routeName) || (routeName !== 'dashboard' && route().current(`${routeName}.*`));
 
 export default function DashboardLayout({ title, children, back, actions }: DashboardLayoutProps) {
-    const { auth, activeBusiness, businesses, subscription, pendingBookingsCount = 0, flash } =
-        usePage<PageProps>().props;
+    const {
+        auth,
+        activeBusiness,
+        businesses,
+        subscription,
+        pendingBookingsCount = 0,
+        unreadNotificationsCount = 0,
+    } = usePage<PageProps>().props;
     const [qrOpen, setQrOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
     const can = activeBusiness?.can;
@@ -428,6 +437,12 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                             </>
                         )}
 
+                        <NotificationBell
+                            initialUnreadCount={unreadNotificationsCount}
+                            activeBusinessId={activeBusiness?.id ?? null}
+                            triggerClassName="size-10"
+                        />
+
                         {renderAccountMenu(
                             'inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none'
                         )}
@@ -469,6 +484,12 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 </Button>
                             )}
 
+                        <NotificationBell
+                            initialUnreadCount={unreadNotificationsCount}
+                            activeBusinessId={activeBusiness?.id ?? null}
+                            triggerClassName="size-9"
+                        />
+
                         {renderAccountMenu(
                             'inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none'
                         )}
@@ -496,7 +517,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                         )}
                         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5">
                             <h1 className="min-w-0 text-2xl leading-tight font-semibold text-balance text-ink sm:text-[26px] lg:text-3xl">{title}</h1>
-                            {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+                            {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
                         </div>
                     </div>
 
@@ -532,17 +553,6 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                             ) : (
                                 <p className="shrink-0 text-xs font-semibold">Hubungi pemilik bisnis untuk memperpanjang.</p>
                             )}
-                        </div>
-                    )}
-
-                    {flash.success && (
-                        <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
-                            {flash.success}
-                        </div>
-                    )}
-                    {flash.error && (
-                        <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
-                            {flash.error}
                         </div>
                     )}
 

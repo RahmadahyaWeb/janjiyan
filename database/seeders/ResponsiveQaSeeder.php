@@ -3,9 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
+use App\Models\BusinessReview;
 use App\Models\Customer;
 use App\Models\Service;
+use App\Models\ServiceAddon;
 use App\Models\Staff;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -286,6 +289,51 @@ class ResponsiveQaSeeder extends Seeder
                 'dp_type' => 'none',
                 'dp_value' => 0,
                 'is_active' => true,
+            ]);
+        }
+
+        // 5. v2.2 QA worst-case add-ons, multi-items, payments, and long-text review records
+        ServiceAddon::updateOrCreate(
+            ['business_id' => $rapiStudio->id, 'name' => 'Paket Perawatan Kulit Kepala Anti-Ketombe + Hair Tonic Vitamin Ekstra'],
+            [
+                'description' => $longAppointmentDesc,
+                'price' => 95000,
+                'unit_label' => 'item',
+                'duration_minutes' => 20,
+                'is_commissionable' => true,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 10,
+            ]
+        );
+
+        $qaDropBooking = Booking::where('booking_code', 'JNY-QADROP')->first();
+        if ($qaDropBooking && ! $qaDropBooking->items()->exists()) {
+            BookingItem::create([
+                'booking_id' => $qaDropBooking->id,
+                'item_type' => BookingItem::TYPE_SERVICE,
+                'service_id' => $dropoffStressService->id,
+                'name_snapshot' => $dropoffStressService->name,
+                'unit_label_snapshot' => 'pasang',
+                'unit_price' => (int) $dropoffStressService->price,
+                'quantity' => 4,
+                'duration_minutes_snapshot' => 0,
+                'turnaround_days_snapshot' => 5,
+                'is_commissionable' => true,
+                'subtotal' => (int) $dropoffStressService->price * 4,
+            ]);
+        }
+
+        if (! BusinessReview::where('business_id', $rapiStudio->id)->where('reviewer_name', 'Raden Ayu Kusumawardhani Prameswari Setyaningrum')->exists()) {
+            BusinessReview::create([
+                'business_id' => $rapiStudio->id,
+                'booking_id' => null,
+                'customer_id' => null,
+                'reviewer_name' => 'Raden Ayu Kusumawardhani Prameswari Setyaningrum',
+                'reviewer_phone' => '6281299998888777',
+                'rating' => 3,
+                'comment' => 'Pelayanan staf sangat ramah dan hasil rapi, namun antrean akhir pekan cukup padat sehingga perlu penyesuaian estimasi waktu tunggu di ruang depan.',
+                'redirected_to_google' => false,
             ]);
         }
     }

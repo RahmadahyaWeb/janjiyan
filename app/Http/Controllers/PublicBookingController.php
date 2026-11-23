@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Dashboard\ServiceAddonController;
 use App\Models\Booking;
+use App\Models\BookingItem;
+use App\Models\BookingPayment;
 use App\Models\Business;
 use App\Models\Service;
+use App\Models\ServiceAddon;
 use App\Services\BookingNotificationService;
 use App\Services\IcsCalendarService;
 use App\Services\PlanLimitService;
@@ -14,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -148,6 +153,11 @@ class PublicBookingController extends Controller
     {
         $business = $this->loadPublicBusiness($request, $slug, [
             'services' => fn ($q) => $q->where('is_active', true),
+            'serviceAddons' => fn ($q) => $q
+                ->where('is_active', true)
+                ->with('services:id')
+                ->orderBy('sort_order')
+                ->orderBy('id'),
             'operatingHours',
         ]);
         if ($business instanceof SymfonyResponse) {
@@ -213,6 +223,10 @@ class PublicBookingController extends Controller
                     ])->values()
                     : [],
             ])->values(),
+            'addons' => $business->serviceAddons
+                ->map(fn (ServiceAddon $addon): array => ServiceAddonController::serializeAddon($addon))
+                ->values(),
+            'canUseMultiServiceDropoff' => $planLimitService->canUseMultiServiceDropoff($business->owner),
             'operatingHours' => $business->operatingHours,
             'holidays' => $business->holidays->pluck('date')->map(fn ($d) => $d->toDateString())->values(),
             // Tapped from the hub's service list; ignored unless it is one of this shop's active services.
@@ -227,10 +241,18 @@ class PublicBookingController extends Controller
 
     public function slots(Request $request, string $slug, SlotAvailabilityService $slotService): JsonResponse
     {
+        $this->normalizeAddonQueryInputs($request);
+
         $validated = $request->validate([
             'service_id' => ['required', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'staff_id' => ['nullable', 'integer'],
+            'addons' => ['nullable', 'array', 'max:50'],
+            'addons.*.service_addon_id' => ['nullable', 'integer'],
+            'addons.*.id' => ['nullable', 'integer'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'addon_ids' => ['nullable', 'array', 'max:50'],
+            'addon_ids.*' => ['integer'],
         ]);
 
         $business = Business::where('slug', $slug)->where('is_active', true)->firstOrFail();
@@ -249,11 +271,30 @@ class PublicBookingController extends Controller
             ]);
         }
 
+        $addonRequests = ! empty($validated['addons'])
+            ? $validated['addons']
+            : ($validated['addon_ids'] ?? []);
+        $extraDurationMinutes = 0;
+
+        if ($addonRequests !== []) {
+            try {
+                $extraDurationMinutes = $slotService->calculateExtraDurationForAddons($business, $service, $addonRequests);
+            } catch (RuntimeException $e) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'slots' => [],
+                ], 422);
+            }
+        }
+
         $slots = $slotService->getAvailableSlots(
             $business,
             $service,
             $validated['date'],
-            isset($validated['staff_id']) ? (int) $validated['staff_id'] : null
+            isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+            false,
+            null,
+            $extraDurationMinutes
         );
 
         return response()->json([
@@ -283,7 +324,16 @@ class PublicBookingController extends Controller
         }
 
         $validated = $request->validate([
-            'service_id' => ['required', 'integer'],
+            'service_id' => ['nullable', 'required_without:services', 'integer'],
+            'services' => ['nullable', 'required_without:service_id', 'array', 'min:1', 'max:50'],
+            'services.*.service_id' => ['required', 'integer'],
+            'services.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
+            'addons' => ['nullable', 'array', 'max:50'],
+            'addons.*.service_addon_id' => ['nullable', 'integer'],
+            'addons.*.id' => ['nullable', 'integer'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'addon_ids' => ['nullable', 'array', 'max:50'],
+            'addon_ids.*' => ['integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['nullable', 'date_format:H:i'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -298,35 +348,82 @@ class PublicBookingController extends Controller
             'dp_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        $service = $business->services()->where('id', $validated['service_id'])->where('is_active', true)->firstOrFail();
+        $serviceItems = ! empty($validated['services'])
+            ? array_map(
+                static fn (array $row): array => [
+                    'service_id' => (int) $row['service_id'],
+                    'quantity' => (int) $row['quantity'],
+                ],
+                $validated['services']
+            )
+            : [[
+                'service_id' => (int) $validated['service_id'],
+                'quantity' => (int) ($validated['quantity'] ?? 1),
+            ]];
 
-        if ($service->isDropoff()) {
+        $distinctServiceIds = collect($serviceItems)
+            ->pluck('service_id')
+            ->unique()
+            ->values();
+
+        $selectedServices = $business->services()
+            ->whereIn('id', $distinctServiceIds->all())
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('id');
+
+        if ($selectedServices->count() !== $distinctServiceIds->count()) {
+            abort(404);
+        }
+
+        /** @var Service $primaryService */
+        $primaryService = $selectedServices->get($distinctServiceIds->first());
+        $isDropoff = $primaryService->isDropoff();
+        $addonRequests = ! empty($validated['addons'])
+            ? $validated['addons']
+            : ($validated['addon_ids'] ?? []);
+
+        if ($isDropoff) {
+            if (! $selectedServices->every(fn (Service $s): bool => $s->isDropoff())) {
+                return back()->with('error', 'Semua layanan yang dipilih harus berjenis drop-off.');
+            }
+
+            if ($distinctServiceIds->count() > 1 && ! $planLimitService->canUseMultiServiceDropoff($business->owner)) {
+                return back()->with('error', 'Keranjang multi-layanan tersedia pada paket Professional dan Enterprise.');
+            }
+
+            $supportsPickupAny = $selectedServices->contains(fn (Service $s): bool => (bool) $s->supports_pickup);
             $fulfillmentType = $validated['fulfillment_type'] ?? 'dropoff';
-            if ($service->supports_pickup && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
+            if ($supportsPickupAny && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
                 return back()
                     ->withErrors(['pickup_address' => 'Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.'])
                     ->withInput();
             }
 
             try {
-                $booking = $slotService->reserveDropoff(
-                    $business,
-                    $service,
-                    $validated['date'],
-                    (int) ($validated['quantity'] ?? 1),
-                    $fulfillmentType,
-                    $validated['pickup_session'] ?? 'anytime',
-                    $validated['pickup_address'] ?? null,
-                    $validated['customer_name'],
-                    $validated['customer_phone'],
-                    $validated['customer_email'] ?? null,
-                    $validated['customer_notes'] ?? null,
-                    $request->file('dp_proof')
+                $booking = $slotService->reserveDropoffOrder(
+                    business: $business,
+                    serviceItems: $serviceItems,
+                    dateString: $validated['date'],
+                    fulfillmentType: $fulfillmentType,
+                    pickupSession: $validated['pickup_session'] ?? 'anytime',
+                    pickupAddress: $validated['pickup_address'] ?? null,
+                    customerName: $validated['customer_name'],
+                    customerPhone: $validated['customer_phone'],
+                    customerEmail: $validated['customer_email'] ?? null,
+                    customerNotes: $validated['customer_notes'] ?? null,
+                    dpProofFile: $request->file('dp_proof'),
+                    allowImmediateToday: false,
+                    addonRequests: $addonRequests
                 );
             } catch (RuntimeException $e) {
                 return back()->with('error', $e->getMessage());
             }
         } else {
+            if ($distinctServiceIds->count() > 1) {
+                return back()->with('error', 'Pemesanan multi-layanan hanya tersedia untuk layanan drop-off.');
+            }
+
             if (empty($validated['time'])) {
                 $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
 
@@ -337,16 +434,18 @@ class PublicBookingController extends Controller
 
             try {
                 $booking = $slotService->reserveSlot(
-                    $business,
-                    $service,
-                    $validated['date'],
-                    $validated['time'],
-                    $business->isStaffAppointment() && isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
-                    $validated['customer_name'],
-                    $validated['customer_phone'],
-                    $validated['customer_email'] ?? null,
-                    $validated['customer_notes'] ?? null,
-                    $request->file('dp_proof')
+                    business: $business,
+                    service: $primaryService,
+                    dateString: $validated['date'],
+                    timeString: $validated['time'],
+                    requestedStaffId: $business->isStaffAppointment() && isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+                    customerName: $validated['customer_name'],
+                    customerPhone: $validated['customer_phone'],
+                    customerEmail: $validated['customer_email'] ?? null,
+                    customerNotes: $validated['customer_notes'] ?? null,
+                    dpProofFile: $request->file('dp_proof'),
+                    allowImmediateToday: false,
+                    addonRequests: $addonRequests
                 );
             } catch (RuntimeException $e) {
                 return back()->with('error', $e->getMessage());
@@ -542,12 +641,13 @@ class PublicBookingController extends Controller
         $isStaffAppointment = $business->isStaffAppointment();
         // Only the booking the visitor proved knowledge of. A phone number is never verified, so anyone can
         // book under someone else's number; widening to the customer's history would hand out their tokens.
-        $history = collect([$matched->load(['service', 'staff'])])
+        $history = collect([$matched->load(['service', 'staff', 'items'])])
             ->map(fn (Booking $b) => [
                 'invoice_number' => $b->invoice_number,
                 'invoice_token' => $b->invoice_token,
                 'booking_code' => $b->booking_code,
                 'service_name' => $b->service?->name ?? '-',
+                'service_summary' => $b->resolvedServiceSummary(),
                 'staff_name' => $isStaffAppointment ? $b->staff?->name : null,
                 'booking_date' => $b->booking_date->toDateString(),
                 'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
@@ -558,8 +658,10 @@ class PublicBookingController extends Controller
                 'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
                 'work_status' => $b->work_status,
                 'schedule_label' => $b->scheduleDisplayLabel($tz),
-                'total_price' => $b->total_price,
-                'dp_amount' => $b->dp_amount,
+                'total_price' => (int) $b->total_price,
+                'dp_amount' => (int) $b->dp_amount,
+                'paid_amount' => (int) ($b->paid_amount ?? 0),
+                'remaining_balance' => $b->remainingBalance(),
                 'reservation_status' => $b->reservation_status,
                 'payment_status' => $b->payment_status,
             ])
@@ -581,6 +683,9 @@ class PublicBookingController extends Controller
 
     private function renderInvoicePage(Business $business, Booking $booking): Response
     {
+        $business->loadMissing('owner');
+        $booking->loadMissing(['service', 'staff', 'customer', 'items', 'payments', 'review']);
+
         $tz = $business->timezone ?: 'Asia/Jakarta';
         $businessType = $business->resolvedBusinessType();
         $isStaffAppointment = $business->isStaffAppointment();
@@ -588,6 +693,19 @@ class PublicBookingController extends Controller
         $invoiceUrl = $booking->invoice_token
             ? route('public.booking.invoice', ['slug' => $business->slug, 'token' => $booking->invoice_token])
             : route('public.booking.status', ['slug' => $business->slug, 'code' => $booking->booking_code]);
+
+        $canUseGoogleReview = app(PlanLimitService::class)->canUseGoogleReview($business->owner);
+        $reviewEnabled = (bool) ($business->review_enabled ?? true);
+        $hasReview = $booking->review !== null;
+        $isCompletedForReview = $booking->reservation_status === 'completed'
+            || ($booking->isDropoff() && $booking->work_status === 'picked_up');
+        $canReview = $canUseGoogleReview
+            && $reviewEnabled
+            && $isCompletedForReview
+            && ! $hasReview
+            && filled($booking->invoice_token);
+
+        $reviewUrl = $canReview ? $this->buildReviewUrl($business, $booking) : null;
 
         return Inertia::render('Public/BookingStatus', [
             'business' => [
@@ -601,12 +719,15 @@ class PublicBookingController extends Controller
                 'brand_color' => $business->brand_color,
                 'qris_url' => $business->qris_path ? Storage::url($business->qris_path) : null,
                 'bank_accounts' => $business->bank_accounts ?? [],
+                'review_enabled' => $reviewEnabled,
+                'can_use_google_review' => $canUseGoogleReview,
             ],
             'booking' => [
                 'booking_code' => $booking->booking_code,
                 'invoice_number' => $booking->invoice_number,
                 'invoice_token' => $booking->invoice_token,
-                'service_name' => $booking->service->name,
+                'service_name' => $booking->service?->name ?? 'Layanan',
+                'service_summary' => $booking->resolvedServiceSummary(),
                 'staff_name' => $isStaffAppointment ? $booking->staff?->name : null,
                 'customer_name' => $booking->customer->name,
                 'customer_phone' => $this->maskPhone($booking->customer->phone),
@@ -628,14 +749,46 @@ class PublicBookingController extends Controller
                     ? route('public.booking.invoice.ics', ['slug' => $business->slug, 'token' => $booking->invoice_token])
                     : route('public.booking.ics', ['slug' => $business->slug, 'code' => $booking->booking_code]),
                 'created_at_local' => $booking->created_at?->setTimezone($tz)->format('d M Y, H:i'),
-                'total_price' => $booking->total_price,
-                'dp_amount' => $booking->dp_amount,
+                'total_price' => (int) $booking->total_price,
+                'dp_amount' => (int) $booking->dp_amount,
+                'paid_amount' => (int) ($booking->paid_amount ?? 0),
+                'remaining_balance' => $booking->remainingBalance(),
+                'settled_at_local' => $booking->settled_at?->setTimezone($tz)->format('d M Y, H:i'),
                 'reservation_status' => $booking->reservation_status,
                 'payment_status' => $booking->payment_status,
                 'has_dp_proof' => filled($booking->dp_proof_path),
                 'dp_expires_at' => $booking->dp_expires_at?->toIso8601String(),
                 'cancellation_reason' => $booking->cancellation_reason,
                 'customer_notes' => $booking->customer_notes,
+                'has_review' => $hasReview,
+                'can_review' => $canReview,
+                'review_url' => $reviewUrl,
+                'items' => $booking->items->map(fn (BookingItem $item): array => [
+                    'id' => $item->id,
+                    'item_type' => $item->item_type,
+                    'service_id' => $item->service_id,
+                    'service_addon_id' => $item->service_addon_id,
+                    'name_snapshot' => $item->name_snapshot,
+                    'unit_label_snapshot' => $item->unit_label_snapshot,
+                    'unit_price' => (int) $item->unit_price,
+                    'quantity' => (int) $item->quantity,
+                    'duration_minutes_snapshot' => (int) $item->duration_minutes_snapshot,
+                    'turnaround_days_snapshot' => (int) $item->turnaround_days_snapshot,
+                    'is_commissionable' => (bool) $item->is_commissionable,
+                    'subtotal' => (int) $item->subtotal,
+                ])->values()->all(),
+                'payments' => $booking->payments->map(fn (BookingPayment $payment): array => [
+                    'id' => $payment->id,
+                    'payment_type' => $payment->payment_type,
+                    'payment_method' => $payment->payment_method,
+                    'amount' => (int) $payment->amount,
+                    'received_amount' => $payment->received_amount !== null ? (int) $payment->received_amount : null,
+                    'change_amount' => (int) $payment->change_amount,
+                    'recorded_by_name' => null,
+                    'paid_at' => $payment->paid_at->toIso8601String(),
+                    'paid_at_local' => $payment->paid_at->setTimezone($tz)->format('d M Y, H:i'),
+                    'notes' => $payment->notes,
+                ])->values()->all(),
             ],
         ])->withViewData('seo', [
             'title' => 'Invoice '.($booking->invoice_number ?: $booking->booking_code)." — {$business->name}",
@@ -644,6 +797,42 @@ class PublicBookingController extends Controller
             'url' => $invoiceUrl,
             'noindex' => true,
         ]);
+    }
+
+    private function buildReviewUrl(Business $business, Booking $booking): string
+    {
+        $params = ['slug' => $business->slug];
+        if ($booking->invoice_token) {
+            $params['token'] = $booking->invoice_token;
+        }
+
+        if (Route::has('public.review.show')) {
+            return route('public.review.show', $params);
+        }
+
+        $query = $booking->invoice_token ? '?token='.urlencode($booking->invoice_token) : '';
+
+        return url("/b/{$business->slug}/review{$query}");
+    }
+
+    private function normalizeAddonQueryInputs(Request $request): void
+    {
+        $rawAddons = $request->input('addons');
+        if (is_string($rawAddons) && trim($rawAddons) !== '') {
+            $decoded = json_decode($rawAddons, true);
+            if (is_array($decoded)) {
+                $request->merge(['addons' => $decoded]);
+            }
+        }
+
+        $rawAddonIds = $request->input('addon_ids');
+        if (is_string($rawAddonIds) && trim($rawAddonIds) !== '') {
+            $ids = array_values(array_filter(
+                array_map('trim', explode(',', $rawAddonIds)),
+                static fn (string $v): bool => $v !== ''
+            ));
+            $request->merge(['addon_ids' => $ids]);
+        }
     }
 
     private function handleProofUpload(Request $request, Business $business, Booking $booking): RedirectResponse

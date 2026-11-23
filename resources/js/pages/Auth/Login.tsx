@@ -1,17 +1,15 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout';
-import type { PageProps } from '@/types';
 
 interface LoginProps {
     googleEnabled: boolean;
 }
 
 export default function Login({ googleEnabled }: LoginProps) {
-    const { flash } = usePage<PageProps>().props;
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
@@ -31,17 +29,6 @@ export default function Login({ googleEnabled }: LoginProps) {
             <p className="mt-2 text-sm text-mute">
                 Masuk untuk mengelola jadwal, layanan, dan verifikasi uang muka bisnis Anda.
             </p>
-
-            {flash.success && (
-                <div role="status" className="mt-4 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
-                    {flash.success}
-                </div>
-            )}
-            {flash.error && (
-                <div role="alert" className="mt-4 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
-                    {flash.error}
-                </div>
-            )}
 
             {googleEnabled && (
                 <>

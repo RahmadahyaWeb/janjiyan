@@ -9,7 +9,7 @@ interface VerifyEmailProps {
 }
 
 export default function VerifyEmail({ status }: VerifyEmailProps) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const { auth } = usePage<PageProps>().props;
     const { post, processing } = useForm({});
 
     const handleResend = (e: FormEvent) => {
@@ -30,12 +30,12 @@ export default function VerifyEmail({ status }: VerifyEmailProps) {
                 role="status"
                 aria-live="polite"
                 className={
-                    status || flash.success
+                    status
                         ? 'mt-4 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink'
                         : 'sr-only'
                 }
             >
-                {status || flash.success || ''}
+                {status || ''}
             </div>
 
             <form onSubmit={handleResend} className="mt-6 space-y-3">

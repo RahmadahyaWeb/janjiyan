@@ -1,10 +1,11 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { BellRing, Check, ImagePlus, Lock, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Tag, Trash2, Upload } from 'lucide-react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { BellRing, Check, ImagePlus, Lock, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Star, Tag, Trash2, Upload } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { BusinessMark } from '@/components/BusinessMark';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { QrPosterDialog } from '@/components/QrPosterDialog';
+import { QrReviewStickerDialog } from '@/components/QrReviewStickerDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ import {
     type WhatsappTemplateKey,
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
-import type { BusinessType } from '@/types';
+import type { BusinessType, PageProps } from '@/types';
 
 const SETTINGS_TABS = [
     { id: 'profil', label: 'Profil Toko' },
@@ -31,6 +32,7 @@ const SETTINGS_TABS = [
     { id: 'aturan', label: 'Aturan Booking' },
     { id: 'notifikasi', label: 'Notifikasi' },
     { id: 'pembayaran', label: 'Pembayaran' },
+    { id: 'ulasan', label: 'Ulasan Google' },
     { id: 'galeri', label: 'Portofolio' },
 ] as const;
 
@@ -42,6 +44,7 @@ function tabForField(field: string): SettingsTab {
     if (/^(min_booking|max_booking|reminder_|no_show_)/.test(field)) return 'aturan';
     if (/^(whatsapp_templates|telegram_|clear_telegram)/.test(field)) return 'notifikasi';
     if (/^(bank_accounts|qris_image|remove_qris)/.test(field)) return 'pembayaran';
+    if (/^(google_review|review_)/.test(field)) return 'ulasan';
     return 'profil';
 }
 
@@ -73,6 +76,10 @@ interface SettingsIndexProps {
         business_type: BusinessType;
         description: string | null;
         qr_poster_subtitle?: string | null;
+        google_review_url?: string | null;
+        review_redirect_min_rating?: number;
+        review_enabled?: boolean;
+        review_sticker_subtitle?: string | null;
         phone: string | null;
         address: string | null;
         timezone: string;
@@ -98,12 +105,30 @@ interface SettingsIndexProps {
         cover_url: string | null;
     } | null;
     galleries: GalleryItem[];
+    canUseGoogleReview?: boolean;
+    google_review_url?: string | null;
+    review_redirect_min_rating?: number;
+    review_enabled?: boolean;
+    review_sticker_subtitle?: string | null;
 }
 
-export default function SettingsIndex({ business, galleries }: SettingsIndexProps) {
+export default function SettingsIndex({
+    business,
+    galleries,
+    canUseGoogleReview,
+    google_review_url: propGoogleReviewUrl,
+    review_redirect_min_rating: propReviewMinRating,
+    review_enabled: propReviewEnabled,
+    review_sticker_subtitle: propReviewStickerSubtitle,
+}: SettingsIndexProps) {
+    const { subscription } = usePage<PageProps>().props;
+    const resolvedCanUseGoogleReview =
+        canUseGoogleReview ?? subscription?.capabilities?.can_use_google_review ?? false;
+
     const [deletingGallery, setDeletingGallery] = useState<GalleryItem | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [qrPosterOpen, setQrPosterOpen] = useState(false);
+    const [qrReviewStickerOpen, setQrReviewStickerOpen] = useState(false);
     const [activeWaTab, setActiveWaTab] = useState<WhatsappTemplateKey>('reminder');
     const [testingTelegram, setTestingTelegram] = useState(false);
     const [tab, setTab] = useState<SettingsTab>(initialTab);
@@ -151,6 +176,10 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
         brand_color: business?.brand_color ?? '',
         cover_image: null as File | null,
         remove_cover: false,
+        google_review_url: business?.google_review_url ?? propGoogleReviewUrl ?? '',
+        review_redirect_min_rating: business?.review_redirect_min_rating ?? propReviewMinRating ?? 4,
+        review_enabled: business?.review_enabled ?? propReviewEnabled ?? true,
+        review_sticker_subtitle: business?.review_sticker_subtitle ?? propReviewStickerSubtitle ?? '',
     });
 
     // Selected-but-unsaved cover shows in the preview; the object URL is freed when it changes.
@@ -211,13 +240,32 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        form.transform((data) => ({
-            ...data,
-            dp_expiry_minutes: Number(data.dp_expiry_minutes || 15),
-            min_booking_lead_minutes: Number(data.min_booking_lead_minutes || 0),
-            max_booking_advance_days: Number(data.max_booking_advance_days || 1),
-            no_show_dp_threshold: Math.max(1, Number(data.no_show_dp_threshold || 1)),
-        }));
+        form.transform((data) => {
+            const payload = {
+                ...data,
+                dp_expiry_minutes: Number(data.dp_expiry_minutes || 15),
+                min_booking_lead_minutes: Number(data.min_booking_lead_minutes || 0),
+                max_booking_advance_days: Number(data.max_booking_advance_days || 1),
+                no_show_dp_threshold: Math.max(1, Number(data.no_show_dp_threshold || 1)),
+                google_review_url: data.google_review_url.trim(),
+                review_redirect_min_rating: Number(data.review_redirect_min_rating || 4),
+                review_enabled: Boolean(data.review_enabled),
+                review_sticker_subtitle: data.review_sticker_subtitle.trim(),
+            };
+
+            if (!resolvedCanUseGoogleReview) {
+                const {
+                    google_review_url: _googleUrl,
+                    review_redirect_min_rating: _minRating,
+                    review_enabled: _reviewEnabled,
+                    review_sticker_subtitle: _stickerSubtitle,
+                    ...withoutReviewFields
+                } = payload;
+                return withoutReviewFields;
+            }
+
+            return payload;
+        });
         form.post(route('dashboard.settings.update'), {
             forceFormData: true,
             onSuccess: () => {
@@ -916,6 +964,7 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                                     dp_amount: 25000,
                                     total_price: 75000,
                                     invoice_url: `https://janjiyan.id/b/${form.data.slug || business.slug}/invoice/contoh`,
+                                    review_url: `https://janjiyan.id/b/${form.data.slug || business.slug}/review?token=contoh`,
                                     business_address: form.data.address || 'Jl. Kemang Raya No. 12',
                                 })}
                             </p>
@@ -1123,6 +1172,135 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         </div>
                     </div>
 
+                    {/* Google Maps Review & Stiker QR */}
+                    <div id="ulasan" hidden={tab !== 'ulasan'} className="scroll-mt-12 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+                                        <Star className="size-5 shrink-0 text-ink" aria-hidden="true" />
+                                        <span>Ulasan Pelanggan &amp; Google Maps</span>
+                                    </h2>
+                                    {!resolvedCanUseGoogleReview && (
+                                        <Badge variant="popular" className="gap-1">
+                                            <Lock className="size-3" aria-hidden="true" />
+                                            Pro / Enterprise
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="text-xs leading-relaxed text-mute">
+                                    Arahkan pelanggan dengan penilaian tinggi langsung ke Google Maps Review, sementara kritik dan saran tetap masuk ke kotak masuk privat Anda.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setQrReviewStickerOpen(true)}
+                                className="w-full rounded-full sm:w-auto"
+                            >
+                                <QrCode className="mr-1.5 size-4" aria-hidden="true" />
+                                Buka Stiker QR Ulasan
+                            </Button>
+                        </div>
+
+                        {!resolvedCanUseGoogleReview && (
+                            <div className="flex flex-col justify-between gap-3 rounded-sm bg-bone p-4 sm:flex-row sm:items-center">
+                                <div className="min-w-0 space-y-1">
+                                    <p className="text-sm font-semibold text-ink">
+                                        Tersedia pada Paket Professional &amp; Enterprise
+                                    </p>
+                                    <p className="text-xs leading-relaxed text-mute">
+                                        Upgrade paket untuk mengaktifkan link Google Review, pengalihan rating cerdas, notifikasi Telegram rating rendah, dan Stiker QR Ulasan.
+                                    </p>
+                                </div>
+                                <Button asChild size="sm" className="w-full shrink-0 sm:w-auto">
+                                    <Link href={route('dashboard.billing')}>Lihat Paket</Link>
+                                </Button>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-4 rounded-sm bg-bone p-4">
+                            <div className="min-w-0">
+                                <Label htmlFor="settings-review-enabled" className="text-sm font-semibold text-ink">
+                                    Aktifkan Halaman Ulasan Publik
+                                </Label>
+                                <p className="mt-0.5 text-xs text-mute [overflow-wrap:anywhere]">
+                                    Izinkan pelanggan mengisi rating &amp; masukan melalui /b/{form.data.slug || business.slug}/review atau link di invoice.
+                                </p>
+                            </div>
+                            <Switch
+                                id="settings-review-enabled"
+                                className="shrink-0"
+                                disabled={!resolvedCanUseGoogleReview}
+                                checked={form.data.review_enabled}
+                                onCheckedChange={(val) => form.setData('review_enabled', val)}
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="settings-google-review-url">Link Google Maps Review</Label>
+                            <Input
+                                id="settings-google-review-url"
+                                type="url"
+                                inputMode="url"
+                                disabled={!resolvedCanUseGoogleReview}
+                                placeholder="https://g.page/r/xxxxxxxxxxxx/review"
+                                value={form.data.google_review_url}
+                                onChange={(e) => form.setData('google_review_url', e.target.value)}
+                                aria-invalid={Boolean(form.errors.google_review_url)}
+                            />
+                            <p className="text-xs leading-relaxed text-mute">
+                                Wajib menggunakan HTTPS dan domain resmi Google (<span className="font-mono">google.com</span>, <span className="font-mono">g.page</span>, atau <span className="font-mono">maps.app.goo.gl</span>).
+                            </p>
+                            {form.errors.google_review_url && (
+                                <p className="text-xs text-destructive">{form.errors.google_review_url}</p>
+                            )}
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="settings-review-min-rating">Minimal Rating Diarahkan ke Google</Label>
+                                <NativeSelect
+                                    id="settings-review-min-rating"
+                                    disabled={!resolvedCanUseGoogleReview}
+                                    value={String(form.data.review_redirect_min_rating)}
+                                    onChange={(e) => form.setData('review_redirect_min_rating', Number(e.target.value))}
+                                    aria-invalid={Boolean(form.errors.review_redirect_min_rating)}
+                                >
+                                    <option value="5">5 Bintang saja</option>
+                                    <option value="4">4 Bintang ke atas (Direkomendasikan)</option>
+                                    <option value="3">3 Bintang ke atas</option>
+                                </NativeSelect>
+                                <p className="text-xs leading-relaxed text-mute">
+                                    Penilaian di bawah batas ini tetap tersimpan sebagai masukan privat untuk tim Anda.
+                                </p>
+                                {form.errors.review_redirect_min_rating && (
+                                    <p className="text-xs text-destructive">{form.errors.review_redirect_min_rating}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="settings-review-sticker-subtitle">Sub-judul Stiker QR Ulasan</Label>
+                                <Input
+                                    id="settings-review-sticker-subtitle"
+                                    maxLength={120}
+                                    disabled={!resolvedCanUseGoogleReview}
+                                    placeholder="Scan QR untuk Beri Ulasan & Rating"
+                                    value={form.data.review_sticker_subtitle}
+                                    onChange={(e) => form.setData('review_sticker_subtitle', e.target.value)}
+                                    aria-invalid={Boolean(form.errors.review_sticker_subtitle)}
+                                />
+                                <p className="text-xs leading-relaxed text-mute">
+                                    Tampil pada halaman ulasan publik, stiker PNG, Tent Card A6, dan cetak Grid A4.
+                                </p>
+                                {form.errors.review_sticker_subtitle && (
+                                    <p className="text-xs text-destructive">{form.errors.review_sticker_subtitle}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     {Object.keys(form.errors).length > 0 && (
                         <div
                             role="alert"
@@ -1139,11 +1317,11 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                         className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-end gap-2 sm:gap-3 lg:bottom-4"
                     >
                         {form.isDirty && (
-                            <span className="rounded-full bg-canvas/95 px-3 py-1 text-xs text-mute shadow-sm ring-1 ring-hairline-soft">
+                            <span className="rounded-full border border-hairline bg-canvas/95 px-3 py-1 text-xs text-mute">
                                 Ada perubahan belum disimpan
                             </span>
                         )}
-                        <Button type="submit" size="lg" disabled={form.processing} className="w-full shadow-lg sm:w-auto">
+                        <Button type="submit" size="lg" disabled={form.processing} className="w-full sm:w-auto">
                             {form.processing ? 'Menyimpan…' : 'Simpan Semua Tab'}
                         </Button>
                     </div>
@@ -1345,6 +1523,23 @@ export default function SettingsIndex({ business, galleries }: SettingsIndexProp
                 businessAddress={form.data.address || business.address}
                 qrSubtitle={business.qr_poster_subtitle}
                 canSaveSubtitle
+            />
+            <QrReviewStickerDialog
+                open={qrReviewStickerOpen}
+                onOpenChange={setQrReviewStickerOpen}
+                businessName={form.data.name || business.name}
+                businessCategory={form.data.category || business.category}
+                businessSlug={form.data.slug || business.slug}
+                businessType={business.business_type}
+                businessAddress={form.data.address || business.address}
+                reviewSubtitle={form.data.review_sticker_subtitle}
+                canSaveSubtitle
+                canUseGoogleReview={resolvedCanUseGoogleReview}
+                onSubtitleSaved={(nextSubtitle) => {
+                    const value = nextSubtitle ?? '';
+                    form.setData('review_sticker_subtitle', value);
+                    form.setDefaults('review_sticker_subtitle', value);
+                }}
             />
         </DashboardLayout>
     );

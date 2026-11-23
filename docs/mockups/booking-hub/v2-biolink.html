@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=375">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;600;700&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+:root { --brand: #16423c; --paper: #f2eee4; --soft: #dfe7e2; }
+body { min-height: 812px; }
+.band { height: 150px; background: var(--brand); position: relative; overflow: hidden; }
+.band img { width: 100%; height: 100%; object-fit: cover; opacity: .35; mix-blend-mode: luminosity; }
+.top { position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; }
+.top .iconbtn { background: rgba(255,255,255,.16); color: #fff; }
+.id { text-align: center; padding: 0 22px; margin-top: -48px; position: relative; }
+.mark { width: 96px; height: 96px; border-radius: 30%; margin: 0 auto; background: var(--brand); color: var(--paper);
+    display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700; border: 4px solid var(--paper); }
+h1 { font-size: 24px; line-height: 1.15; font-weight: 700; margin-top: 14px; text-wrap: balance; }
+.tag { font-size: 14px; color: var(--mute); line-height: 1.5; margin-top: 6px; }
+.status { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 12.5px; font-weight: 600;
+    background: #fff; padding: 6px 12px; border-radius: 99px; }
+.links { padding: 22px 16px 28px; display: grid; gap: 10px; }
+.row { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 18px; background: #fff; text-decoration: none; color: var(--ink); }
+.row .ic { width: 44px; height: 44px; border-radius: 14px; background: var(--soft); color: var(--brand);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.row b { display: block; font-size: 15px; font-weight: 600; }
+.row small { display: block; font-size: 12.5px; color: var(--mute); margin-top: 2px; }
+.row .go { margin-left: auto; color: #9a9a9a; }
+.row.primary { background: var(--brand); color: #fff; }
+.row.primary .ic { background: rgba(255,255,255,.14); color: #fff; }
+.row.primary small { color: rgba(255,255,255,.75); }
+.row.primary .go { color: rgba(255,255,255,.75); }
+.foot { text-align: center; font-size: 11.5px; color: #8a8a8a; padding-bottom: 20px; }
+</style></head>
+<body>
+<div class="band"><img src="deep.webp" alt="">
+  <div class="top"><span class="iconbtn"><i data-lucide="file-text"></i></span></div>
+</div>
+<div class="id">
+  <div class="mark">SC</div>
+  <h1>Soklenn Cuci Sepatu Banjarbaru</h1>
+  <p class="tag">Cuci sepatu harian sampai noda membandel. Jemput-antar tersedia.</p>
+  <span class="status"><span class="dot"></span> Buka hari ini, 09:00–18:00</span>
+</div>
+<nav class="links">
+  <a class="row primary"><span class="ic"><i data-lucide="calendar-check"></i></span><span><b>Pesan layanan</b><small>Pilih layanan dan tanggal antar</small></span><i class="go" data-lucide="chevron-right"></i></a>
+  <a class="row"><span class="ic"><i data-lucide="tag"></i></span><span><b>Daftar harga</b><small>Mulai Rp 30.000 per pasang</small></span><i class="go" data-lucide="chevron-right"></i></a>
+  <a class="row"><span class="ic"><i data-lucide="message-circle"></i></span><span><b>Chat WhatsApp</b><small>Tanya dulu sebelum pesan</small></span><i class="go" data-lucide="chevron-right"></i></a>
+  <a class="row"><span class="ic"><i data-lucide="file-search"></i></span><span><b>Cek pesanan</b><small>Lihat status dan invoice</small></span><i class="go" data-lucide="chevron-right"></i></a>
+</nav>
+<p class="foot">Ditenagai Janjiyan</p>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body></html>

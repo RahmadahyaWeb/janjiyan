@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\InAppNotificationService;
 use App\Services\PlanLimitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,7 @@ class HandleInertiaRequests extends Middleware
         $businesses = [];
         $subscriptionData = null;
         $pendingBookingsCount = 0;
+        $unreadNotificationsCount = 0;
 
         $shouldLoadTenantContext = $user !== null
             && $request->routeIs('dashboard', 'dashboard.*', 'admin.*');
@@ -65,7 +67,9 @@ class HandleInertiaRequests extends Middleware
             }
 
             $owner = $active?->owner ?? $user;
-            $sub = app(PlanLimitService::class)->ensureTrialSubscription($owner);
+            $unreadNotificationsCount = app(InAppNotificationService::class)->unreadCountForUser($user, $active);
+            $planLimitService = app(PlanLimitService::class);
+            $sub = $planLimitService->ensureTrialSubscription($owner);
             $subscriptionData = [
                 'id' => $sub->id,
                 'plan' => $sub->plan,
@@ -76,6 +80,12 @@ class HandleInertiaRequests extends Middleware
                 'is_trial' => $sub->isTrial(),
                 'is_expired' => $sub->isExpired(),
                 'days_remaining' => $sub->daysRemaining(),
+                'capabilities' => [
+                    'can_export_csv' => $planLimitService->canExportCsv($owner),
+                    'can_use_google_review' => $planLimitService->canUseGoogleReview($owner),
+                    'can_use_multi_service_dropoff' => $planLimitService->canUseMultiServiceDropoff($owner),
+                    'can_use_daily_cashier' => $planLimitService->canUseDailyCashierBreakdown($owner),
+                ],
             ];
         }
 
@@ -95,9 +105,12 @@ class HandleInertiaRequests extends Middleware
             'businesses' => $businesses,
             'subscription' => $subscriptionData,
             'pendingBookingsCount' => $pendingBookingsCount,
+            'unreadNotificationsCount' => $unreadNotificationsCount,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
             ],
         ];
     }

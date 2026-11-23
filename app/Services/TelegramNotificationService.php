@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Jobs\SendTelegramBookingAlertJob;
+use App\Jobs\SendTelegramReviewAlertJob;
 use App\Models\Booking;
 use App\Models\Business;
+use App\Models\BusinessReview;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -25,6 +27,26 @@ class TelegramNotificationService
 
         try {
             SendTelegramBookingAlertJob::dispatch($booking->id, $eventType);
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    public function dispatchLowReviewAlert(BusinessReview $review): void
+    {
+        $review->loadMissing('business');
+        $business = $review->business;
+
+        if (! $business || ! $business->telegram_notifications_enabled) {
+            return;
+        }
+
+        if (trim((string) ($business->telegram_bot_token ?? '')) === '' || trim((string) ($business->telegram_chat_id ?? '')) === '') {
+            return;
+        }
+
+        try {
+            SendTelegramReviewAlertJob::dispatch($review->id);
         } catch (Throwable $e) {
             report($e);
         }

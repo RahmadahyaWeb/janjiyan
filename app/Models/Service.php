@@ -74,6 +74,17 @@ class Service extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function addons(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceAddon::class, 'service_addon_assignments')
+            ->withTimestamps();
+    }
+
+    public function bookingItems(): HasMany
+    {
+        return $this->hasMany(BookingItem::class);
+    }
+
     public function calculateDpAmount(): int
     {
         if ($this->dp_type === 'fixed') {

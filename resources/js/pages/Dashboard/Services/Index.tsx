@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { ServiceAddonsPanel } from '@/components/ServiceAddonsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatRupiah, formatTurnaroundLabel } from '@/lib/format';
-import type { PageProps, ServiceUnitLabel } from '@/types';
+import type { PageProps, ServiceAddon, ServiceUnitLabel } from '@/types';
 
 interface ServiceRow {
     id: number;
@@ -34,11 +35,20 @@ interface ServiceRow {
 
 interface ServicesIndexProps {
     services: ServiceRow[];
+    addons?: ServiceAddon[];
+    canCreateAddon?: boolean;
+    maxAddonsPerBusiness?: number | null;
 }
 
-export default function ServicesIndex({ services }: ServicesIndexProps) {
+export default function ServicesIndex({
+    services,
+    addons = [],
+    canCreateAddon = true,
+    maxAddonsPerBusiness = null,
+}: ServicesIndexProps) {
     const { activeBusiness } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const canOpenBilling = activeBusiness?.can?.manage_settings ?? false;
     const [searchQuery, setSearchQuery] = useState('');
     const [deletingService, setDeletingService] = useState<ServiceRow | null>(null);
 
@@ -228,6 +238,14 @@ export default function ServicesIndex({ services }: ServicesIndexProps) {
                     ))}
                 </div>
             )}
+
+            <ServiceAddonsPanel
+                addons={addons}
+                services={services.map((s) => ({ id: s.id, name: s.name, is_active: s.is_active }))}
+                canCreateAddon={canCreateAddon}
+                maxAddonsPerBusiness={maxAddonsPerBusiness}
+                canOpenBilling={canOpenBilling}
+            />
 
             <ConfirmDialog
                 open={deletingService !== null}

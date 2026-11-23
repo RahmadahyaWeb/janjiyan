@@ -27,6 +27,12 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         },
         {
+            name: 'v22-flows',
+            testMatch: /v22-flows\.spec\.ts/,
+            dependencies: ['setup'],
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
             name: 'webkit-mobile',
             testMatch: /responsive\.spec\.ts/,
             grep: /@webkit-mobile/,

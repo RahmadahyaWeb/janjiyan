@@ -11,6 +11,8 @@ class Business extends Model
 {
     public const DEFAULT_QR_POSTER_SUBTITLE = 'Scan QR untuk Booking Online';
 
+    public const DEFAULT_REVIEW_STICKER_SUBTITLE = 'Scan QR untuk Beri Ulasan & Rating';
+
     public const TYPE_STAFF_APPOINTMENT = 'staff_appointment';
 
     public const TYPE_SPACE_BOOKING = 'space_booking';
@@ -35,6 +37,10 @@ class Business extends Model
         'business_type',
         'description',
         'qr_poster_subtitle',
+        'google_review_url',
+        'review_redirect_min_rating',
+        'review_enabled',
+        'review_sticker_subtitle',
         'phone',
         'address',
         'timezone',
@@ -72,6 +78,8 @@ class Business extends Model
             'telegram_bot_token' => 'encrypted',
             'no_show_require_full_dp' => 'boolean',
             'no_show_dp_threshold' => 'integer',
+            'review_redirect_min_rating' => 'integer',
+            'review_enabled' => 'boolean',
             'is_active' => 'boolean',
             'suspended_at' => 'datetime',
         ];
@@ -172,6 +180,16 @@ class Business extends Model
     public function services(): HasMany
     {
         return $this->hasMany(Service::class);
+    }
+
+    public function serviceAddons(): HasMany
+    {
+        return $this->hasMany(ServiceAddon::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(BusinessReview::class);
     }
 
     public function customers(): HasMany

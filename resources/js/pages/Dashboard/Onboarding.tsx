@@ -11,7 +11,7 @@ import { BUSINESS_TYPE_OPTIONS } from '@/lib/businessType';
 import type { BusinessType, PageProps } from '@/types';
 
 export default function Onboarding() {
-    const { auth, flash } = usePage<PageProps>().props;
+    const { auth } = usePage<PageProps>().props;
 
     const form = useForm<{
         business_type: BusinessType;
@@ -82,17 +82,6 @@ export default function Onboarding() {
                         Pilih tipe operasional yang paling sesuai dengan cara bisnis Anda melayani pelanggan. Pengaturan dashboard dan portal pemesanan akan disesuaikan otomatis.
                     </p>
                 </div>
-
-                {flash.success && (
-                    <div role="status" className="mt-5 rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
-                        {flash.success}
-                    </div>
-                )}
-                {flash.error && (
-                    <div role="alert" className="mt-5 rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
-                        {flash.error}
-                    </div>
-                )}
 
                 <form
                     onSubmit={handleSubmit}

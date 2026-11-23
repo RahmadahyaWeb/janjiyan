@@ -125,7 +125,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'monthly'}
                             onClick={() => setBillingCycle('monthly')}
                             className={cn(
-                                'min-h-10 cursor-pointer rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
+                                'min-h-10 cursor-pointer rounded-sm px-3 py-1.5 text-center text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
                                 billingCycle === 'monthly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -136,7 +136,7 @@ export default function BillingIndex({
                             aria-pressed={billingCycle === 'yearly'}
                             onClick={() => setBillingCycle('yearly')}
                             className={cn(
-                                'min-h-10 cursor-pointer rounded-xl px-3 py-1.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
+                                'min-h-10 cursor-pointer rounded-sm px-3 py-1.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:rounded-full sm:px-4',
                                 billingCycle === 'yearly' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
                             )}
                         >
@@ -221,6 +221,14 @@ export default function BillingIndex({
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="size-4 shrink-0" aria-hidden="true" />
+                                        <span>
+                                            {plan.max_addons_per_business != null
+                                                ? `Maks. ${plan.max_addons_per_business} add-on / bisnis`
+                                                : 'Add-on unlimited'}
+                                        </span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="size-4 shrink-0" aria-hidden="true" />
                                         <span>{plan.max_staff_per_business ?? 'Unlimited'} Staff</span>
                                     </li>
                                     <li className="flex items-center gap-2">
@@ -239,6 +247,16 @@ export default function BillingIndex({
                                         )}
                                         <span className={plan.can_export_csv ? 'text-body' : 'text-mute'}>
                                             Export CSV: {plan.can_export_csv ? 'Tersedia' : 'Tidak tersedia'}
+                                        </span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        {plan.can_use_google_review ? (
+                                            <Check className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        ) : (
+                                            <X className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                                        )}
+                                        <span className={plan.can_use_google_review ? 'text-body' : 'text-mute'}>
+                                            Google Maps Review &amp; Stiker QR: {plan.can_use_google_review ? 'Tersedia' : 'Tidak tersedia'}
                                         </span>
                                     </li>
                                 </ul>

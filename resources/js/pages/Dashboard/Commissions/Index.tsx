@@ -127,17 +127,17 @@ export default function CommissionsIndex({
             actions={
                 canManageStaff ? (
                     <>
-                        <Button asChild variant="secondary" size="sm" className="rounded-full">
+                        <Button asChild variant="secondary" size="sm" className="h-auto min-h-10 max-w-full whitespace-normal rounded-full py-2 text-center sm:h-9 sm:whitespace-nowrap">
                             <Link href={route('dashboard.staff')}>
-                                <Settings2 className="mr-1.5 size-4" aria-hidden="true" />
-                                Atur Tarif di Tim &amp; Staff
+                                <Settings2 className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                                <span>Atur Tarif di Tim &amp; Staff</span>
                             </Link>
                         </Button>
                         {canExportCsv ? (
-                            <Button asChild variant="outline" size="sm" className="rounded-full">
+                            <Button asChild variant="outline" size="sm" className="h-auto min-h-10 max-w-full whitespace-normal rounded-full py-2 text-center sm:h-9 sm:whitespace-nowrap">
                                 <a href={exportUrl}>
-                                    <Download className="mr-1.5 size-4" aria-hidden="true" />
-                                    Export CSV
+                                    <Download className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                                    <span>Export CSV</span>
                                 </a>
                             </Button>
                         ) : (
@@ -145,15 +145,15 @@ export default function CommissionsIndex({
                                 asChild
                                 size="sm"
                                 variant="outline"
-                                className="rounded-full text-mute"
+                                className="h-auto min-h-10 max-w-full whitespace-normal rounded-full py-2 text-center text-mute sm:h-9 sm:whitespace-nowrap"
                             >
                                 <Link
                                     href={route('dashboard.billing')}
                                     title="Export CSV tersedia pada paket Professional & Enterprise"
                                     aria-label="Export CSV tersedia pada paket Professional, buka Paket & Billing"
                                 >
-                                    <Download className="mr-1.5 size-4" aria-hidden="true" />
-                                    Export CSV (Pro)
+                                    <Download className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                                    <span>Export CSV (Pro)</span>
                                 </Link>
                             </Button>
                         )}

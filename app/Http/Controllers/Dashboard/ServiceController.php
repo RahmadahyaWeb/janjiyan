@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Models\ServiceAddon;
 use App\Services\PlanLimitService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Inertia\Response;
 
 class ServiceController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PlanLimitService $planLimitService): Response
     {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -28,9 +29,26 @@ class ServiceController extends Controller
             ? $business->staff()->where('is_active', true)->get(['id', 'name', 'title'])
             : collect();
 
+        $addons = $business
+            ? $business->serviceAddons()
+                ->with('services:id')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (ServiceAddon $addon): array => ServiceAddonController::serializeAddon($addon))
+                ->values()
+            : collect();
+
+        $maxAddonsPerBusiness = $business
+            ? $planLimitService->ensureTrialSubscription($business->owner)->plan->max_addons_per_business
+            : null;
+
         return Inertia::render('Dashboard/Services/Index', [
             'services' => $services,
             'staffList' => $staffList,
+            'addons' => $addons,
+            'canCreateAddon' => $business ? $planLimitService->canCreateAddon($business) : false,
+            'maxAddonsPerBusiness' => $maxAddonsPerBusiness,
         ]);
     }
 
@@ -238,7 +256,7 @@ class ServiceController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless($business && $service->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_services'), 403);
 
-        if ($service->bookings()->exists()) {
+        if ($service->bookings()->exists() || $service->bookingItems()->exists()) {
             $service->update(['is_active' => false]);
             $noun = $business->isDropoff() ? 'pesanan' : ($business->isSpaceBooking() ? 'booking' : 'reservasi');
 

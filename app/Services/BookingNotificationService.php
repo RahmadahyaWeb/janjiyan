@@ -12,7 +12,8 @@ use Throwable;
 class BookingNotificationService
 {
     public function __construct(
-        private readonly TelegramNotificationService $telegramService
+        private readonly TelegramNotificationService $telegramService,
+        private readonly InAppNotificationService $inAppNotificationService,
     ) {}
 
     public function notifyNewPublicBooking(Booking $booking): void
@@ -21,6 +22,7 @@ class BookingNotificationService
 
         $this->notifyMerchantRecipients($booking, 'new_booking');
         $this->telegramService->dispatchBookingAlert($booking, 'new_booking');
+        $this->inAppNotificationService->notifyNewBooking($booking);
         $this->notifyCustomerEmail($booking, 'created');
     }
 
@@ -30,6 +32,7 @@ class BookingNotificationService
 
         $this->notifyMerchantRecipients($booking, 'dp_uploaded');
         $this->telegramService->dispatchBookingAlert($booking, 'dp_uploaded');
+        $this->inAppNotificationService->notifyDpProofUploaded($booking);
     }
 
     public function notifyCustomerStatusChanged(Booking $booking, string $eventType): void

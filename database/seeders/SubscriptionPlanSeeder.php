@@ -17,10 +17,12 @@ class SubscriptionPlanSeeder extends Seeder
                 'price_yearly' => 490000,
                 'max_businesses' => 1,
                 'max_services_per_business' => 5,
+                'max_addons_per_business' => 5,
                 'max_staff_per_business' => 2,
                 'max_bookings_per_month' => 100,
                 'max_customers_per_business' => 500,
                 'can_export_csv' => false,
+                'can_use_google_review' => false,
             ],
             [
                 'slug' => 'professional',
@@ -29,10 +31,12 @@ class SubscriptionPlanSeeder extends Seeder
                 'price_yearly' => 1290000,
                 'max_businesses' => 3,
                 'max_services_per_business' => 10,
+                'max_addons_per_business' => null,
                 'max_staff_per_business' => 10,
                 'max_bookings_per_month' => 500,
                 'max_customers_per_business' => 2500,
                 'can_export_csv' => true,
+                'can_use_google_review' => true,
             ],
             [
                 'slug' => 'enterprise',
@@ -41,10 +45,12 @@ class SubscriptionPlanSeeder extends Seeder
                 'price_yearly' => 2490000,
                 'max_businesses' => 10,
                 'max_services_per_business' => null,
+                'max_addons_per_business' => null,
                 'max_staff_per_business' => null,
                 'max_bookings_per_month' => null,
                 'max_customers_per_business' => null,
                 'can_export_csv' => true,
+                'can_use_google_review' => true,
             ],
         ];
 

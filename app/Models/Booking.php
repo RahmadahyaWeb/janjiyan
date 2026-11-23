@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Booking extends Model
 {
@@ -45,12 +47,14 @@ class Booking extends Model
         'estimated_ready_date',
         'total_price',
         'dp_amount',
+        'paid_amount',
         'commission_amount',
         'reservation_status',
         'work_status',
         'payment_status',
         'dp_proof_path',
         'dp_expires_at',
+        'settled_at',
         'cancellation_reason',
         'customer_notes',
         'rescheduled_count',
@@ -69,6 +73,10 @@ class Booking extends Model
             'buffer_end_at' => 'datetime',
             'estimated_ready_date' => 'date',
             'dp_expires_at' => 'datetime',
+            'settled_at' => 'datetime',
+            'total_price' => 'integer',
+            'dp_amount' => 'integer',
+            'paid_amount' => 'integer',
             'commission_amount' => 'integer',
             'rescheduled_count' => 'integer',
             'last_rescheduled_at' => 'datetime',
@@ -145,6 +153,76 @@ class Booking extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(BookingItem::class)->orderBy('id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(BookingPayment::class)->orderBy('paid_at')->orderBy('id');
+    }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(BusinessReview::class);
+    }
+
+    public function resolveTotalDurationMinutes(): int
+    {
+        if ($this->isDropoff()) {
+            return 0;
+        }
+
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+        if ($items->isNotEmpty()) {
+            $sum = (int) $items->sum(
+                fn (BookingItem $item): int => max(0, (int) $item->duration_minutes_snapshot) * max(1, (int) $item->quantity)
+            );
+
+            if ($sum > 0) {
+                return $sum;
+            }
+        }
+
+        return max(15, (int) ($this->service?->duration_minutes ?? 60));
+    }
+
+    public function remainingBalance(): int
+    {
+        return max(0, (int) $this->total_price - (int) ($this->paid_amount ?? 0));
+    }
+
+    public function resolvedServiceSummary(): string
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+        if ($items->isEmpty()) {
+            return $this->service?->name ?? 'Layanan';
+        }
+
+        $serviceItems = $items->where('item_type', BookingItem::TYPE_SERVICE);
+        $addonCount = $items->where('item_type', '!=', BookingItem::TYPE_SERVICE)->count();
+
+        if ($serviceItems->isEmpty()) {
+            $base = $this->service?->name ?? 'Layanan';
+        } elseif ($serviceItems->count() === 1) {
+            $first = $serviceItems->first();
+            $base = $first->name_snapshot;
+        } else {
+            $base = $serviceItems
+                ->map(fn (BookingItem $item) => $this->isDropoff()
+                    ? "{$item->name_snapshot} ({$item->quantity} {$item->unit_label_snapshot})"
+                    : $item->name_snapshot)
+                ->implode(', ');
+        }
+
+        if ($addonCount > 0) {
+            return "{$base} + {$addonCount} tambahan";
+        }
+
+        return $base;
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
 use App\Models\Staff;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,43 @@ class StaffCommissionService
         }
 
         return $staff->calculateCommission($totalPrice);
+    }
+
+    /**
+     * Sum commissionable subtotals from booking items (primary service + is_commissionable items only).
+     *
+     * @param  iterable<int, BookingItem>  $items
+     */
+    public function calculateCommissionBase(iterable $items, int $fallbackTotal = 0): int
+    {
+        $hasItems = false;
+        $base = 0;
+
+        foreach ($items as $item) {
+            $hasItems = true;
+            if ($item->item_type === BookingItem::TYPE_SERVICE || (bool) $item->is_commissionable) {
+                $base += max(0, (int) $item->subtotal);
+            }
+        }
+
+        return $hasItems ? $base : max(0, $fallbackTotal);
+    }
+
+    public function calculateForBooking(Booking $booking, ?Staff $staff = null): int
+    {
+        $booking->loadMissing(['business', 'staff', 'items']);
+        if (! $booking->business?->supportsCommissions()) {
+            return 0;
+        }
+
+        $targetStaff = $staff ?? $booking->staff;
+        if (! $targetStaff) {
+            return 0;
+        }
+
+        $base = $this->calculateCommissionBase($booking->items, (int) $booking->total_price);
+
+        return $this->calculateForStaff($targetStaff, $base);
     }
 
     /**

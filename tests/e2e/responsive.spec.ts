@@ -58,6 +58,7 @@ const ROUTES: Route[] = [
     { name: 'invoice-lookup', path: '/b/rapi-studio/invoices', as: 'guest' },
     { name: 'invoice', path: '/b/rapi-studio/invoice/6bf5568fc1a844a8bace598d02a23afa', as: 'guest' },
     { name: 'invoice-confirmed', path: '/b/rapi-studio/invoice/581d0ca7937ab3b02ce14ed6d07f7781', as: 'guest' },
+    { name: 'review', path: '/b/rapi-studio/review', as: 'guest' },
 
     // Time-slot / Staff Appointment Merchant Dashboard (rapi-studio)
     { name: 'dashboard', path: '/dashboard', as: 'owner' },
@@ -87,6 +88,7 @@ const ROUTES: Route[] = [
     { name: 'customers', path: '/dashboard/customers', as: 'owner' },
     { name: 'customer-show', path: '/dashboard/customers/1', as: 'owner' },
     { name: 'customer-show-long', path: '/dashboard/customers/11', as: 'owner' },
+    { name: 'reviews', path: '/dashboard/reviews', as: 'owner' },
     { name: 'staff', path: '/dashboard/staff', as: 'owner' },
     { name: 'staff-create', path: '/dashboard/staff/create', as: 'owner' },
     { name: 'staff-edit', path: '/dashboard/staff/4/edit', as: 'owner' },
@@ -119,6 +121,7 @@ const ROUTES: Route[] = [
     { name: 'dropoff-schedule', path: '/dashboard/schedule', as: 'dropoff' },
     { name: 'dropoff-services', path: '/dashboard/services', as: 'dropoff' },
     { name: 'dropoff-customers', path: '/dashboard/customers', as: 'dropoff' },
+    { name: 'dropoff-reviews', path: '/dashboard/reviews', as: 'dropoff' },
     { name: 'dropoff-settings', path: '/dashboard/settings', as: 'dropoff' },
 
     // Superadmin

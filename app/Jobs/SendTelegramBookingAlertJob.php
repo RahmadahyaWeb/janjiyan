@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -32,7 +33,7 @@ class SendTelegramBookingAlertJob implements ShouldQueue
 
     public function handle(): void
     {
-        $booking = Booking::with(['business', 'service', 'staff', 'customer'])
+        $booking = Booking::with(['business', 'service', 'staff', 'customer', 'items'])
             ->find($this->bookingId);
 
         if (! $booking || ! $booking->business) {
@@ -73,9 +74,12 @@ class SendTelegramBookingAlertJob implements ShouldQueue
         $esc = static fn (?string $val): string => htmlspecialchars((string) ($val ?? '-'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         $unitLabel = $booking->resolvedUnitLabel();
-        $serviceLabel = $booking->isDropoff()
-            ? $esc($booking->service?->name).' ('.$booking->quantity.' '.$esc($unitLabel).')'
-            : $esc($booking->service?->name);
+        $serviceSummary = $booking->resolvedServiceSummary();
+        $serviceItemsCount = $booking->items->where('item_type', BookingItem::TYPE_SERVICE)->count();
+        $addonItemsCount = $booking->items->where('item_type', '!=', BookingItem::TYPE_SERVICE)->count();
+        $serviceLabel = ($booking->isDropoff() && $serviceItemsCount <= 1 && $addonItemsCount === 0)
+            ? $esc($serviceSummary).' ('.$booking->quantity.' '.$esc($unitLabel).')'
+            : $esc($serviceSummary);
 
         $lines = [
             $header,

@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use App\Models\BusinessReview;
+use App\Services\PlanLimitService;
 use App\Services\TelegramNotificationService;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +17,7 @@ use Inertia\Response;
 
 class SettingsController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PlanLimitService $planLimitService): Response
     {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -30,6 +33,10 @@ class SettingsController extends Controller
                 'business_type' => $business->resolvedBusinessType(),
                 'description' => $business->description,
                 'qr_poster_subtitle' => $business->qr_poster_subtitle,
+                'google_review_url' => $business->google_review_url,
+                'review_redirect_min_rating' => max(2, min(5, (int) ($business->review_redirect_min_rating ?? 4))),
+                'review_enabled' => (bool) ($business->review_enabled ?? true),
+                'review_sticker_subtitle' => $business->review_sticker_subtitle,
                 'phone' => $business->phone,
                 'address' => $business->address,
                 'timezone' => $business->timezone,
@@ -61,10 +68,11 @@ class SettingsController extends Controller
                     'caption' => $g->caption,
                 ])->values()
                 : [],
+            'canUseGoogleReview' => $business ? $planLimitService->canUseGoogleReview($business->owner) : false,
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, PlanLimitService $planLimitService): RedirectResponse
     {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -76,6 +84,19 @@ class SettingsController extends Controller
             'category' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:500'],
             'qr_poster_subtitle' => ['nullable', 'string', 'max:120'],
+            'google_review_url' => [
+                'nullable',
+                'string',
+                'max:500',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if ($value !== null && (! is_string($value) || ! BusinessReview::isValidGoogleReviewUrl($value))) {
+                        $fail('URL Google Review harus memakai HTTPS dan domain Google resmi (google.com, g.page, atau maps.app.goo.gl).');
+                    }
+                },
+            ],
+            'review_redirect_min_rating' => ['sometimes', 'integer', 'min:2', 'max:5'],
+            'review_enabled' => ['sometimes', 'boolean'],
+            'review_sticker_subtitle' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
             'timezone' => ['required', 'string', 'timezone', 'max:60'],
@@ -109,6 +130,35 @@ class SettingsController extends Controller
             'remove_cover' => ['nullable', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        $canUseGoogleReview = $planLimitService->canUseGoogleReview($business->owner);
+        $incomingReviewUrl = array_key_exists('google_review_url', $validated)
+            ? (trim((string) ($validated['google_review_url'] ?? '')) ?: null)
+            : $business->google_review_url;
+        $currentMinRating = max(2, min(5, (int) ($business->review_redirect_min_rating ?? 4)));
+        $incomingMinRating = array_key_exists('review_redirect_min_rating', $validated)
+            ? (int) $validated['review_redirect_min_rating']
+            : $currentMinRating;
+        $currentReviewEnabled = (bool) ($business->review_enabled ?? true);
+        $incomingReviewEnabled = array_key_exists('review_enabled', $validated)
+            ? (bool) $validated['review_enabled']
+            : $currentReviewEnabled;
+        $incomingStickerSubtitle = array_key_exists('review_sticker_subtitle', $validated)
+            ? (trim((string) ($validated['review_sticker_subtitle'] ?? '')) ?: null)
+            : $business->review_sticker_subtitle;
+
+        $attemptsReviewChange = (
+            array_key_exists('google_review_url', $validated)
+            && $incomingReviewUrl !== $business->google_review_url
+            && ($incomingReviewUrl !== null || $business->google_review_url !== null)
+        )
+            || $incomingMinRating !== $currentMinRating
+            || $incomingReviewEnabled !== $currentReviewEnabled
+            || $incomingStickerSubtitle !== $business->review_sticker_subtitle;
+
+        if (! $canUseGoogleReview && $attemptsReviewChange) {
+            return back()->with('error', 'Fitur Google Maps Review tersedia pada paket Professional dan Enterprise.');
+        }
 
         $qrisPath = $business->qris_path;
         if ($request->boolean('remove_qris') && $qrisPath) {
@@ -186,6 +236,10 @@ class SettingsController extends Controller
             'qr_poster_subtitle' => array_key_exists('qr_poster_subtitle', $validated)
                 ? (trim((string) ($validated['qr_poster_subtitle'] ?? '')) ?: null)
                 : $business->qr_poster_subtitle,
+            'google_review_url' => $canUseGoogleReview ? $incomingReviewUrl : $business->google_review_url,
+            'review_redirect_min_rating' => $canUseGoogleReview ? $incomingMinRating : $currentMinRating,
+            'review_enabled' => $canUseGoogleReview ? $incomingReviewEnabled : $currentReviewEnabled,
+            'review_sticker_subtitle' => $canUseGoogleReview ? $incomingStickerSubtitle : $business->review_sticker_subtitle,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
             'timezone' => $validated['timezone'],
@@ -259,5 +313,28 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('success', 'Sub-headline poster QR berhasil disimpan.');
+    }
+
+    public function updateReviewSubtitle(Request $request, PlanLimitService $planLimitService): RedirectResponse
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'manage_settings'), 403);
+
+        if (! $planLimitService->canUseGoogleReview($business->owner)) {
+            return back()->with('error', 'Fitur Google Maps Review tersedia pada paket Professional dan Enterprise.');
+        }
+
+        $validated = $request->validate([
+            'review_sticker_subtitle' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $subtitle = trim((string) ($validated['review_sticker_subtitle'] ?? ''));
+
+        $business->update([
+            'review_sticker_subtitle' => $subtitle !== '' ? $subtitle : null,
+        ]);
+
+        return back()->with('success', 'Sub-headline stiker QR ulasan berhasil disimpan.');
     }
 }

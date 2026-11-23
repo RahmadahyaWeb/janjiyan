@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Ban, CheckCircle2, Clock, CreditCard, LogOut, Search } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { formatRupiah, INVOICE_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { PageProps } from '@/types';
 
 interface AdminMerchantRow {
     id: number;
@@ -101,7 +100,6 @@ export default function AdminIndex({
     plans,
     filters,
 }: AdminIndexProps) {
-    const { flash } = usePage<PageProps>().props;
     const [activeTab, setActiveTab] = useState<'merchants' | 'businesses' | 'invoices'>('merchants');
     const [search, setSearch] = useState(filters.search);
     const [statusFilter, setStatusFilter] = useState(filters.status);
@@ -151,17 +149,6 @@ export default function AdminIndex({
                         Pantau merchant terdaftar, perpanjang trial, aktivasi paket manual, dan moderasi bisnis.
                     </p>
                 </div>
-
-                {flash.success && (
-                    <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink">
-                        {flash.success}
-                    </div>
-                )}
-                {flash.error && (
-                    <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
-                        {flash.error}
-                    </div>
-                )}
 
                 {/* KPI Stats */}
                 <section aria-label="Ringkasan platform" className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-6">

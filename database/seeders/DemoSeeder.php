@@ -3,11 +3,15 @@
 namespace Database\Seeders;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
+use App\Models\BookingPayment;
 use App\Models\Business;
 use App\Models\BusinessGallery;
 use App\Models\BusinessHoliday;
+use App\Models\BusinessReview;
 use App\Models\Customer;
 use App\Models\Service;
+use App\Models\ServiceAddon;
 use App\Models\Staff;
 use App\Models\StaffOperatingHour;
 use App\Models\StaffTimeOff;
@@ -143,6 +147,10 @@ class DemoSeeder extends Seeder
                 'address' => 'Jl. Kemang Raya No. 45, Jakarta Selatan',
                 'timezone' => 'Asia/Jakarta',
                 'logo_path' => $barberLogoPath,
+                'google_review_url' => 'https://g.page/r/rapi-studio-demo/review',
+                'review_redirect_min_rating' => 4,
+                'review_enabled' => true,
+                'review_sticker_subtitle' => 'Puas dengan potongan hari ini? Scan & beri bintang 5!',
                 'dp_expiry_minutes' => 120,
                 'min_booking_lead_minutes' => 15,
                 'max_booking_advance_days' => 60,
@@ -185,6 +193,9 @@ class DemoSeeder extends Seeder
                 'address' => 'Jl. Senopati No. 12, Jakarta Selatan',
                 'timezone' => 'Asia/Jakarta',
                 'logo_path' => $padelLogoPath,
+                'google_review_url' => 'https://maps.app.goo.gl/ArenaPadelDemo',
+                'review_redirect_min_rating' => 4,
+                'review_enabled' => true,
                 'dp_expiry_minutes' => 90,
                 'min_booking_lead_minutes' => 30,
                 'max_booking_advance_days' => 30,
@@ -217,6 +228,10 @@ class DemoSeeder extends Seeder
                 'phone' => '6281277778888',
                 'address' => 'Jl. Dharmawangsa No. 88, Jakarta Selatan',
                 'timezone' => 'Asia/Jakarta',
+                'google_review_url' => 'https://www.google.com/maps/search/?api=1&query=Soklenn+Cuci+Sepatu',
+                'review_redirect_min_rating' => 4,
+                'review_enabled' => true,
+                'review_sticker_subtitle' => 'Sepatu makin bersih? Bagikan ulasan Anda!',
                 'dp_expiry_minutes' => 120,
                 'min_booking_lead_minutes' => 0,
                 'max_booking_advance_days' => 30,
@@ -791,6 +806,360 @@ class DemoSeeder extends Seeder
                     'customer_notes' => $dItem['notes'],
                 ]
             );
+        }
+
+        // 9. v2.2 Service Add-ons across all 3 business types
+        $addonCreambath = ServiceAddon::updateOrCreate(
+            ['business_id' => $barbershop->id, 'name' => 'Creambath & Pijat Kepala'],
+            [
+                'description' => 'Perawatan kulit kepala menyegarkan selama 15 menit.',
+                'price' => 35000,
+                'unit_label' => 'item',
+                'duration_minutes' => 15,
+                'is_commissionable' => true,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 1,
+            ]
+        );
+
+        $addonPomade = ServiceAddon::updateOrCreate(
+            ['business_id' => $barbershop->id, 'name' => 'Pomade Matte Clay 100g'],
+            [
+                'description' => 'Produk styling rambut matte hold tahan lama (non-komisi).',
+                'price' => 75000,
+                'unit_label' => 'pcs',
+                'duration_minutes' => 0,
+                'is_commissionable' => false,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 2,
+            ]
+        );
+
+        $addonRacket = ServiceAddon::updateOrCreate(
+            ['business_id' => $padelArena->id, 'name' => 'Sewa Raket Padel Carbon'],
+            [
+                'description' => 'Sewa raket carbon per sesi permainan.',
+                'price' => 45000,
+                'unit_label' => 'unit',
+                'duration_minutes' => 0,
+                'is_commissionable' => false,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 1,
+            ]
+        );
+
+        $addonExtraTime = ServiceAddon::updateOrCreate(
+            ['business_id' => $padelArena->id, 'name' => 'Perpanjangan Sesi 30 Menit'],
+            [
+                'description' => 'Tambahan durasi sewa lapangan 30 menit.',
+                'price' => 125000,
+                'unit_label' => 'item',
+                'duration_minutes' => 30,
+                'is_commissionable' => false,
+                'applies_to_all_services' => false,
+                'is_active' => true,
+                'sort_order' => 2,
+            ]
+        );
+        $addonExtraTime->services()->sync([$svcPadel->id]);
+
+        $addonCoating = ServiceAddon::updateOrCreate(
+            ['business_id' => $soklenn->id, 'name' => 'Anti-Waterproof Coating'],
+            [
+                'description' => 'Pelapis pelindung air dan noda agar sepatu awet bersih.',
+                'price' => 25000,
+                'unit_label' => 'pasang',
+                'duration_minutes' => 0,
+                'is_commissionable' => false,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 1,
+            ]
+        );
+
+        ServiceAddon::updateOrCreate(
+            ['business_id' => $soklenn->id, 'name' => 'Parfum & Silica Gel Pack'],
+            [
+                'description' => 'Anti-lembap dan pengharum ekstra untuk penyimpanan sepatu.',
+                'price' => 10000,
+                'unit_label' => 'pcs',
+                'duration_minutes' => 0,
+                'is_commissionable' => false,
+                'applies_to_all_services' => true,
+                'is_active' => true,
+                'sort_order' => 2,
+            ]
+        );
+
+        // 10. Multi-service drop-off demo order & itemized booking_items + booking_payments backfill for demo bookings
+        $multiDropBooking = Booking::updateOrCreate(
+            ['booking_code' => 'JNY-DROP05'],
+            [
+                'business_id' => $soklenn->id,
+                'service_id' => $svcRegularShoes->id,
+                'staff_id' => null,
+                'customer_id' => $dropoffCustomers[0]->id,
+                'booked_customer_name' => $dropoffCustomers[0]->name,
+                'booked_customer_email' => $dropoffCustomers[0]->email,
+                'booking_mode' => 'dropoff',
+                'quantity' => 3,
+                'unit_label' => 'item',
+                'fulfillment_type' => 'dropoff',
+                'invoice_number' => 'INV-'.$today->format('Ymd').'-DROP05',
+                'invoice_token' => substr(hash('sha256', 'demo-JNY-DROP05'), 0, 32),
+                'booking_date' => $today->toDateString(),
+                'start_at' => $today->setTime(9, 0)->utc(),
+                'end_at' => $today->setTime(18, 0)->utc(),
+                'buffer_end_at' => $today->setTime(18, 0)->utc(),
+                'estimated_ready_date' => $today->addDays(4)->toDateString(),
+                'total_price' => 150000,
+                'dp_amount' => 27500,
+                'paid_amount' => 150000,
+                'reservation_status' => 'confirmed',
+                'work_status' => 'in_progress',
+                'payment_status' => 'settled',
+                'settled_at' => now()->subMinutes(20),
+                'customer_notes' => '2 pasang sepatu lari + 1 tas kanvas + coating waterproof.',
+            ]
+        );
+
+        if (! $multiDropBooking->items()->exists()) {
+            BookingItem::create([
+                'booking_id' => $multiDropBooking->id,
+                'item_type' => BookingItem::TYPE_SERVICE,
+                'service_id' => $svcRegularShoes->id,
+                'name_snapshot' => $svcRegularShoes->name,
+                'unit_label_snapshot' => 'pasang',
+                'unit_price' => $svcRegularShoes->price,
+                'quantity' => 2,
+                'duration_minutes_snapshot' => 0,
+                'turnaround_days_snapshot' => $svcRegularShoes->turnaround_days,
+                'is_commissionable' => true,
+                'subtotal' => $svcRegularShoes->price * 2,
+            ]);
+            BookingItem::create([
+                'booking_id' => $multiDropBooking->id,
+                'item_type' => BookingItem::TYPE_SERVICE,
+                'service_id' => $svcBagClean->id,
+                'name_snapshot' => $svcBagClean->name,
+                'unit_label_snapshot' => 'pcs',
+                'unit_price' => $svcBagClean->price,
+                'quantity' => 1,
+                'duration_minutes_snapshot' => 0,
+                'turnaround_days_snapshot' => $svcBagClean->turnaround_days,
+                'is_commissionable' => true,
+                'subtotal' => $svcBagClean->price,
+            ]);
+            BookingItem::create([
+                'booking_id' => $multiDropBooking->id,
+                'item_type' => BookingItem::TYPE_ADDON,
+                'service_addon_id' => $addonCoating->id,
+                'name_snapshot' => $addonCoating->name,
+                'unit_label_snapshot' => $addonCoating->unit_label,
+                'unit_price' => $addonCoating->price,
+                'quantity' => 1,
+                'duration_minutes_snapshot' => 0,
+                'turnaround_days_snapshot' => 0,
+                'is_commissionable' => false,
+                'subtotal' => $addonCoating->price,
+            ]);
+        }
+
+        if (! $multiDropBooking->payments()->exists()) {
+            BookingPayment::create([
+                'booking_id' => $multiDropBooking->id,
+                'business_id' => $soklenn->id,
+                'payment_type' => BookingPayment::TYPE_SETTLEMENT,
+                'payment_method' => BookingPayment::METHOD_QRIS,
+                'amount' => 150000,
+                'received_amount' => 150000,
+                'change_amount' => 0,
+                'recorded_by_user_id' => $owner->id,
+                'paid_at' => now()->subMinutes(20),
+                'notes' => 'Pelunasan QRIS di konter',
+            ]);
+        }
+
+        // Backfill booking_items & today's cashier payments for other demo bookings if empty
+        $allDemoBookings = Booking::whereIn('business_id', [$barbershop->id, $padelArena->id, $soklenn->id])
+            ->with('service')
+            ->get();
+
+        foreach ($allDemoBookings as $demoBooking) {
+            if (! $demoBooking->items()->exists() && $demoBooking->service) {
+                $svc = $demoBooking->service;
+                $qty = max(1, (int) $demoBooking->quantity);
+                BookingItem::create([
+                    'booking_id' => $demoBooking->id,
+                    'item_type' => BookingItem::TYPE_SERVICE,
+                    'service_id' => $svc->id,
+                    'name_snapshot' => $svc->name,
+                    'unit_label_snapshot' => $svc->resolvedUnitLabel(),
+                    'unit_price' => (int) $svc->price,
+                    'quantity' => $qty,
+                    'duration_minutes_snapshot' => $demoBooking->isDropoff() ? 0 : (int) $svc->duration_minutes,
+                    'turnaround_days_snapshot' => $demoBooking->isDropoff() ? (int) ($svc->turnaround_days ?? 1) : 0,
+                    'is_commissionable' => true,
+                    'subtotal' => (int) $demoBooking->total_price,
+                ]);
+            }
+
+            if (! $demoBooking->payments()->exists()) {
+                if ($demoBooking->payment_status === 'settled' && (int) $demoBooking->total_price > 0) {
+                    $paidAt = $demoBooking->booking_code === 'JNY-DEMO05' ? now()->subMinutes(45) : now()->subMinutes(30);
+                    BookingPayment::create([
+                        'booking_id' => $demoBooking->id,
+                        'business_id' => $demoBooking->business_id,
+                        'payment_type' => BookingPayment::TYPE_SETTLEMENT,
+                        'payment_method' => $demoBooking->booking_code === 'JNY-DEMO05'
+                            ? BookingPayment::METHOD_CASH
+                            : BookingPayment::METHOD_EDC,
+                        'amount' => (int) $demoBooking->total_price,
+                        'received_amount' => $demoBooking->booking_code === 'JNY-DEMO05'
+                            ? (int) $demoBooking->total_price + 15000
+                            : (int) $demoBooking->total_price,
+                        'change_amount' => $demoBooking->booking_code === 'JNY-DEMO05' ? 15000 : 0,
+                        'recorded_by_user_id' => $owner->id,
+                        'paid_at' => $paidAt,
+                        'notes' => 'Pelunasan kasir demo',
+                    ]);
+                    $demoBooking->update([
+                        'paid_amount' => (int) $demoBooking->total_price,
+                        'settled_at' => $paidAt,
+                    ]);
+                } elseif ($demoBooking->payment_status === 'dp_verified' && (int) $demoBooking->dp_amount > 0) {
+                    BookingPayment::create([
+                        'booking_id' => $demoBooking->id,
+                        'business_id' => $demoBooking->business_id,
+                        'payment_type' => BookingPayment::TYPE_DP,
+                        'payment_method' => BookingPayment::METHOD_TRANSFER,
+                        'amount' => (int) $demoBooking->dp_amount,
+                        'received_amount' => (int) $demoBooking->dp_amount,
+                        'change_amount' => 0,
+                        'recorded_by_user_id' => $owner->id,
+                        'paid_at' => now()->subMinutes(15),
+                        'notes' => 'Verifikasi uang muka demo',
+                    ]);
+                    $demoBooking->update([
+                        'paid_amount' => (int) $demoBooking->dp_amount,
+                        'settled_at' => null,
+                    ]);
+                }
+            }
+        }
+
+        // Attach sample add-on items to completed JNY-DEMO05 if still 1 item
+        $demo05 = Booking::where('booking_code', 'JNY-DEMO05')->first();
+        if ($demo05 && $demo05->items()->count() === 1) {
+            BookingItem::create([
+                'booking_id' => $demo05->id,
+                'item_type' => BookingItem::TYPE_ADDON,
+                'service_addon_id' => $addonCreambath->id,
+                'name_snapshot' => $addonCreambath->name,
+                'unit_label_snapshot' => $addonCreambath->unit_label,
+                'unit_price' => $addonCreambath->price,
+                'quantity' => 1,
+                'duration_minutes_snapshot' => $addonCreambath->duration_minutes,
+                'turnaround_days_snapshot' => 0,
+                'is_commissionable' => true,
+                'subtotal' => $addonCreambath->price,
+            ]);
+            BookingItem::create([
+                'booking_id' => $demo05->id,
+                'item_type' => BookingItem::TYPE_ADDON,
+                'service_addon_id' => $addonPomade->id,
+                'name_snapshot' => $addonPomade->name,
+                'unit_label_snapshot' => $addonPomade->unit_label,
+                'unit_price' => $addonPomade->price,
+                'quantity' => 1,
+                'duration_minutes_snapshot' => 0,
+                'turnaround_days_snapshot' => 0,
+                'is_commissionable' => false,
+                'subtotal' => $addonPomade->price,
+            ]);
+            $newTotal = (int) $demo05->items()->sum('subtotal');
+            $delta = max(0, $newTotal - (int) $demo05->paid_amount);
+            if ($delta > 0) {
+                BookingPayment::create([
+                    'booking_id' => $demo05->id,
+                    'business_id' => $barbershop->id,
+                    'payment_type' => BookingPayment::TYPE_SETTLEMENT,
+                    'payment_method' => BookingPayment::METHOD_QRIS,
+                    'amount' => $delta,
+                    'received_amount' => $delta,
+                    'change_amount' => 0,
+                    'recorded_by_user_id' => $owner->id,
+                    'paid_at' => now()->subMinutes(10),
+                    'notes' => 'Tambahan creambath & pomade di kasir',
+                ]);
+            }
+            $demo05->update([
+                'total_price' => $newTotal,
+                'paid_amount' => $newTotal,
+                'payment_status' => 'settled',
+                'settled_at' => now()->subMinutes(10),
+            ]);
+        }
+
+        // 11. Demo Google & Private Reviews
+        if ($demo05) {
+            BusinessReview::updateOrCreate(
+                ['booking_id' => $demo05->id],
+                [
+                    'business_id' => $barbershop->id,
+                    'customer_id' => $demo05->customer_id,
+                    'reviewer_name' => $demo05->customer->name,
+                    'reviewer_phone' => $demo05->customer->phone,
+                    'rating' => 5,
+                    'comment' => 'Potongannya super rapi, pijat kepala nyaman banget, dan kasir langsung kirim struk digital ke WA!',
+                    'redirected_to_google' => true,
+                ]
+            );
+        }
+
+        if (! BusinessReview::where('business_id', $barbershop->id)->where('rating', '<', 4)->exists()) {
+            BusinessReview::create([
+                'business_id' => $barbershop->id,
+                'booking_id' => null,
+                'customer_id' => $customers[2]->id ?? null,
+                'reviewer_name' => 'Farhan Maulana',
+                'reviewer_phone' => '6281200010003',
+                'rating' => 2,
+                'comment' => 'Ruang tunggu agak ramai sore tadi dan AC kurang dingin, mohon diperhatikan ya.',
+                'redirected_to_google' => false,
+            ]);
+        }
+
+        $drop04 = Booking::where('booking_code', 'JNY-DROP04')->first();
+        if ($drop04) {
+            BusinessReview::updateOrCreate(
+                ['booking_id' => $drop04->id],
+                [
+                    'business_id' => $soklenn->id,
+                    'customer_id' => $drop04->customer_id,
+                    'reviewer_name' => $drop04->customer->name,
+                    'reviewer_phone' => $drop04->customer->phone,
+                    'rating' => 5,
+                    'comment' => 'Sepatu putih kembali kinclong seperti baru dan antar-jemput tepat waktu.',
+                    'redirected_to_google' => true,
+                ]
+            );
+        }
+
+        if (! BusinessReview::where('business_id', $padelArena->id)->exists()) {
+            BusinessReview::create([
+                'business_id' => $padelArena->id,
+                'booking_id' => null,
+                'customer_id' => $padelCustomer->id,
+                'reviewer_name' => 'Dimas Padel',
+                'reviewer_phone' => '6281399990001',
+                'rating' => 5,
+                'comment' => 'Karpet lapangan mantap, pencahayaan indoor terang, dan sewa raketnya praktis.',
+                'redirected_to_google' => true,
+            ]);
         }
     }
 

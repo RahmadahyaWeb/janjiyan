@@ -11,9 +11,12 @@ use App\Http\Controllers\Dashboard\CommissionController;
 use App\Http\Controllers\Dashboard\CustomerController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\GalleryController;
+use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\OnboardingController;
 use App\Http\Controllers\Dashboard\ProfileController;
+use App\Http\Controllers\Dashboard\ReviewController;
 use App\Http\Controllers\Dashboard\ScheduleController;
+use App\Http\Controllers\Dashboard\ServiceAddonController;
 use App\Http\Controllers\Dashboard\ServiceController;
 use App\Http\Controllers\Dashboard\SettingsController;
 use App\Http\Controllers\Dashboard\StaffController;
@@ -21,6 +24,7 @@ use App\Http\Controllers\Dashboard\StaffScheduleController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\PublicBookingController;
+use App\Http\Controllers\PublicReviewController;
 use App\Http\Controllers\Webhooks\MayarWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -70,6 +74,14 @@ Route::prefix('b/{slug}')->group(function () {
     Route::post('/booking/{code}/proof', [PublicBookingController::class, 'uploadProof'])
         ->middleware('throttle:public-dp-proof')
         ->name('public.booking.proof');
+
+    Route::get('/review', [PublicReviewController::class, 'show'])->name('public.review.show');
+    Route::post('/review', [PublicReviewController::class, 'store'])
+        ->middleware('throttle:public-review')
+        ->name('public.review.store');
+    Route::post('/review/{review}/redirect', [PublicReviewController::class, 'markRedirected'])
+        ->middleware('throttle:public-review')
+        ->name('public.review.redirect');
 });
 
 // Authentication
@@ -136,6 +148,7 @@ Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashbo
     Route::get('/bookings/{booking}/cancel', [BookingController::class, 'editCancel'])->name('dashboard.bookings.cancel.edit');
     Route::get('/bookings/slots', [BookingController::class, 'slots'])->name('dashboard.bookings.slots');
     Route::get('/bookings/{booking}/proof', [BookingController::class, 'proof'])->name('dashboard.bookings.proof');
+    Route::get('/cashier/summary', [BookingController::class, 'cashierSummary'])->name('dashboard.cashier.summary');
 
     Route::get('/services', [ServiceController::class, 'index'])->name('dashboard.services');
     Route::get('/services/create', [ServiceController::class, 'create'])->name('dashboard.services.create');
@@ -151,7 +164,12 @@ Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashbo
     Route::get('/customers', [CustomerController::class, 'index'])->name('dashboard.customers');
     Route::get('/customers/lookup', [CustomerController::class, 'lookup'])->name('dashboard.customers.lookup');
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('dashboard.customers.show');
+    Route::get('/reviews', [ReviewController::class, 'index'])->name('dashboard.reviews');
     Route::get('/settings', [SettingsController::class, 'index'])->name('dashboard.settings');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('dashboard.notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('dashboard.notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('dashboard.notifications.read');
 
     Route::get('/billing', [BillingController::class, 'index'])->name('dashboard.billing');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])
@@ -170,6 +188,11 @@ Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashbo
         Route::post('/bookings/{booking}/reschedule', [BookingController::class, 'reschedule'])->name('dashboard.bookings.reschedule');
         Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('dashboard.bookings.status');
         Route::post('/bookings/{booking}/verify-dp', [BookingController::class, 'verifyDp'])->name('dashboard.bookings.verify-dp');
+        Route::post('/bookings/{booking}/items', [BookingController::class, 'adjustItems'])->name('dashboard.bookings.items.update');
+        Route::post('/bookings/{booking}/payments', [BookingController::class, 'recordPayment'])->name('dashboard.bookings.payments.store');
+        Route::get('/cashier/export/csv', [BookingController::class, 'exportCashierCsv'])
+            ->middleware('throttle:dashboard-export')
+            ->name('dashboard.cashier.export');
         Route::get('/bookings/export/csv', [BookingController::class, 'exportCsv'])
             ->middleware('throttle:dashboard-export')
             ->name('dashboard.bookings.export');
@@ -177,6 +200,10 @@ Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashbo
         Route::post('/services', [ServiceController::class, 'store'])->name('dashboard.services.store');
         Route::put('/services/{service}', [ServiceController::class, 'update'])->name('dashboard.services.update');
         Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('dashboard.services.destroy');
+
+        Route::post('/addons', [ServiceAddonController::class, 'store'])->name('dashboard.addons.store');
+        Route::put('/addons/{addon}', [ServiceAddonController::class, 'update'])->name('dashboard.addons.update');
+        Route::delete('/addons/{addon}', [ServiceAddonController::class, 'destroy'])->name('dashboard.addons.destroy');
 
         Route::post('/staff', [StaffController::class, 'store'])->name('dashboard.staff.store');
         Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('dashboard.staff.update');
@@ -201,6 +228,7 @@ Route::middleware(['auth', 'verified', 'merchant', 'onboarded'])->prefix('dashbo
 
         Route::post('/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
         Route::patch('/settings/qr-subtitle', [SettingsController::class, 'updateQrSubtitle'])->name('dashboard.settings.qr-subtitle');
+        Route::patch('/settings/review-subtitle', [SettingsController::class, 'updateReviewSubtitle'])->name('dashboard.settings.review-subtitle');
         Route::post('/settings/telegram/test', [SettingsController::class, 'testTelegram'])
             ->middleware('throttle:5,1')
             ->name('dashboard.settings.telegram.test');

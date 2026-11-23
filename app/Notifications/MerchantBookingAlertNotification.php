@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,7 +41,7 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer']);
+        $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer', 'items']);
         $business = $booking->business;
         $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
         $tz = $business?->timezone ?: 'Asia/Jakarta';
@@ -52,6 +53,9 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
         $isDpUploaded = $this->eventType === 'dp_uploaded';
         $isDropoff = $businessType === Business::TYPE_DROPOFF || $booking->isDropoff();
         $unitLabel = $booking->resolvedUnitLabel();
+        $serviceSummary = $booking->resolvedServiceSummary();
+        $serviceItemsCount = $booking->items->where('item_type', BookingItem::TYPE_SERVICE)->count();
+        $addonItemsCount = $booking->items->where('item_type', '!=', BookingItem::TYPE_SERVICE)->count();
 
         [$nounTitle, $nounLower, $servicePrefix, $actionLabel] = match ($businessType) {
             Business::TYPE_DROPOFF => ['Pesanan', 'pesanan', 'Layanan', 'Buka Dashboard Pesanan'],
@@ -65,11 +69,11 @@ class MerchantBookingAlertNotification extends Notification implements ShouldQue
 
         $intro = $isDpUploaded
             ? "Pelanggan {$booking->customer->name} baru saja mengunggah bukti transfer uang muka sebesar {$dpFormatted} untuk {$nounLower} {$booking->booking_code} dan menunggu verifikasi Anda."
-            : "Ada {$nounLower} baru dari {$booking->customer->name} untuk {$booking->service->name}.";
+            : "Ada {$nounLower} baru dari {$booking->customer->name} untuk {$serviceSummary}.";
 
-        $serviceLine = $isDropoff
-            ? "{$servicePrefix}: {$booking->service->name} ({$booking->quantity} {$unitLabel})"
-            : "{$servicePrefix}: {$booking->service->name}";
+        $serviceLine = ($isDropoff && $serviceItemsCount <= 1 && $addonItemsCount === 0)
+            ? "{$servicePrefix}: {$serviceSummary} ({$booking->quantity} {$unitLabel})"
+            : "{$servicePrefix}: {$serviceSummary}";
 
         $scheduleLine = $isDropoff
             ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,7 +41,7 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
 
     public function toMail(object $notifiable): MailMessage
     {
-        $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer']);
+        $booking = $this->booking->loadMissing(['business', 'service', 'staff', 'customer', 'items']);
         $business = $booking->business;
         $businessType = $business?->resolvedBusinessType() ?? Business::TYPE_STAFF_APPOINTMENT;
         $tz = $business?->timezone ?: 'Asia/Jakarta';
@@ -109,14 +110,17 @@ class CustomerBookingStatusNotification extends Notification implements ShouldQu
 
         $isDropoff = $businessType === Business::TYPE_DROPOFF || $booking->isDropoff();
         $unitLabel = $booking->resolvedUnitLabel();
+        $serviceSummary = $booking->resolvedServiceSummary();
+        $serviceItemsCount = $booking->items->where('item_type', BookingItem::TYPE_SERVICE)->count();
+        $addonItemsCount = $booking->items->where('item_type', '!=', BookingItem::TYPE_SERVICE)->count();
 
         $scheduleLine = $isDropoff
             ? "Jadwal: {$dateLabel} · {$booking->scheduleDisplayLabel($tz)}"
             : "Jadwal: {$dateLabel}, {$timeLabel}";
 
-        $serviceLine = $isDropoff
-            ? "{$servicePrefix}: {$booking->service->name} ({$booking->quantity} {$unitLabel})"
-            : "{$servicePrefix}: {$booking->service->name}";
+        $serviceLine = ($isDropoff && $serviceItemsCount <= 1 && $addonItemsCount === 0)
+            ? "{$servicePrefix}: {$serviceSummary} ({$booking->quantity} {$unitLabel})"
+            : "{$servicePrefix}: {$serviceSummary}";
 
         $mail = (new MailMessage)
             ->subject($subject)

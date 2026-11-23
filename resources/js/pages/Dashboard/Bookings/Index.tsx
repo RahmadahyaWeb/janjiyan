@@ -1,10 +1,13 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Search, SlidersHorizontal, UserX, X } from 'lucide-react';
+import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Printer, Search, SlidersHorizontal, UserX, Wallet, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
+import { CashierSettlementDialog } from '@/components/CashierSettlementDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { DailyCashierSummaryCard } from '@/components/DailyCashierSummaryCard';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
+import { ReceiptPrintDialog } from '@/components/ReceiptPrintSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +46,13 @@ import {
     type WhatsappTemplatesMap,
 } from '@/lib/whatsappTemplates';
 import { cn } from '@/lib/utils';
-import type { PageProps } from '@/types';
+import type {
+    BookingItemRecord,
+    BookingPaymentRecord,
+    DailyCashierSummary,
+    PageProps,
+    ServiceAddon,
+} from '@/types';
 
 interface BookingRow {
     id: number;
@@ -59,6 +68,7 @@ interface BookingRow {
     customer_is_blocked?: boolean;
     service_id: number;
     service_name: string;
+    service_summary?: string;
     service_assignment_mode: 'staff' | 'capacity';
     booking_mode?: 'time_slot' | 'dropoff';
     quantity?: number;
@@ -76,6 +86,12 @@ interface BookingRow {
     end_time_local: string;
     total_price: number;
     dp_amount: number;
+    paid_amount?: number;
+    remaining_balance?: number;
+    settled_at_local?: string | null;
+    review_url?: string | null;
+    items?: BookingItemRecord[];
+    payments?: BookingPaymentRecord[];
     reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
     payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
     has_dp_proof: boolean;
@@ -140,6 +156,7 @@ interface BookingsIndexProps {
     bookings: BookingRow[];
     pagination?: PaginationMeta | null;
     services: ServiceOption[];
+    addons?: ServiceAddon[];
     staffOptions?: StaffFilterOption[];
     filters: {
         status: string;
@@ -158,14 +175,21 @@ interface BookingsIndexProps {
     calendar: CalendarPayload;
     businessName: string;
     businessAddress?: string;
+    businessPhone?: string | null;
+    businessEmail?: string | null;
+    cashierUserName?: string | null;
     whatsappTemplates?: WhatsappTemplatesMap;
     canExportCsv: boolean;
+    canVerifyPayments?: boolean;
+    canUseGoogleReview?: boolean;
+    dailyCashierSummary?: DailyCashierSummary | null;
 }
 
 export default function BookingsIndex({
     bookings,
     pagination,
     services,
+    addons = [],
     staffOptions = [],
     filters,
     dropoffStageCounts,
@@ -173,8 +197,13 @@ export default function BookingsIndex({
     calendar,
     businessName,
     businessAddress = '',
+    businessPhone = null,
+    businessEmail = null,
+    cashierUserName = null,
     whatsappTemplates,
     canExportCsv,
+    canVerifyPayments: propCanVerifyPayments,
+    dailyCashierSummary = null,
 }: BookingsIndexProps) {
     const { pendingBookingsCount = 0, activeBusiness } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
@@ -189,15 +218,43 @@ export default function BookingsIndex({
     const visibleWaTemplates = getWhatsappTemplateMetaForBusiness(activeBusiness?.business_type);
 
     // Verifying DP and marking paid need verify_payments on the server.
-    const canVerifyPayments = activeBusiness?.can?.verify_payments ?? true;
+    const canVerifyPayments = propCanVerifyPayments ?? activeBusiness?.can?.verify_payments ?? true;
+    const canManageBookings = activeBusiness?.can?.manage_bookings ?? true;
+    const canAccessPos = canVerifyPayments || canManageBookings;
     const canOpenBilling = activeBusiness?.can?.manage_settings ?? true;
     const [search, setSearch] = useState(filters.search);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
     const [selectedCalendarBooking, setSelectedCalendarBooking] = useState<CalendarBookingItem | null>(null);
+    const [cashierBookingId, setCashierBookingId] = useState<number | null>(null);
+    const [receiptBookingId, setReceiptBookingId] = useState<number | null>(null);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
     const [desktopFilterOpen, setDesktopFilterOpen] = useState(false);
     const desktopFilterRef = useRef<HTMLDivElement>(null);
+
+    const cashierBooking =
+        cashierBookingId !== null
+            ? bookings.find((b) => b.id === cashierBookingId) ??
+              (calendar.bookings as unknown as BookingRow[]).find((b) => b.id === cashierBookingId) ??
+              null
+            : null;
+    const receiptBooking =
+        receiptBookingId !== null
+            ? bookings.find((b) => b.id === receiptBookingId) ??
+              (calendar.bookings as unknown as BookingRow[]).find((b) => b.id === receiptBookingId) ??
+              null
+            : null;
+
+    const getPaymentTotals = (b: BookingRow) => {
+        const paid = b.paid_amount ?? (b.payment_status === 'settled' ? b.total_price : 0);
+        const remaining = b.remaining_balance ?? Math.max(0, b.total_price - paid);
+        return { paid, remaining };
+    };
+
+    const getServiceSummaryDisplay = (b: BookingRow) => b.service_summary || b.service_name;
+
+    const hasMultiServiceItems = (b: BookingRow) =>
+        (b.items?.filter((item) => item.item_type === 'service').length ?? 0) > 1;
 
     useEffect(() => {
         if (!mobileFilterOpen) return;
@@ -337,6 +394,8 @@ export default function BookingsIndex({
             | 'dp_amount'
             | 'total_price'
             | 'invoice_url'
+            | 'review_url'
+            | 'service_summary'
         >,
         key: WhatsappTemplateKey
     ): string => {
@@ -348,7 +407,7 @@ export default function BookingsIndex({
         return buildWhatsappTemplateUrl(b.customer_phone, template, {
             customer_name: b.customer_name,
             business_name: businessName,
-            service_name: b.service_name,
+            service_name: b.service_summary || b.service_name,
             quantity: b.quantity ?? 1,
             unit_label: b.unit_label ?? 'item',
             staff_name: b.staff_name,
@@ -359,6 +418,7 @@ export default function BookingsIndex({
             dp_amount: b.dp_amount,
             total_price: b.total_price,
             invoice_url: b.invoice_url,
+            review_url: b.review_url ?? '',
             business_address: businessAddress,
         });
     };
@@ -601,6 +661,31 @@ export default function BookingsIndex({
                     </Button>
                 )}
 
+                {canAccessPos && (
+                    <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={isDesktop ? 'h-8 px-2.5 text-xs' : undefined}
+                            onClick={() => setCashierBookingId(b.id)}
+                        >
+                            <Wallet className="size-3.5" aria-hidden="true" />
+                            <span>Kasir / Bayar</span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={isDesktop ? 'h-8 px-2.5 text-xs' : undefined}
+                            onClick={() => setReceiptBookingId(b.id)}
+                        >
+                            <Printer className="size-3.5" aria-hidden="true" />
+                            <span>Struk / Cetak</span>
+                        </Button>
+                    </>
+                )}
+
                 <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -739,6 +824,13 @@ export default function BookingsIndex({
             }
         >
             <Head title={nounTitle} />
+
+            {dailyCashierSummary && (
+                <DailyCashierSummaryCard
+                    initialSummary={dailyCashierSummary}
+                    canOpenBilling={canOpenBilling}
+                />
+            )}
 
             {/* Toolbar */}
             <div className="space-y-3">
@@ -1063,7 +1155,7 @@ export default function BookingsIndex({
                                 </Button>
 
                                 {desktopFilterOpen && (
-                                    <div className="absolute top-full right-0 z-30 mt-2 w-80 space-y-4 overscroll-contain rounded-md border border-hairline bg-canvas p-4 shadow-lg">
+                                    <div className="absolute top-full right-0 z-30 mt-2 w-80 space-y-4 overscroll-contain rounded-md border border-hairline bg-canvas p-4">
                                         {supportsStaffFilter && staffOptions.length > 0 && (
                                             <div className="space-y-1.5">
                                                 <Label htmlFor="desktop-filter-staff">Staff</Label>
@@ -1193,6 +1285,9 @@ export default function BookingsIndex({
                     <div className="space-y-3 md:hidden">
                         {bookings.map((b) => {
                             const { isDropoff, showSlaWarning, showWorkBadge } = getBookingMeta(b);
+                            const { paid, remaining } = getPaymentTotals(b);
+                            const isClosed =
+                                b.reservation_status === 'cancelled' || b.reservation_status === 'no_show';
 
                             return (
                                 <div
@@ -1212,8 +1307,10 @@ export default function BookingsIndex({
                                                     </Link>
                                                 </p>
                                                 <p className="mt-0.5 text-xs text-mute">
-                                                    <span className="font-medium text-body">{b.service_name}</span>
-                                                    {isDropoff ? (
+                                                    <span className="font-medium break-words text-body">
+                                                        {getServiceSummaryDisplay(b)}
+                                                    </span>
+                                                    {isDropoff && !hasMultiServiceItems(b) ? (
                                                         <span className="tabular-nums">
                                                             {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
                                                         </span>
@@ -1226,11 +1323,20 @@ export default function BookingsIndex({
                                                 <p className="text-base font-semibold tabular-nums text-ink">
                                                     {formatRupiah(b.total_price)}
                                                 </p>
-                                                {b.dp_amount > 0 && (
+                                                {paid > 0 && (
+                                                    <p className="text-xs tabular-nums text-mute">
+                                                        Dibayar {formatRupiah(paid)}
+                                                    </p>
+                                                )}
+                                                {remaining > 0 && !isClosed ? (
+                                                    <p className="text-xs font-medium tabular-nums text-electric">
+                                                        Sisa {formatRupiah(remaining)}
+                                                    </p>
+                                                ) : paid === 0 && b.dp_amount > 0 ? (
                                                     <p className="text-xs tabular-nums text-mute">
                                                         Uang muka {formatRupiah(b.dp_amount)}
                                                     </p>
-                                                )}
+                                                ) : null}
                                             </div>
                                         </div>
 
@@ -1370,6 +1476,9 @@ export default function BookingsIndex({
                             <tbody className="divide-y divide-divider">
                                 {bookings.map((b) => {
                                     const { isDropoff, showSlaWarning, showWorkBadge } = getBookingMeta(b);
+                                    const { paid, remaining } = getPaymentTotals(b);
+                                    const isClosed =
+                                        b.reservation_status === 'cancelled' || b.reservation_status === 'no_show';
 
                                     return (
                                         <tr key={b.id} className="align-top transition-colors hover:bg-bone/50">
@@ -1403,9 +1512,9 @@ export default function BookingsIndex({
                                             </td>
 
                                             <td className="min-w-[165px] px-2.5 py-3.5">
-                                                <p className="font-medium text-ink">
-                                                    {b.service_name}
-                                                    {isDropoff && (
+                                                <p className="font-medium break-words text-ink">
+                                                    {getServiceSummaryDisplay(b)}
+                                                    {isDropoff && !hasMultiServiceItems(b) && (
                                                         <span className="font-normal text-mute tabular-nums">
                                                             {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
                                                         </span>
@@ -1470,7 +1579,7 @@ export default function BookingsIndex({
                                                 )}
                                             </td>
 
-                                            <td className="min-w-[135px] px-2.5 py-3.5">
+                                            <td className="min-w-[180px] px-2.5 py-3.5">
                                                 <div className="flex flex-col items-start gap-1.5">
                                                     {showWorkBadge ? (
                                                         <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
@@ -1508,15 +1617,24 @@ export default function BookingsIndex({
                                                 <p className="font-semibold tabular-nums text-ink">
                                                     {formatRupiah(b.total_price)}
                                                 </p>
-                                                {b.dp_amount > 0 && (
+                                                {paid > 0 && (
+                                                    <p className="mt-0.5 text-xs tabular-nums text-mute">
+                                                        Dibayar {formatRupiah(paid)}
+                                                    </p>
+                                                )}
+                                                {remaining > 0 && !isClosed ? (
+                                                    <p className="mt-0.5 text-xs font-medium tabular-nums text-electric">
+                                                        Sisa {formatRupiah(remaining)}
+                                                    </p>
+                                                ) : paid === 0 && b.dp_amount > 0 ? (
                                                     <p className="mt-0.5 text-xs tabular-nums text-mute">
                                                         Uang muka {formatRupiah(b.dp_amount)}
                                                     </p>
-                                                )}
+                                                ) : null}
                                             </td>
 
-                                            <td className="py-3.5 pr-4 pl-2.5 text-right whitespace-nowrap">
-                                                <div className="inline-flex items-center justify-end gap-1.5">
+                                            <td className="py-3.5 pr-4 pl-2.5 text-right">
+                                                <div className="flex flex-wrap items-center justify-end gap-1.5">
                                                     {renderBookingActions(b, 'desktop')}
                                                 </div>
                                             </td>
@@ -1592,6 +1710,39 @@ export default function BookingsIndex({
                             </div>
 
                             <div className="flex flex-wrap gap-2 border-t border-divider pt-3">
+                                {canAccessPos && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 sm:flex-initial"
+                                            onClick={() => {
+                                                const targetId = selectedCalendarBooking.id;
+                                                setSelectedCalendarBooking(null);
+                                                setCashierBookingId(targetId);
+                                            }}
+                                        >
+                                            <Wallet className="size-3.5" aria-hidden="true" />
+                                            Kasir / Bayar
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 sm:flex-initial"
+                                            onClick={() => {
+                                                const targetId = selectedCalendarBooking.id;
+                                                setSelectedCalendarBooking(null);
+                                                setReceiptBookingId(targetId);
+                                            }}
+                                        >
+                                            <Printer className="size-3.5" aria-hidden="true" />
+                                            Struk / Cetak
+                                        </Button>
+                                    </>
+                                )}
+
                                 <Button asChild variant="outline" size="sm" className="flex-1 sm:flex-initial">
                                     <a
                                         href={buildQuickWaUrl(selectedCalendarBooking)}
@@ -1695,6 +1846,38 @@ export default function BookingsIndex({
                     updateStatus(noShowBooking.id, 'no_show');
                     setNoShowBooking(null);
                 }}
+            />
+
+            <CashierSettlementDialog
+                booking={cashierBooking}
+                open={cashierBooking !== null}
+                onOpenChange={(open) => !open && setCashierBookingId(null)}
+                services={services.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    price: s.price,
+                    unit_label: s.unit_label,
+                }))}
+                addons={addons}
+                canVerifyPayments={canVerifyPayments}
+                supportsCommissions={config.nav.showCommissions}
+                businessName={businessName}
+                businessAddress={businessAddress}
+                businessPhone={businessPhone}
+                businessEmail={businessEmail}
+                cashierName={cashierUserName}
+                onOpenReceiptDialog={(id) => setReceiptBookingId(id)}
+            />
+
+            <ReceiptPrintDialog
+                booking={receiptBooking}
+                open={receiptBooking !== null}
+                onOpenChange={(open) => !open && setReceiptBookingId(null)}
+                businessName={businessName}
+                businessAddress={businessAddress}
+                businessPhone={businessPhone}
+                businessEmail={businessEmail}
+                cashierName={cashierUserName}
             />
         </DashboardLayout>
     );

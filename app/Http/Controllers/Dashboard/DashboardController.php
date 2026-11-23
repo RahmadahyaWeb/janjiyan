@@ -202,8 +202,14 @@ class DashboardController extends Controller
 
             $business->services()->each(function (Service $service): void {
                 $service->staff()->detach();
+                $service->addons()->detach();
             });
+            $business->serviceAddons()->each(function ($addon): void {
+                $addon->services()->detach();
+            });
+            $business->serviceAddons()->delete();
             $business->services()->delete();
+            $business->reviews()->delete();
 
             $business->staff()->delete();
             $business->customers()->delete();

@@ -16,6 +16,7 @@ export interface WhatsappTemplateContext {
     dp_amount?: number;
     total_price?: number;
     invoice_url?: string | null;
+    review_url?: string | null;
     business_address?: string | null;
     quantity?: number;
     unit_label?: string | null;
@@ -74,6 +75,7 @@ export const WHATSAPP_PLACEHOLDERS: Array<{ token: string; label: string }> = [
     { token: '{dp_amount}', label: 'Nominal Uang Muka' },
     { token: '{total_price}', label: 'Total Harga' },
     { token: '{invoice_url}', label: 'Link Invoice' },
+    { token: '{review_url}', label: 'Link Ulasan' },
     { token: '{business_address}', label: 'Alamat Bisnis' },
 ];
 
@@ -110,6 +112,7 @@ export function interpolateWhatsappTemplate(template: string, ctx: WhatsappTempl
         '{dp_amount}': formatRupiah(ctx.dp_amount ?? 0),
         '{total_price}': formatRupiah(ctx.total_price ?? 0),
         '{invoice_url}': ctx.invoice_url || '-',
+        '{review_url}': ctx.review_url || '',
         '{business_address}': ctx.business_address || '-',
     };
 

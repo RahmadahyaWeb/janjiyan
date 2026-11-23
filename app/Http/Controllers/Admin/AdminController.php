@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\InAppNotificationService;
 use App\Services\PlanLimitService;
 use App\Services\SubscriptionActivationService;
 use Illuminate\Http\RedirectResponse;
@@ -157,7 +158,8 @@ class AdminController extends Controller
     public function extendTrial(
         Request $request,
         User $user,
-        PlanLimitService $planLimitService
+        PlanLimitService $planLimitService,
+        InAppNotificationService $inAppNotificationService
     ): RedirectResponse {
         $validated = $request->validate([
             'days' => ['required', 'integer', 'min:1', 'max:365'],
@@ -175,6 +177,8 @@ class AdminController extends Controller
             'trial_ends_at' => $newTrialEnd,
             'current_period_ends_at' => $newTrialEnd,
         ]);
+
+        $inAppNotificationService->notifyTrialExtended($user, (int) $validated['days'], $newTrialEnd);
 
         return to_route('admin.index')->with('success', "Trial untuk {$user->email} diperpanjang {$validated['days']} hari.");
     }
@@ -197,7 +201,8 @@ class AdminController extends Controller
     public function activatePlan(
         Request $request,
         User $user,
-        SubscriptionActivationService $activationService
+        SubscriptionActivationService $activationService,
+        InAppNotificationService $inAppNotificationService
     ): RedirectResponse {
         $validated = $request->validate([
             'plan_slug' => ['required', 'exists:subscription_plans,slug'],
@@ -212,7 +217,7 @@ class AdminController extends Controller
 
         $subscription = $activationService->activatePlan($user, $plan, $validated['billing_cycle']);
 
-        SubscriptionInvoice::create([
+        $invoice = SubscriptionInvoice::create([
             'user_id' => $user->id,
             'subscription_id' => $subscription->id,
             'subscription_plan_id' => $plan->id,
@@ -224,6 +229,8 @@ class AdminController extends Controller
             'paid_at' => now(),
             'notes' => $validated['notes'] ?: 'Aktivasi manual oleh Superadmin',
         ]);
+
+        $inAppNotificationService->notifySubscriptionActivated($user, $invoice, $subscription);
 
         return to_route('admin.index')->with('success', "Paket {$plan->name} ({$validated['billing_cycle']}) untuk {$user->email} berhasil diaktifkan.");
     }

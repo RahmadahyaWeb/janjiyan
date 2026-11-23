@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingItem;
+use App\Models\BookingPayment;
 use App\Models\Business;
 use App\Models\Service;
+use App\Models\ServiceAddon;
+use App\Services\BookingLedgerService;
 use App\Services\BookingNotificationService;
 use App\Services\PlanLimitService;
 use App\Services\SlotAvailabilityService;
@@ -14,7 +18,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,6 +36,13 @@ class BookingController extends Controller
     {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
+        abort_if(
+            $business
+            && ! $user->hasBusinessPermission($business, 'manage_bookings')
+            && ! $user->hasBusinessPermission($business, 'verify_payments'),
+            403
+        );
+        $business?->loadMissing('owner');
         $tz = $business?->timezone ?: 'Asia/Jakarta';
 
         $filters = $this->listFilters($request);
@@ -39,9 +54,15 @@ class BookingController extends Controller
         $statusFilter = $this->sanitizeStatus($filters['status'], $mode);
 
         $todayDate = CarbonImmutable::now($tz)->toDateString();
+        $cashierDate = $this->sanitizeDateString($request->string('cashier_date')->toString()) ?? $todayDate;
         $viewMode = ($request->string('view')->toString() === 'calendar' && ! $isDropoff) ? 'calendar' : 'list';
         $calendarDateString = $this->sanitizeDateString($request->string('calendar_date')->toString())
             ?? $todayDate;
+
+        $canVerifyPayments = $business ? $user->hasBusinessPermission($business, 'verify_payments') : false;
+        $canViewCashierSummary = $business ? ($canVerifyPayments || $user->hasBusinessPermission($business, 'manage_settings')) : false;
+        $canUseGoogleReview = $business ? $planLimitService->canUseGoogleReview($business->owner) : false;
+        $canUseMultiServiceDropoff = $business ? $planLimitService->canUseMultiServiceDropoff($business->owner) : false;
 
         $dropoffStageCounts = null;
         if ($business && $isDropoff) {
@@ -74,6 +95,7 @@ class BookingController extends Controller
             'customer_is_blocked' => (bool) ($b->customer->is_blocked ?? false),
             'service_id' => $b->service_id,
             'service_name' => $b->service->name,
+            'service_summary' => $b->resolvedServiceSummary(),
             'service_assignment_mode' => $b->service->assignment_mode,
             'booking_mode' => $b->booking_mode ?? 'time_slot',
             'quantity' => (int) ($b->quantity ?? 1),
@@ -89,8 +111,11 @@ class BookingController extends Controller
             'booking_date' => $b->booking_date->toDateString(),
             'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
             'end_time_local' => $b->end_at->setTimezone($tz)->format('H:i'),
-            'total_price' => $b->total_price,
-            'dp_amount' => $b->dp_amount,
+            'total_price' => (int) $b->total_price,
+            'dp_amount' => (int) $b->dp_amount,
+            'paid_amount' => (int) ($b->paid_amount ?? 0),
+            'remaining_balance' => $b->remainingBalance(),
+            'settled_at_local' => $b->settled_at?->setTimezone($tz)->format('d M Y, H:i'),
             'reservation_status' => $b->reservation_status,
             'payment_status' => $b->payment_status,
             'has_dp_proof' => filled($b->dp_proof_path),
@@ -99,6 +124,11 @@ class BookingController extends Controller
             'customer_notes' => $b->customer_notes,
             'cancellation_reason' => $b->cancellation_reason,
             'rescheduled_count' => (int) ($b->rescheduled_count ?? 0),
+            'items' => $this->serializeBookingItems($b),
+            'payments' => $this->serializeBookingPayments($b, $tz, true),
+            'review_url' => ($business && (bool) ($business->review_enabled ?? true) && $canUseGoogleReview && ! in_array($b->reservation_status, ['cancelled', 'no_show'], true))
+                ? $this->buildReviewUrl($business, $b)
+                : null,
         ];
 
         $isDropoffActiveQueue = $isDropoff
@@ -109,6 +139,9 @@ class BookingController extends Controller
                 ->with([
                     'service',
                     'staff',
+                    'items',
+                    'payments.recordedBy',
+                    'review',
                     'customer' => fn ($cq) => $cq->withCount([
                         'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
                     ]),
@@ -141,6 +174,9 @@ class BookingController extends Controller
                 ->with([
                     'service',
                     'staff',
+                    'items',
+                    'payments.recordedBy',
+                    'review',
                     'customer' => fn ($cq) => $cq->withCount([
                         'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
                     ]),
@@ -188,6 +224,7 @@ class BookingController extends Controller
             : null;
 
         $services = $this->getActiveBookingServices($business);
+        $addons = $this->getActiveBookingAddons($business);
 
         return Inertia::render('Dashboard/Bookings/Index', [
             'bookings' => $paginatedBookings ? $paginatedBookings->items() : [],
@@ -202,6 +239,10 @@ class BookingController extends Controller
                 'next_page_url' => $paginatedBookings->nextPageUrl(),
             ] : null,
             'services' => $services,
+            'addons' => $addons,
+            'canUseMultiServiceDropoff' => $canUseMultiServiceDropoff,
+            'canVerifyPayments' => $canVerifyPayments,
+            'canUseGoogleReview' => $canUseGoogleReview,
             'staffOptions' => $staffColumns,
             'filters' => [
                 'status' => $statusFilter,
@@ -228,6 +269,12 @@ class BookingController extends Controller
             ],
             'businessName' => $business?->name ?? 'Janjiyan',
             'businessAddress' => $business?->address ?? '',
+            'businessPhone' => $business?->phone,
+            'businessEmail' => $business?->owner?->email,
+            'cashierUserName' => $user->name,
+            'dailyCashierSummary' => $canViewCashierSummary && $business
+                ? $this->buildDailyCashierSummary($business, $cashierDate, $planLimitService)
+                : null,
             'whatsappTemplates' => $business
                 ? $business->resolvedWhatsappTemplates()
                 : Business::defaultWhatsappTemplates(),
@@ -235,7 +282,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request, PlanLimitService $planLimitService): Response
     {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -243,6 +290,8 @@ class BookingController extends Controller
 
         return Inertia::render('Dashboard/Bookings/Create', [
             'services' => $this->getActiveBookingServices($business),
+            'addons' => $this->getActiveBookingAddons($business),
+            'canUseMultiServiceDropoff' => $planLimitService->canUseMultiServiceDropoff($business->owner),
         ]);
     }
 
@@ -349,11 +398,19 @@ class BookingController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless($business && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
 
+        $this->normalizeAddonQueryInputs($request);
+
         $validated = $request->validate([
             'service_id' => ['required', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'staff_id' => ['nullable', 'integer'],
             'exclude_booking_id' => ['nullable', 'integer'],
+            'addons' => ['nullable', 'array', 'max:50'],
+            'addons.*.service_addon_id' => ['nullable', 'integer'],
+            'addons.*.id' => ['nullable', 'integer'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'addon_ids' => ['nullable', 'array', 'max:50'],
+            'addon_ids.*' => ['integer'],
         ]);
 
         $service = $business->services()
@@ -362,10 +419,16 @@ class BookingController extends Controller
             ->firstOrFail();
 
         $excludeBookingId = null;
+        $extraDurationMinutes = 0;
         if (! empty($validated['exclude_booking_id'])) {
             // Strictly scope excluded booking ID to the active business
-            $ownedBooking = $business->bookings()->where('id', (int) $validated['exclude_booking_id'])->first();
-            $excludeBookingId = $ownedBooking?->id;
+            $ownedBooking = $business->bookings()->with('items')->where('id', (int) $validated['exclude_booking_id'])->first();
+            if ($ownedBooking) {
+                $excludeBookingId = $ownedBooking->id;
+                if (! $service->isDropoff()) {
+                    $extraDurationMinutes = max(0, $ownedBooking->resolveTotalDurationMinutes() - (int) $service->duration_minutes);
+                }
+            }
         }
 
         if ($service->isDropoff()) {
@@ -376,13 +439,29 @@ class BookingController extends Controller
             ]);
         }
 
+        $addonRequests = ! empty($validated['addons'])
+            ? $validated['addons']
+            : ($validated['addon_ids'] ?? []);
+
+        if ($addonRequests !== []) {
+            try {
+                $extraDurationMinutes += $slotService->calculateExtraDurationForAddons($business, $service, $addonRequests);
+            } catch (RuntimeException $e) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'slots' => [],
+                ], 422);
+            }
+        }
+
         $slots = $slotService->getAvailableSlots(
             $business,
             $service,
             $validated['date'],
             isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
             true,
-            $excludeBookingId
+            $excludeBookingId,
+            $extraDurationMinutes
         );
 
         return response()->json([
@@ -394,7 +473,8 @@ class BookingController extends Controller
         Request $request,
         SlotAvailabilityService $slotService,
         PlanLimitService $planLimitService,
-        BookingNotificationService $notificationService
+        BookingNotificationService $notificationService,
+        BookingLedgerService $ledgerService
     ): RedirectResponse {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -405,7 +485,16 @@ class BookingController extends Controller
         }
 
         $validated = $request->validate([
-            'service_id' => ['required', 'integer'],
+            'service_id' => ['nullable', 'required_without:services', 'integer'],
+            'services' => ['nullable', 'required_without:service_id', 'array', 'min:1', 'max:50'],
+            'services.*.service_id' => ['required', 'integer'],
+            'services.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
+            'addons' => ['nullable', 'array', 'max:50'],
+            'addons.*.service_addon_id' => ['nullable', 'integer'],
+            'addons.*.id' => ['nullable', 'integer'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'addon_ids' => ['nullable', 'array', 'max:50'],
+            'addon_ids.*' => ['integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['nullable', 'date_format:H:i'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -418,6 +507,8 @@ class BookingController extends Controller
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_notes' => ['nullable', 'string', 'max:500'],
             'initial_payment_status' => ['required', 'in:unpaid,dp_verified,settled'],
+            'payment_method' => ['nullable', Rule::in(BookingPayment::METHODS)],
+            'received_amount' => ['nullable', 'integer', 'min:0'],
             'start_in_progress' => ['nullable', 'boolean'],
         ]);
 
@@ -425,39 +516,82 @@ class BookingController extends Controller
             abort_unless($user->hasBusinessPermission($business, 'verify_payments'), 403);
         }
 
-        $service = $business->services()
-            ->where('id', $validated['service_id'])
-            ->where('is_active', true)
-            ->firstOrFail();
+        $serviceItems = ! empty($validated['services'])
+            ? array_map(
+                static fn (array $row): array => [
+                    'service_id' => (int) $row['service_id'],
+                    'quantity' => (int) $row['quantity'],
+                ],
+                $validated['services']
+            )
+            : [[
+                'service_id' => (int) $validated['service_id'],
+                'quantity' => (int) ($validated['quantity'] ?? 1),
+            ]];
 
-        if ($service->isDropoff()) {
+        $distinctServiceIds = collect($serviceItems)
+            ->pluck('service_id')
+            ->unique()
+            ->values();
+
+        $selectedServices = $business->services()
+            ->whereIn('id', $distinctServiceIds->all())
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('id');
+
+        if ($selectedServices->count() !== $distinctServiceIds->count()) {
+            abort(404);
+        }
+
+        /** @var Service $primaryService */
+        $primaryService = $selectedServices->get($distinctServiceIds->first());
+        $isDropoff = $primaryService->isDropoff();
+        $addonRequests = ! empty($validated['addons'])
+            ? $validated['addons']
+            : ($validated['addon_ids'] ?? []);
+
+        if ($isDropoff) {
+            if (! $selectedServices->every(fn (Service $s): bool => $s->isDropoff())) {
+                return back()->with('error', 'Semua layanan yang dipilih harus berjenis drop-off.');
+            }
+
+            if ($distinctServiceIds->count() > 1 && ! $planLimitService->canUseMultiServiceDropoff($business->owner)) {
+                return back()->with('error', 'Keranjang multi-layanan tersedia pada paket Professional dan Enterprise.');
+            }
+
+            $supportsPickupAny = $selectedServices->contains(fn (Service $s): bool => (bool) $s->supports_pickup);
             $fulfillmentType = $validated['fulfillment_type'] ?? 'dropoff';
-            if ($service->supports_pickup && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
+            if ($supportsPickupAny && $fulfillmentType === 'pickup' && trim((string) ($validated['pickup_address'] ?? '')) === '') {
                 return back()
                     ->withErrors(['pickup_address' => 'Alamat penjemputan wajib diisi untuk layanan Jemput & Antar.'])
                     ->withInput();
             }
 
             try {
-                $booking = $slotService->reserveDropoff(
-                    $business,
-                    $service,
-                    $validated['date'],
-                    (int) ($validated['quantity'] ?? 1),
-                    $fulfillmentType,
-                    $validated['pickup_session'] ?? 'anytime',
-                    $validated['pickup_address'] ?? null,
-                    $validated['customer_name'],
-                    $validated['customer_phone'],
-                    $validated['customer_email'] ?? null,
-                    $validated['customer_notes'] ?? null,
-                    null,
-                    true
+                $booking = $slotService->reserveDropoffOrder(
+                    business: $business,
+                    serviceItems: $serviceItems,
+                    dateString: $validated['date'],
+                    fulfillmentType: $fulfillmentType,
+                    pickupSession: $validated['pickup_session'] ?? 'anytime',
+                    pickupAddress: $validated['pickup_address'] ?? null,
+                    customerName: $validated['customer_name'],
+                    customerPhone: $validated['customer_phone'],
+                    customerEmail: $validated['customer_email'] ?? null,
+                    customerNotes: $validated['customer_notes'] ?? null,
+                    dpProofFile: null,
+                    allowImmediateToday: true,
+                    addonRequests: $addonRequests
                 );
             } catch (RuntimeException $e) {
                 return back()->with('error', $e->getMessage());
             }
         } else {
+            if ($distinctServiceIds->count() > 1) {
+                return back()->with('error', 'Pemesanan multi-layanan hanya tersedia untuk layanan drop-off.');
+            }
+
             if (empty($validated['time'])) {
                 $timePrompt = $business->isSpaceBooking() ? 'Jam sesi wajib dipilih.' : 'Jam reservasi wajib dipilih.';
 
@@ -468,17 +602,18 @@ class BookingController extends Controller
 
             try {
                 $booking = $slotService->reserveSlot(
-                    $business,
-                    $service,
-                    $validated['date'],
-                    $validated['time'],
-                    isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
-                    $validated['customer_name'],
-                    $validated['customer_phone'],
-                    $validated['customer_email'] ?? null,
-                    $validated['customer_notes'] ?? null,
-                    null,
-                    true
+                    business: $business,
+                    service: $primaryService,
+                    dateString: $validated['date'],
+                    timeString: $validated['time'],
+                    requestedStaffId: isset($validated['staff_id']) ? (int) $validated['staff_id'] : null,
+                    customerName: $validated['customer_name'],
+                    customerPhone: $validated['customer_phone'],
+                    customerEmail: $validated['customer_email'] ?? null,
+                    customerNotes: $validated['customer_notes'] ?? null,
+                    dpProofFile: null,
+                    allowImmediateToday: true,
+                    addonRequests: $addonRequests
                 );
             } catch (RuntimeException $e) {
                 return back()->with('error', $e->getMessage());
@@ -486,15 +621,17 @@ class BookingController extends Controller
         }
 
         if ($validated['initial_payment_status'] !== 'unpaid') {
-            $booking->update([
-                'payment_status' => $validated['initial_payment_status'],
-                'reservation_status' => 'confirmed',
-                'dp_expires_at' => null,
-            ]);
+            $booking = $ledgerService->syncWalkinInitialPayment(
+                $booking,
+                $validated['initial_payment_status'],
+                (string) ($validated['payment_method'] ?? BookingPayment::METHOD_CASH),
+                $user,
+                isset($validated['received_amount']) ? (int) $validated['received_amount'] : null
+            );
         }
 
         if (
-            $service->isDropoff()
+            $isDropoff
             && $request->boolean('start_in_progress')
             && ($validated['fulfillment_type'] ?? 'dropoff') === 'dropoff'
         ) {
@@ -567,7 +704,8 @@ class BookingController extends Controller
     public function updateStatus(
         Request $request,
         Booking $booking,
-        BookingNotificationService $notificationService
+        BookingNotificationService $notificationService,
+        BookingLedgerService $ledgerService
     ): RedirectResponse {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
@@ -608,7 +746,26 @@ class BookingController extends Controller
         }
 
         $previousStatus = $booking->reservation_status;
-        $booking->update($validated);
+        $requestedPaymentStatus = $validated['payment_status'] ?? null;
+        if (in_array($requestedPaymentStatus, ['dp_verified', 'settled'], true)) {
+            unset($validated['payment_status']);
+        }
+
+        $booking = DB::transaction(function () use ($booking, $validated, $requestedPaymentStatus, $ledgerService, $user): Booking {
+            if (! empty($validated)) {
+                $booking->update($validated);
+            }
+
+            if ($requestedPaymentStatus === 'dp_verified') {
+                return $ledgerService->verifyDpPayment($booking, BookingPayment::METHOD_TRANSFER, $user);
+            }
+
+            if ($requestedPaymentStatus === 'settled') {
+                return $ledgerService->settleRemainingFromStatusAction($booking, $user);
+            }
+
+            return $booking;
+        });
 
         $newStatus = $booking->reservation_status;
         if ($newStatus !== $previousStatus && in_array($newStatus, ['confirmed', 'cancelled'], true)) {
@@ -627,18 +784,23 @@ class BookingController extends Controller
     public function verifyDp(
         Request $request,
         Booking $booking,
-        BookingNotificationService $notificationService
+        BookingNotificationService $notificationService,
+        BookingLedgerService $ledgerService
     ): RedirectResponse {
         $user = $request->user();
         $business = $user->resolveActiveBusiness();
 
         abort_unless($business && $booking->business_id === $business->id && $user->hasBusinessPermission($business, 'verify_payments'), 403);
 
-        $booking->update([
-            'payment_status' => 'dp_verified',
-            'reservation_status' => $booking->reservation_status === 'pending' ? 'confirmed' : $booking->reservation_status,
-            'dp_expires_at' => null,
+        $validated = $request->validate([
+            'payment_method' => ['nullable', 'in:cash,qris,transfer,edc'],
         ]);
+
+        $booking = $ledgerService->verifyDpPayment(
+            $booking,
+            (string) ($validated['payment_method'] ?? BookingPayment::METHOD_TRANSFER),
+            $user
+        );
 
         $notificationService->notifyCustomerStatusChanged($booking, 'dp_verified');
 
@@ -666,6 +828,196 @@ class BookingController extends Controller
         ]);
     }
 
+    public function adjustItems(
+        Request $request,
+        Booking $booking,
+        BookingLedgerService $ledgerService
+    ): RedirectResponse {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless(
+            $business
+            && $booking->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'verify_payments'),
+            403
+        );
+
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.item_type' => ['required', Rule::in(BookingItem::TYPES)],
+            'items.*.service_id' => ['nullable', 'integer', 'required_if:items.*.item_type,service'],
+            'items.*.service_addon_id' => ['nullable', 'integer', 'required_if:items.*.item_type,addon'],
+            'items.*.name' => ['nullable', 'string', 'max:160', 'required_if:items.*.item_type,custom'],
+            'items.*.unit_label' => ['nullable', 'string', Rule::in(Service::UNIT_LABELS)],
+            'items.*.unit_price' => ['nullable', 'integer', 'min:0', 'required_if:items.*.item_type,custom'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
+            'items.*.is_commissionable' => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            $updated = $ledgerService->adjustItems($booking, $validated['items']);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Daftar item untuk {$updated->booking_code} berhasil diperbarui.");
+    }
+
+    public function recordPayment(
+        Request $request,
+        Booking $booking,
+        BookingLedgerService $ledgerService
+    ): RedirectResponse {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless(
+            $business
+            && $booking->business_id === $business->id
+            && $user->hasBusinessPermission($business, 'verify_payments'),
+            403
+        );
+
+        $validated = $request->validate([
+            'payment_type' => ['required', Rule::in(BookingPayment::TYPES)],
+            'payment_method' => ['required', Rule::in(BookingPayment::METHODS)],
+            'amount' => ['required', 'integer', 'min:0'],
+            'received_amount' => ['nullable', 'integer', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $updated = $ledgerService->recordPayment($booking, $validated, $user);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $actionLabel = $validated['payment_type'] === BookingPayment::TYPE_REFUND
+            ? 'Refund'
+            : 'Pembayaran';
+
+        return back()->with('success', "{$actionLabel} untuk {$updated->booking_code} berhasil dicatat.");
+    }
+
+    public function cashierSummary(Request $request, PlanLimitService $planLimitService): JsonResponse
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless(
+            $business
+            && ($user->hasBusinessPermission($business, 'verify_payments') || $user->hasBusinessPermission($business, 'manage_settings')),
+            403
+        );
+
+        $validated = $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $dateString = $validated['date'] ?? CarbonImmutable::now($tz)->toDateString();
+
+        return response()->json(
+            $this->buildDailyCashierSummary($business, $dateString, $planLimitService)
+        );
+    }
+
+    public function exportCashierCsv(Request $request, PlanLimitService $planLimitService): StreamedResponse|RedirectResponse
+    {
+        $user = $request->user();
+        $business = $user->resolveActiveBusiness();
+        abort_unless($business && $user->hasBusinessPermission($business, 'verify_payments'), 403);
+
+        if (! $planLimitService->canExportCsv($business->owner)) {
+            return back()->with('error', 'Export CSV hanya tersedia pada paket Professional dan Enterprise.');
+        }
+
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $today = CarbonImmutable::now($tz)->toDateString();
+
+        $singleDate = $this->sanitizeDateString($request->string('date')->toString());
+        $dateFrom = $this->sanitizeDateString($request->string('date_from')->toString());
+        $dateTo = $this->sanitizeDateString($request->string('date_to')->toString());
+
+        if ($singleDate !== null && $dateFrom === null && $dateTo === null) {
+            $dateFrom = $singleDate;
+            $dateTo = $singleDate;
+        } else {
+            $dateFrom ??= $today;
+            $dateTo ??= $dateFrom;
+        }
+
+        if ($dateFrom > $dateTo) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        $startUtc = CarbonImmutable::createFromFormat('!Y-m-d', $dateFrom, $tz)->startOfDay()->utc();
+        $endExclusiveUtc = CarbonImmutable::createFromFormat('!Y-m-d', $dateTo, $tz)->startOfDay()->addDay()->utc();
+
+        $paymentsQuery = BookingPayment::query()
+            ->where('business_id', $business->id)
+            ->where('paid_at', '>=', $startUtc)
+            ->where('paid_at', '<', $endExclusiveUtc)
+            ->with(['booking.customer', 'booking.service', 'booking.items', 'recordedBy'])
+            ->orderBy('paid_at')
+            ->orderBy('id');
+
+        $typeLabels = [
+            BookingPayment::TYPE_DP => 'Uang Muka',
+            BookingPayment::TYPE_SETTLEMENT => 'Pelunasan',
+            BookingPayment::TYPE_PARTIAL => 'Pembayaran Sebagian',
+            BookingPayment::TYPE_ADJUSTMENT => 'Penyesuaian',
+            BookingPayment::TYPE_REFUND => 'Pengembalian Dana',
+        ];
+
+        $methodLabels = [
+            BookingPayment::METHOD_CASH => 'Tunai',
+            BookingPayment::METHOD_QRIS => 'QRIS',
+            BookingPayment::METHOD_TRANSFER => 'Transfer Bank',
+            BookingPayment::METHOD_EDC => 'Kartu / EDC',
+        ];
+
+        $filenameSuffix = $dateFrom === $dateTo ? $dateFrom : "{$dateFrom}-to-{$dateTo}";
+
+        return response()->streamDownload(function () use ($paymentsQuery, $tz, $typeLabels, $methodLabels): void {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, [
+                'Waktu Bayar',
+                'No. Invoice',
+                'Kode Booking',
+                'Pelanggan',
+                'Telepon',
+                'Layanan / Ringkasan',
+                'Jenis Pembayaran',
+                'Metode Pembayaran',
+                'Nominal (Rp)',
+                'Diterima (Rp)',
+                'Kembalian (Rp)',
+                'Kasir',
+                'Catatan',
+            ]);
+
+            foreach ($paymentsQuery->lazy(500) as $payment) {
+                $booking = $payment->booking;
+                fputcsv($handle, CsvHelper::sanitizeRow([
+                    $payment->paid_at->setTimezone($tz)->format('Y-m-d H:i'),
+                    $booking?->invoice_number ?? '-',
+                    $booking?->booking_code ?? '-',
+                    $booking?->customer?->name ?? '-',
+                    $booking?->customer?->phone ?? '-',
+                    $booking ? $booking->resolvedServiceSummary() : '-',
+                    $typeLabels[$payment->payment_type] ?? $payment->payment_type,
+                    $methodLabels[$payment->payment_method] ?? $payment->payment_method,
+                    (int) $payment->amount,
+                    $payment->received_amount !== null ? (int) $payment->received_amount : '',
+                    (int) $payment->change_amount,
+                    $payment->recordedBy?->name ?? '-',
+                    $payment->notes ?? '',
+                ]));
+            }
+
+            fclose($handle);
+        }, "janjiyan-cashier-{$business->slug}-{$filenameSuffix}.csv");
+    }
+
     public function exportCsv(Request $request, PlanLimitService $planLimitService): StreamedResponse|RedirectResponse
     {
         $user = $request->user();
@@ -682,7 +1034,7 @@ class BookingController extends Controller
         $filters['search'] = '';
 
         $bookingsQuery = $this->applyListFilters(
-            $business->bookings()->with(['service', 'staff', 'customer']),
+            $business->bookings()->with(['service', 'staff', 'customer', 'items']),
             $filters,
             $mode
         )
@@ -705,7 +1057,7 @@ class BookingController extends Controller
                     $b->resolvedUnitLabel(),
                     $b->customer->name,
                     $b->customer->phone,
-                    $b->service->name,
+                    $b->resolvedServiceSummary(),
                     $b->staff?->name ?? '-',
                     $b->total_price,
                     $b->dp_amount,
@@ -782,7 +1134,16 @@ class BookingController extends Controller
             )
             ->when($filters['payment'], fn ($q) => $q->where('payment_status', $filters['payment']))
             ->when($filters['staff_id'], fn ($q) => $q->where('staff_id', $filters['staff_id']))
-            ->when($filters['service_id'], fn ($q) => $q->where('service_id', $filters['service_id']))
+            ->when(
+                $filters['service_id'],
+                fn ($q) => $q->where(function ($sq) use ($filters): void {
+                    $sq->where('service_id', $filters['service_id'])
+                        ->orWhereHas('items', function ($iq) use ($filters): void {
+                            $iq->where('item_type', BookingItem::TYPE_SERVICE)
+                                ->where('service_id', $filters['service_id']);
+                        });
+                })
+            )
             ->whereBookingDateBetween($filters['date_from'], $filters['date_to'])
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
@@ -802,5 +1163,163 @@ class BookingController extends Controller
         $parsed = CarbonImmutable::createFromFormat('!Y-m-d', $value);
 
         return ($parsed && $parsed->format('Y-m-d') === $value) ? $value : null;
+    }
+
+    /**
+     * Load active service add-ons for checkout and cashier flows.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function getActiveBookingAddons(?Business $business)
+    {
+        if (! $business) {
+            return collect();
+        }
+
+        return $business->serviceAddons()
+            ->where('is_active', true)
+            ->with('services:id')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (ServiceAddon $addon): array => ServiceAddonController::serializeAddon($addon))
+            ->values();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializeBookingItems(Booking $booking): array
+    {
+        return $booking->items->map(fn (BookingItem $item): array => [
+            'id' => $item->id,
+            'item_type' => $item->item_type,
+            'service_id' => $item->service_id,
+            'service_addon_id' => $item->service_addon_id,
+            'name_snapshot' => $item->name_snapshot,
+            'unit_label_snapshot' => $item->unit_label_snapshot,
+            'unit_price' => (int) $item->unit_price,
+            'quantity' => (int) $item->quantity,
+            'duration_minutes_snapshot' => (int) $item->duration_minutes_snapshot,
+            'turnaround_days_snapshot' => (int) $item->turnaround_days_snapshot,
+            'is_commissionable' => (bool) $item->is_commissionable,
+            'subtotal' => (int) $item->subtotal,
+        ])->values()->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializeBookingPayments(Booking $booking, string $timezone, bool $includeCashierName = true): array
+    {
+        return $booking->payments->map(fn (BookingPayment $payment): array => [
+            'id' => $payment->id,
+            'payment_type' => $payment->payment_type,
+            'payment_method' => $payment->payment_method,
+            'amount' => (int) $payment->amount,
+            'received_amount' => $payment->received_amount !== null ? (int) $payment->received_amount : null,
+            'change_amount' => (int) $payment->change_amount,
+            'recorded_by_name' => $includeCashierName ? $payment->recordedBy?->name : null,
+            'paid_at' => $payment->paid_at->toIso8601String(),
+            'paid_at_local' => $payment->paid_at->setTimezone($timezone)->format('d M Y, H:i'),
+            'notes' => $payment->notes,
+        ])->values()->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDailyCashierSummary(
+        Business $business,
+        string $dateString,
+        PlanLimitService $planLimitService
+    ): array {
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $dayStartUtc = CarbonImmutable::createFromFormat('!Y-m-d', $dateString, $tz)->startOfDay()->utc();
+        $nextDayStartUtc = CarbonImmutable::createFromFormat('!Y-m-d', $dateString, $tz)->startOfDay()->addDay()->utc();
+
+        $rows = BookingPayment::query()
+            ->where('business_id', $business->id)
+            ->where('paid_at', '>=', $dayStartUtc)
+            ->where('paid_at', '<', $nextDayStartUtc)
+            ->groupBy('payment_method')
+            ->selectRaw('payment_method')
+            ->selectRaw('COUNT(*) as tx_count')
+            ->selectRaw('COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) as collected_sum')
+            ->selectRaw('COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0) as refunds_sum')
+            ->selectRaw('COALESCE(SUM(amount), 0) as net_sum')
+            ->get()
+            ->keyBy('payment_method');
+
+        $totalCollected = 0;
+        $totalRefunds = 0;
+        $netCollected = 0;
+        $transactionsCount = 0;
+
+        foreach ($rows as $row) {
+            $totalCollected += (int) $row->collected_sum;
+            $totalRefunds += (int) $row->refunds_sum;
+            $netCollected += (int) $row->net_sum;
+            $transactionsCount += (int) $row->tx_count;
+        }
+
+        $canViewBreakdown = $planLimitService->canUseDailyCashierBreakdown($business->owner);
+        $canExportCsv = $planLimitService->canExportCsv($business->owner);
+
+        $byMethod = [];
+        foreach (BookingPayment::METHODS as $method) {
+            $row = $rows->get($method);
+            $byMethod[$method] = [
+                'amount' => $canViewBreakdown ? (int) ($row->net_sum ?? 0) : 0,
+                'count' => $canViewBreakdown ? (int) ($row->tx_count ?? 0) : 0,
+            ];
+        }
+
+        return [
+            'date' => $dateString,
+            'total_collected' => $totalCollected,
+            'total_refunds' => $totalRefunds,
+            'net_collected' => $netCollected,
+            'transactions_count' => $transactionsCount,
+            'by_method' => $byMethod,
+            'can_view_breakdown' => $canViewBreakdown,
+            'can_export_csv' => $canExportCsv,
+        ];
+    }
+
+    private function buildReviewUrl(Business $business, Booking $booking): string
+    {
+        $params = ['slug' => $business->slug];
+        if ($booking->invoice_token) {
+            $params['token'] = $booking->invoice_token;
+        }
+
+        if (Route::has('public.review.show')) {
+            return route('public.review.show', $params);
+        }
+
+        $query = $booking->invoice_token ? '?token='.urlencode($booking->invoice_token) : '';
+
+        return url("/b/{$business->slug}/review{$query}");
+    }
+
+    private function normalizeAddonQueryInputs(Request $request): void
+    {
+        $rawAddons = $request->input('addons');
+        if (is_string($rawAddons) && trim($rawAddons) !== '') {
+            $decoded = json_decode($rawAddons, true);
+            if (is_array($decoded)) {
+                $request->merge(['addons' => $decoded]);
+            }
+        }
+
+        $rawAddonIds = $request->input('addon_ids');
+        if (is_string($rawAddonIds) && trim($rawAddonIds) !== '') {
+            $ids = array_values(array_filter(
+                array_map('trim', explode(',', $rawAddonIds)),
+                static fn (string $v): bool => $v !== ''
+            ));
+            $request->merge(['addon_ids' => $ids]);
+        }
     }
 }

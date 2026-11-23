@@ -14,7 +14,8 @@ use Throwable;
 class SubscriptionActivationService
 {
     public function __construct(
-        private readonly PlanLimitService $planLimitService
+        private readonly PlanLimitService $planLimitService,
+        private readonly InAppNotificationService $inAppNotificationService,
     ) {}
 
     public function activatePlan(User $user, SubscriptionPlan $plan, string $billingCycle = 'monthly'): Subscription
@@ -86,6 +87,12 @@ class SubscriptionActivationService
         } catch (Throwable $e) {
             report($e);
         }
+
+        $this->inAppNotificationService->notifySubscriptionActivated(
+            $invoice->user,
+            $invoice,
+            $activatedSubscription
+        );
 
         return true;
     }

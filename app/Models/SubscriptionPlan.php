@@ -14,16 +14,20 @@ class SubscriptionPlan extends Model
         'price_yearly',
         'max_businesses',
         'max_services_per_business',
+        'max_addons_per_business',
         'max_staff_per_business',
         'max_bookings_per_month',
         'max_customers_per_business',
         'can_export_csv',
+        'can_use_google_review',
     ];
 
     protected function casts(): array
     {
         return [
+            'max_addons_per_business' => 'integer',
             'can_export_csv' => 'boolean',
+            'can_use_google_review' => 'boolean',
         ];
     }
 

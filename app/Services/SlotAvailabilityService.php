@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingItem;
 use App\Models\Business;
 use App\Models\Customer;
 use App\Models\OperatingHour;
 use App\Models\Service;
+use App\Models\ServiceAddon;
 use App\Models\Staff;
 use App\Models\StaffOperatingHour;
 use App\Models\StaffTimeOff;
@@ -32,7 +34,8 @@ class SlotAvailabilityService
         string $dateString,
         ?int $staffId = null,
         bool $allowImmediateToday = false,
-        ?int $excludeBookingId = null
+        ?int $excludeBookingId = null,
+        int $extraDurationMinutes = 0
     ): array {
         $timezone = $business->timezone ?: 'Asia/Jakarta';
         $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
@@ -101,8 +104,9 @@ class SlotAvailabilityService
             ->when($excludeBookingId !== null, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->get(['id', 'service_id', 'staff_id', 'start_at', 'buffer_end_at']);
 
-        $stepMinutes = max(15, min(60, (int) $service->duration_minutes));
-        $duration = (int) $service->duration_minutes;
+        $baseDuration = max(15, (int) $service->duration_minutes);
+        $stepMinutes = max(15, min(60, $baseDuration));
+        $duration = $baseDuration + max(0, $extraDurationMinutes);
         $buffer = (int) $service->buffer_minutes;
 
         $leadMinutes = max(0, (int) ($business->min_booking_lead_minutes ?? 15));
@@ -251,12 +255,14 @@ class SlotAvailabilityService
             return $unavailable('Jam operasional hari ini sudah berakhir. Silakan pilih tanggal berikutnya.');
         }
 
-        $usedCapacity = (int) $business->bookings()
-            ->where('service_id', $service->id)
-            ->whereBookingDate($targetDate->toDateString())
-            ->whereIn('reservation_status', ['pending', 'confirmed'])
-            ->when($excludeBookingId !== null, fn ($q) => $q->where('id', '!=', $excludeBookingId))
-            ->sum('quantity');
+        $usageMap = $this->getDropoffUsageMap(
+            $business,
+            [$service->id],
+            $targetDate->toDateString(),
+            $excludeBookingId,
+            false
+        );
+        $usedCapacity = (int) ($usageMap[$service->id] ?? 0);
 
         $remainingCapacity = max(0, $totalCapacity - $usedCapacity);
         $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, $turnaroundDays);
@@ -277,6 +283,8 @@ class SlotAvailabilityService
 
     /**
      * Atomically reserve a time slot inside a DB transaction with pessimistic locking.
+     *
+     * @param  array<int, array{service_addon_id?: int, id?: int, quantity?: int}|int>  $addonRequests
      */
     public function reserveSlot(
         Business $business,
@@ -289,7 +297,8 @@ class SlotAvailabilityService
         ?string $customerEmail,
         ?string $customerNotes,
         ?UploadedFile $dpProofFile = null,
-        bool $allowImmediateToday = false
+        bool $allowImmediateToday = false,
+        array $addonRequests = []
     ): Booking {
         return DB::transaction(function () use (
             $business,
@@ -302,21 +311,28 @@ class SlotAvailabilityService
             $customerEmail,
             $customerNotes,
             $dpProofFile,
-            $allowImmediateToday
+            $allowImmediateToday,
+            $addonRequests
         ): Booking {
+            // Lock parent business row first to prevent phantom-read double-bookings on empty slots
+            Business::whereKey($business->id)->lockForUpdate()->firstOrFail();
+
+            $resolvedAddons = $this->resolveAddonsForServices($business, collect([$service]), $addonRequests);
+            $extraDurationMinutes = (int) collect($resolvedAddons)->sum(
+                fn (array $row): int => max(0, (int) $row['addon']->duration_minutes) * $row['quantity']
+            );
+            $totalDuration = max(15, (int) $service->duration_minutes) + $extraDurationMinutes;
+
             $timezone = $business->timezone ?: 'Asia/Jakarta';
             $startLocal = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$dateString} {$timeString}", $timezone);
-            $endLocal = $startLocal->addMinutes($service->duration_minutes);
-            $bufferEndLocal = $endLocal->addMinutes($service->buffer_minutes);
+            $endLocal = $startLocal->addMinutes($totalDuration);
+            $bufferEndLocal = $endLocal->addMinutes((int) $service->buffer_minutes);
 
             $this->assertBusinessWindowAndOperatingHours($business, $startLocal, $endLocal, $allowImmediateToday);
 
             $startUtc = $startLocal->utc();
             $endUtc = $endLocal->utc();
             $bufferEndUtc = $bufferEndLocal->utc();
-
-            // Lock parent business row first to prevent phantom-read double-bookings on empty slots
-            Business::whereKey($business->id)->lockForUpdate()->firstOrFail();
 
             // Lock overlapping time-slot bookings to prevent race conditions
             $overlapping = Booking::where('business_id', $business->id)
@@ -335,10 +351,12 @@ class SlotAvailabilityService
                 $overlapping
             );
 
+            $serviceLines = [['service' => $service, 'quantity' => 1]];
+
             $prepared = $this->upsertCustomerAndComputePricing(
                 business: $business,
-                service: $service,
-                quantity: 1,
+                serviceLines: $serviceLines,
+                resolvedAddons: $resolvedAddons,
                 assignedStaffId: $assignedStaffId,
                 customerName: $customerName,
                 customerPhone: $customerPhone,
@@ -347,7 +365,7 @@ class SlotAvailabilityService
                 allowImmediateToday: $allowImmediateToday
             );
 
-            return Booking::create([
+            $booking = Booking::create([
                 'business_id' => $business->id,
                 'service_id' => $service->id,
                 'staff_id' => $assignedStaffId,
@@ -367,6 +385,7 @@ class SlotAvailabilityService
                 'buffer_end_at' => $bufferEndUtc,
                 'total_price' => $prepared['total_price'],
                 'dp_amount' => $prepared['dp_amount'],
+                'paid_amount' => 0,
                 'commission_amount' => $prepared['commission_amount'],
                 'reservation_status' => 'pending',
                 'payment_status' => $prepared['payment_status'],
@@ -374,11 +393,17 @@ class SlotAvailabilityService
                 'dp_expires_at' => $prepared['dp_expires_at'],
                 'customer_notes' => $customerNotes,
             ]);
+
+            $this->createBookingItems($booking, $serviceLines, $resolvedAddons, false);
+
+            return $booking->load(['items', 'service', 'staff', 'customer']);
         });
     }
 
     /**
-     * Atomically reserve a drop-off / turnaround order inside a DB transaction using daily capacity.
+     * Atomically reserve a single-service drop-off / turnaround order inside a DB transaction.
+     *
+     * @param  array<int, array{service_addon_id?: int, id?: int, quantity?: int}|int>  $addonRequests
      */
     public function reserveDropoff(
         Business $business,
@@ -393,19 +418,76 @@ class SlotAvailabilityService
         ?string $customerEmail,
         ?string $customerNotes,
         ?UploadedFile $dpProofFile = null,
-        bool $allowImmediateToday = false
+        bool $allowImmediateToday = false,
+        array $addonRequests = []
     ): Booking {
-        $unit = $service->resolvedUnitLabel();
+        return $this->reserveDropoffOrder(
+            business: $business,
+            serviceItems: [['service_id' => $service->id, 'quantity' => $quantity]],
+            dateString: $dateString,
+            fulfillmentType: $fulfillmentType,
+            pickupSession: $pickupSession,
+            pickupAddress: $pickupAddress,
+            customerName: $customerName,
+            customerPhone: $customerPhone,
+            customerEmail: $customerEmail,
+            customerNotes: $customerNotes,
+            dpProofFile: $dpProofFile,
+            allowImmediateToday: $allowImmediateToday,
+            addonRequests: $addonRequests
+        );
+    }
 
-        if ($quantity < 1 || $quantity > 50) {
-            throw new RuntimeException("Jumlah {$unit} harus antara 1 sampai 50.");
+    /**
+     * Atomically reserve a single- or multi-service drop-off order inside a DB transaction.
+     * Locks involved service rows ordered by ID ascending to prevent concurrent deadlocks.
+     *
+     * @param  array<int, array{service_id: int, quantity: int}>  $serviceItems
+     * @param  array<int, array{service_addon_id?: int, id?: int, quantity?: int}|int>  $addonRequests
+     */
+    public function reserveDropoffOrder(
+        Business $business,
+        array $serviceItems,
+        string $dateString,
+        string $fulfillmentType,
+        ?string $pickupSession,
+        ?string $pickupAddress,
+        string $customerName,
+        string $customerPhone,
+        ?string $customerEmail,
+        ?string $customerNotes,
+        ?UploadedFile $dpProofFile = null,
+        bool $allowImmediateToday = false,
+        array $addonRequests = []
+    ): Booking {
+        if ($serviceItems === []) {
+            throw new RuntimeException('Minimal pilih 1 layanan drop-off.');
         }
+
+        $requestedQtyByService = [];
+        $orderedServiceIds = [];
+        foreach ($serviceItems as $item) {
+            $sid = (int) ($item['service_id'] ?? 0);
+            $qty = (int) ($item['quantity'] ?? 1);
+            if ($sid <= 0) {
+                throw new RuntimeException('Layanan tidak valid.');
+            }
+            if (! array_key_exists($sid, $requestedQtyByService)) {
+                $requestedQtyByService[$sid] = 0;
+                $orderedServiceIds[] = $sid;
+            }
+            $requestedQtyByService[$sid] += $qty;
+        }
+
+        $sortedServiceIds = array_keys($requestedQtyByService);
+        sort($sortedServiceIds);
 
         return DB::transaction(function () use (
             $business,
-            $service,
+            $requestedQtyByService,
+            $orderedServiceIds,
+            $sortedServiceIds,
             $dateString,
-            $quantity,
             $fulfillmentType,
             $pickupSession,
             $pickupAddress,
@@ -414,48 +496,102 @@ class SlotAvailabilityService
             $customerEmail,
             $customerNotes,
             $dpProofFile,
-            $allowImmediateToday
+            $allowImmediateToday,
+            $addonRequests
         ): Booking {
             $timezone = $business->timezone ?: 'Asia/Jakarta';
             $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
 
             Business::whereKey($business->id)->lockForUpdate()->firstOrFail();
 
-            $operatingHour = $this->assertDropoffDateOpen($business, $targetDate, $allowImmediateToday);
-
-            $activeBookings = Booking::where('business_id', $business->id)
-                ->where('service_id', $service->id)
-                ->whereBookingDate($targetDate->toDateString())
-                ->whereIn('reservation_status', ['pending', 'confirmed'])
+            // Lock involved services in deterministic ascending ID order to avoid deadlocks
+            $lockedServices = Service::where('business_id', $business->id)
+                ->whereIn('id', $sortedServiceIds)
+                ->where('is_active', true)
+                ->orderBy('id')
                 ->lockForUpdate()
-                ->get(['id', 'quantity']);
+                ->get()
+                ->keyBy('id');
 
-            $usedCapacity = (int) $activeBookings->sum('quantity');
-            $totalCapacity = max(1, (int) $service->capacity);
-            $remaining = max(0, $totalCapacity - $usedCapacity);
-
-            if ($quantity > $remaining) {
-                if ($remaining <= 0) {
-                    throw new RuntimeException('Kuota harian untuk layanan ini sudah penuh pada tanggal yang dipilih.');
+            foreach ($sortedServiceIds as $sid) {
+                $svc = $lockedServices->get($sid);
+                if (! $svc || ! $svc->isDropoff()) {
+                    throw new RuntimeException('Layanan drop-off yang dipilih tidak tersedia.');
                 }
 
-                $unit = $service->resolvedUnitLabel();
-                throw new RuntimeException("Sisa kuota pada tanggal tersebut hanya {$remaining} {$unit}.");
+                $qty = $requestedQtyByService[$sid];
+                $unit = $svc->resolvedUnitLabel();
+                if ($qty < 1 || $qty > 50) {
+                    throw new RuntimeException("Jumlah {$unit} harus antara 1 sampai 50.");
+                }
             }
 
-            $resolvedFulfillment = ($service->supports_pickup && $fulfillmentType === 'pickup') ? 'pickup' : 'dropoff';
+            $operatingHour = $this->assertDropoffDateOpen($business, $targetDate, $allowImmediateToday);
+
+            $usageMap = $this->getDropoffUsageMap(
+                $business,
+                $sortedServiceIds,
+                $targetDate->toDateString(),
+                null,
+                true
+            );
+
+            $isMultiService = count($sortedServiceIds) > 1;
+            foreach ($sortedServiceIds as $sid) {
+                $svc = $lockedServices->get($sid);
+                $requestedQty = $requestedQtyByService[$sid];
+                $usedCapacity = (int) ($usageMap[$sid] ?? 0);
+                $totalCapacity = max(1, (int) $svc->capacity);
+                $remaining = max(0, $totalCapacity - $usedCapacity);
+
+                if ($requestedQty > $remaining) {
+                    $unit = $svc->resolvedUnitLabel();
+                    if ($remaining <= 0) {
+                        $msg = $isMultiService
+                            ? "Kuota harian untuk layanan {$svc->name} sudah penuh pada tanggal yang dipilih."
+                            : 'Kuota harian untuk layanan ini sudah penuh pada tanggal yang dipilih.';
+                        throw new RuntimeException($msg);
+                    }
+
+                    $msg = $isMultiService
+                        ? "Sisa kuota untuk {$svc->name} pada tanggal tersebut hanya {$remaining} {$unit}."
+                        : "Sisa kuota pada tanggal tersebut hanya {$remaining} {$unit}.";
+                    throw new RuntimeException($msg);
+                }
+            }
+
+            $serviceLines = [];
+            foreach ($orderedServiceIds as $sid) {
+                $serviceLines[] = [
+                    'service' => $lockedServices->get($sid),
+                    'quantity' => $requestedQtyByService[$sid],
+                ];
+            }
+
+            $resolvedAddons = $this->resolveAddonsForServices($business, $lockedServices->values(), $addonRequests);
+
+            $supportsPickupAny = $lockedServices->contains(fn (Service $s): bool => (bool) $s->supports_pickup);
+            $resolvedFulfillment = ($supportsPickupAny && $fulfillmentType === 'pickup') ? 'pickup' : 'dropoff';
             $resolvedSession = $resolvedFulfillment === 'pickup'
                 ? (array_key_exists((string) $pickupSession, Booking::PICKUP_SESSIONS) ? (string) $pickupSession : 'anytime')
                 : null;
             $resolvedAddress = $resolvedFulfillment === 'pickup' ? trim((string) ($pickupAddress ?? '')) : null;
 
-            [$startLocal, $endLocal] = $this->resolveDropoffWindow($targetDate, $operatingHour->open_time, $operatingHour->close_time, $resolvedFulfillment, $resolvedSession);
-            $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, max(0, (int) ($service->turnaround_days ?? 1)));
+            [$startLocal, $endLocal] = $this->resolveDropoffWindow(
+                $targetDate,
+                $operatingHour->open_time,
+                $operatingHour->close_time,
+                $resolvedFulfillment,
+                $resolvedSession
+            );
+
+            $maxTurnaroundDays = max(0, (int) $lockedServices->max(fn (Service $s): int => (int) ($s->turnaround_days ?? 1)));
+            $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, $maxTurnaroundDays);
 
             $prepared = $this->upsertCustomerAndComputePricing(
                 business: $business,
-                service: $service,
-                quantity: $quantity,
+                serviceLines: $serviceLines,
+                resolvedAddons: $resolvedAddons,
                 assignedStaffId: null,
                 customerName: $customerName,
                 customerPhone: $customerPhone,
@@ -464,19 +600,29 @@ class SlotAvailabilityService
                 allowImmediateToday: $allowImmediateToday
             );
 
+            $primaryService = $serviceLines[0]['service'];
+            $totalServiceQty = array_sum($requestedQtyByService);
+            $distinctUnits = collect($serviceLines)
+                ->map(fn (array $row): string => $row['service']->resolvedUnitLabel())
+                ->unique()
+                ->values();
+            $orderUnitLabel = $distinctUnits->count() === 1
+                ? (string) $distinctUnits->first()
+                : Service::DEFAULT_UNIT_LABEL;
+
             $startUtc = $startLocal->utc();
             $endUtc = $endLocal->utc();
 
-            return Booking::create([
+            $booking = Booking::create([
                 'business_id' => $business->id,
-                'service_id' => $service->id,
+                'service_id' => $primaryService->id,
                 'staff_id' => null,
                 'customer_id' => $prepared['customer']->id,
                 'booked_customer_name' => $prepared['booked_customer_name'],
                 'booked_customer_email' => $prepared['booked_customer_email'],
                 'booking_mode' => 'dropoff',
-                'quantity' => $quantity,
-                'unit_label' => $service->resolvedUnitLabel(),
+                'quantity' => $totalServiceQty,
+                'unit_label' => $orderUnitLabel,
                 'fulfillment_type' => $resolvedFulfillment,
                 'pickup_session' => $resolvedSession,
                 'pickup_address' => $resolvedAddress !== '' ? $resolvedAddress : null,
@@ -490,6 +636,7 @@ class SlotAvailabilityService
                 'estimated_ready_date' => $estimatedReadyDate->toDateString(),
                 'total_price' => $prepared['total_price'],
                 'dp_amount' => $prepared['dp_amount'],
+                'paid_amount' => 0,
                 'commission_amount' => 0,
                 'reservation_status' => 'pending',
                 'work_status' => 'awaiting_dropoff',
@@ -498,6 +645,10 @@ class SlotAvailabilityService
                 'dp_expires_at' => $prepared['dp_expires_at'],
                 'customer_notes' => $customerNotes,
             ]);
+
+            $this->createBookingItems($booking, $serviceLines, $resolvedAddons, true);
+
+            return $booking->load(['items', 'service', 'customer']);
         });
     }
 
@@ -518,11 +669,11 @@ class SlotAvailabilityService
             $requestedStaffId,
             $allowImmediateToday
         ): Booking {
+            $business = Business::whereKey($booking->business_id)->lockForUpdate()->firstOrFail();
+
             $lockedBooking = Booking::where('id', $booking->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $business = Business::whereKey($lockedBooking->business_id)->lockForUpdate()->firstOrFail();
 
             if (! in_array($lockedBooking->reservation_status, ['pending', 'confirmed'], true)) {
                 $noun = match ($business->resolvedBusinessType()) {
@@ -540,21 +691,54 @@ class SlotAvailabilityService
                 $targetDate = CarbonImmutable::createFromFormat('Y-m-d', $dateString, $timezone)->startOfDay();
                 $operatingHour = $this->assertDropoffDateOpen($business, $targetDate, $allowImmediateToday);
 
-                $usedCapacity = (int) Booking::where('business_id', $business->id)
-                    ->where('service_id', $service->id)
-                    ->where('id', '!=', $lockedBooking->id)
-                    ->whereBookingDate($targetDate->toDateString())
-                    ->whereIn('reservation_status', ['pending', 'confirmed'])
+                $serviceItems = $lockedBooking->items()
+                    ->where('item_type', BookingItem::TYPE_SERVICE)
+                    ->whereNotNull('service_id')
+                    ->get();
+
+                $qtyByServiceId = [];
+                if ($serviceItems->isNotEmpty()) {
+                    foreach ($serviceItems as $item) {
+                        $sid = (int) $item->service_id;
+                        $qtyByServiceId[$sid] = ($qtyByServiceId[$sid] ?? 0) + max(1, (int) $item->quantity);
+                    }
+                } else {
+                    $qtyByServiceId[(int) $service->id] = max(1, (int) $lockedBooking->quantity);
+                }
+
+                $sortedServiceIds = array_keys($qtyByServiceId);
+                sort($sortedServiceIds);
+
+                $lockedServices = Service::where('business_id', $business->id)
+                    ->whereIn('id', $sortedServiceIds)
+                    ->orderBy('id')
                     ->lockForUpdate()
-                    ->sum('quantity');
+                    ->get()
+                    ->keyBy('id');
 
-                $totalCapacity = max(1, (int) $service->capacity);
-                $remaining = max(0, $totalCapacity - $usedCapacity);
-                $qty = max(1, (int) $lockedBooking->quantity);
+                $usageMap = $this->getDropoffUsageMap(
+                    $business,
+                    $sortedServiceIds,
+                    $targetDate->toDateString(),
+                    $lockedBooking->id,
+                    true
+                );
 
-                if ($qty > $remaining) {
-                    $unit = $lockedBooking->resolvedUnitLabel();
-                    throw new RuntimeException("Sisa kuota harian pada tanggal tersebut ({$remaining}) tidak mencukupi untuk {$qty} {$unit}.");
+                foreach ($sortedServiceIds as $sid) {
+                    $svc = $lockedServices->get($sid);
+                    if (! $svc) {
+                        continue;
+                    }
+
+                    $usedCapacity = (int) ($usageMap[$sid] ?? 0);
+                    $totalCapacity = max(1, (int) $svc->capacity);
+                    $remaining = max(0, $totalCapacity - $usedCapacity);
+                    $qty = $qtyByServiceId[$sid];
+
+                    if ($qty > $remaining) {
+                        $unit = $svc->resolvedUnitLabel();
+                        throw new RuntimeException("Sisa kuota harian pada tanggal tersebut ({$remaining}) tidak mencukupi untuk {$qty} {$unit}.");
+                    }
                 }
 
                 [$startLocal, $endLocal] = $this->resolveDropoffWindow(
@@ -564,7 +748,11 @@ class SlotAvailabilityService
                     $lockedBooking->fulfillment_type ?? 'dropoff',
                     $lockedBooking->pickup_session
                 );
-                $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, max(0, (int) ($service->turnaround_days ?? 1)));
+
+                $maxTurnaroundDays = $lockedServices->isNotEmpty()
+                    ? max(0, (int) $lockedServices->max(fn (Service $s): int => (int) ($s->turnaround_days ?? 1)))
+                    : max(0, (int) ($service->turnaround_days ?? 1));
+                $estimatedReadyDate = $this->calculateEstimatedReadyDate($business, $targetDate, $maxTurnaroundDays);
 
                 $startUtc = $startLocal->utc();
                 $endUtc = $endLocal->utc();
@@ -581,7 +769,7 @@ class SlotAvailabilityService
                     'reminder_h2_sent_at' => null,
                 ]);
 
-                return $lockedBooking->fresh(['business', 'service', 'staff', 'customer']);
+                return $lockedBooking->fresh(['business', 'service', 'staff', 'customer', 'items']);
             }
 
             if (! $timeString) {
@@ -589,9 +777,10 @@ class SlotAvailabilityService
                 throw new RuntimeException($timePrompt);
             }
 
+            $totalDurationMinutes = $lockedBooking->resolveTotalDurationMinutes();
             $startLocal = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$dateString} {$timeString}", $timezone);
-            $endLocal = $startLocal->addMinutes($service->duration_minutes);
-            $bufferEndLocal = $endLocal->addMinutes($service->buffer_minutes);
+            $endLocal = $startLocal->addMinutes($totalDurationMinutes);
+            $bufferEndLocal = $endLocal->addMinutes((int) $service->buffer_minutes);
 
             $this->assertBusinessWindowAndOperatingHours($business, $startLocal, $endLocal, $allowImmediateToday);
 
@@ -622,7 +811,7 @@ class SlotAvailabilityService
                     ? Staff::where('business_id', $business->id)->find($assignedStaffId)
                     : null;
                 $newCommissionAmount = $newStaff
-                    ? $newStaff->calculateCommission((int) $lockedBooking->total_price)
+                    ? app(StaffCommissionService::class)->calculateForBooking($lockedBooking, $newStaff)
                     : 0;
             }
 
@@ -639,7 +828,7 @@ class SlotAvailabilityService
                 'reminder_h2_sent_at' => null,
             ]);
 
-            return $lockedBooking->fresh(['business', 'service', 'staff', 'customer']);
+            return $lockedBooking->fresh(['business', 'service', 'staff', 'customer', 'items']);
         });
     }
 
@@ -827,8 +1016,212 @@ class SlotAvailabilityService
     }
 
     /**
+     * Resolve and validate active add-ons against the selected services of a business.
+     *
+     * @param  Collection<int, Service>  $services
+     * @param  array<int|string, array{service_addon_id?: int, id?: int, quantity?: int}|int>  $addonRequests
+     * @return array<int, array{addon: ServiceAddon, quantity: int}>
+     */
+    public function resolveAddonsForServices(Business $business, Collection $services, array $addonRequests): array
+    {
+        $qtyByAddonId = [];
+
+        foreach ($addonRequests as $key => $entry) {
+            if (is_array($entry)) {
+                $addonId = (int) ($entry['service_addon_id'] ?? $entry['id'] ?? $key);
+                $qty = (int) ($entry['quantity'] ?? 1);
+            } elseif (is_numeric($key) && is_numeric($entry) && (int) $key > 0 && ! array_is_list($addonRequests)) {
+                $addonId = (int) $key;
+                $qty = (int) $entry;
+            } else {
+                $addonId = (int) $entry;
+                $qty = 1;
+            }
+
+            if ($addonId <= 0 || $qty <= 0) {
+                continue;
+            }
+
+            if ($qty > 50) {
+                throw new RuntimeException('Jumlah add-on maksimal 50 per item.');
+            }
+
+            $qtyByAddonId[$addonId] = ($qtyByAddonId[$addonId] ?? 0) + $qty;
+            if ($qtyByAddonId[$addonId] > 50) {
+                throw new RuntimeException('Jumlah add-on maksimal 50 per item.');
+            }
+        }
+
+        if ($qtyByAddonId === []) {
+            return [];
+        }
+
+        $addons = ServiceAddon::where('business_id', $business->id)
+            ->whereIn('id', array_keys($qtyByAddonId))
+            ->where('is_active', true)
+            ->with('services:id')
+            ->get()
+            ->keyBy('id');
+
+        $resolved = [];
+        foreach ($qtyByAddonId as $addonId => $qty) {
+            /** @var ServiceAddon|null $addon */
+            $addon = $addons->get($addonId);
+            if (! $addon) {
+                throw new RuntimeException('Add-on layanan yang dipilih tidak tersedia.');
+            }
+
+            $applies = $services->contains(fn (Service $service): bool => $addon->appliesToService($service->id));
+            if (! $applies) {
+                throw new RuntimeException("Add-on {$addon->name} tidak tersedia untuk layanan yang dipilih.");
+            }
+
+            $resolved[] = [
+                'addon' => $addon,
+                'quantity' => $qty,
+            ];
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Calculate extra time-slot duration in minutes contributed by selected add-ons.
+     *
+     * @param  array<int|string, array{service_addon_id?: int, id?: int, quantity?: int}|int>  $addonRequests
+     */
+    public function calculateExtraDurationForAddons(Business $business, Service $service, array $addonRequests): int
+    {
+        $resolved = $this->resolveAddonsForServices($business, collect([$service]), $addonRequests);
+
+        return (int) collect($resolved)->sum(
+            fn (array $row): int => max(0, (int) $row['addon']->duration_minutes) * $row['quantity']
+        );
+    }
+
+    /**
+     * Compute active drop-off daily capacity usage per service_id from booking_items (+ legacy bookings without items).
+     *
+     * @param  array<int, int>  $serviceIds
+     * @return array<int, int>
+     */
+    private function getDropoffUsageMap(
+        Business $business,
+        array $serviceIds,
+        string $dateString,
+        ?int $excludeBookingId = null,
+        bool $lockRows = false
+    ): array {
+        $usage = array_fill_keys($serviceIds, 0);
+        if ($serviceIds === []) {
+            return $usage;
+        }
+
+        $activeBookingIdsQuery = Booking::where('business_id', $business->id)
+            ->whereBookingDate($dateString)
+            ->whereIn('reservation_status', ['pending', 'confirmed'])
+            ->when($excludeBookingId !== null, fn ($q) => $q->where('id', '!=', $excludeBookingId));
+
+        if ($lockRows) {
+            $activeBookingIdsQuery->lockForUpdate();
+        }
+
+        $activeBookingIds = $activeBookingIdsQuery->pluck('id');
+        if ($activeBookingIds->isEmpty()) {
+            return $usage;
+        }
+
+        $fromItems = BookingItem::whereIn('booking_id', $activeBookingIds)
+            ->where('item_type', BookingItem::TYPE_SERVICE)
+            ->whereIn('service_id', $serviceIds)
+            ->groupBy('service_id')
+            ->selectRaw('service_id, COALESCE(SUM(quantity), 0) as total_qty')
+            ->pluck('total_qty', 'service_id');
+
+        foreach ($fromItems as $sid => $qty) {
+            $usage[(int) $sid] = ($usage[(int) $sid] ?? 0) + (int) $qty;
+        }
+
+        $fromLegacy = Booking::whereIn('id', $activeBookingIds)
+            ->whereIn('service_id', $serviceIds)
+            ->whereNotExists(function ($q): void {
+                $q->select(DB::raw(1))
+                    ->from('booking_items')
+                    ->whereColumn('booking_items.booking_id', 'bookings.id');
+            })
+            ->groupBy('service_id')
+            ->selectRaw('service_id, COALESCE(SUM(quantity), 0) as total_qty')
+            ->pluck('total_qty', 'service_id');
+
+        foreach ($fromLegacy as $sid => $qty) {
+            $usage[(int) $sid] = ($usage[(int) $sid] ?? 0) + (int) $qty;
+        }
+
+        return $usage;
+    }
+
+    /**
+     * Persist immutable line-item snapshots onto booking_items.
+     *
+     * @param  array<int, array{service: Service, quantity: int}>  $serviceLines
+     * @param  array<int, array{addon: ServiceAddon, quantity: int}>  $resolvedAddons
+     */
+    private function createBookingItems(
+        Booking $booking,
+        array $serviceLines,
+        array $resolvedAddons,
+        bool $isDropoff
+    ): void {
+        foreach ($serviceLines as $line) {
+            /** @var Service $service */
+            $service = $line['service'];
+            $qty = max(1, (int) $line['quantity']);
+            $unitPrice = (int) $service->price;
+
+            BookingItem::create([
+                'booking_id' => $booking->id,
+                'item_type' => BookingItem::TYPE_SERVICE,
+                'service_id' => $service->id,
+                'service_addon_id' => null,
+                'name_snapshot' => $service->name,
+                'unit_label_snapshot' => $service->resolvedUnitLabel(),
+                'unit_price' => $unitPrice,
+                'quantity' => $qty,
+                'duration_minutes_snapshot' => $isDropoff ? 0 : (int) $service->duration_minutes,
+                'turnaround_days_snapshot' => $isDropoff ? (int) ($service->turnaround_days ?? 1) : 0,
+                'is_commissionable' => true,
+                'subtotal' => $unitPrice * $qty,
+            ]);
+        }
+
+        foreach ($resolvedAddons as $line) {
+            /** @var ServiceAddon $addon */
+            $addon = $line['addon'];
+            $qty = max(1, (int) $line['quantity']);
+            $unitPrice = (int) $addon->price;
+
+            BookingItem::create([
+                'booking_id' => $booking->id,
+                'item_type' => BookingItem::TYPE_ADDON,
+                'service_id' => null,
+                'service_addon_id' => $addon->id,
+                'name_snapshot' => $addon->name,
+                'unit_label_snapshot' => $addon->resolvedUnitLabel(),
+                'unit_price' => $unitPrice,
+                'quantity' => $qty,
+                'duration_minutes_snapshot' => $isDropoff ? 0 : (int) $addon->duration_minutes,
+                'turnaround_days_snapshot' => 0,
+                'is_commissionable' => (bool) $addon->is_commissionable,
+                'subtotal' => $unitPrice * $qty,
+            ]);
+        }
+    }
+
+    /**
      * Upsert customer, apply no-show DP protection, compute totals, and store optional DP proof.
      *
+     * @param  array<int, array{service: Service, quantity: int}>  $serviceLines
+     * @param  array<int, array{addon: ServiceAddon, quantity: int}>  $resolvedAddons
      * @return array{
      *     customer: Customer,
      *     booked_customer_name: string,
@@ -843,8 +1236,8 @@ class SlotAvailabilityService
      */
     private function upsertCustomerAndComputePricing(
         Business $business,
-        Service $service,
-        int $quantity,
+        array $serviceLines,
+        array $resolvedAddons,
         ?int $assignedStaffId,
         string $customerName,
         string $customerPhone,
@@ -916,8 +1309,34 @@ class SlotAvailabilityService
             }
         }
 
-        $totalPrice = (int) $service->price * $quantity;
-        $dpAmount = min($totalPrice, $service->calculateDpAmount() * $quantity);
+        $servicesTotal = 0;
+        $dpTotal = 0;
+        $commissionableTotal = 0;
+
+        foreach ($serviceLines as $line) {
+            /** @var Service $svc */
+            $svc = $line['service'];
+            $qty = max(1, (int) $line['quantity']);
+            $lineSubtotal = (int) $svc->price * $qty;
+            $servicesTotal += $lineSubtotal;
+            $commissionableTotal += $lineSubtotal;
+            $dpTotal += $svc->calculateDpAmount() * $qty;
+        }
+
+        $addonsTotal = 0;
+        foreach ($resolvedAddons as $line) {
+            /** @var ServiceAddon $addon */
+            $addon = $line['addon'];
+            $qty = max(1, (int) $line['quantity']);
+            $lineSubtotal = (int) $addon->price * $qty;
+            $addonsTotal += $lineSubtotal;
+            if ((bool) $addon->is_commissionable) {
+                $commissionableTotal += $lineSubtotal;
+            }
+        }
+
+        $totalPrice = $servicesTotal + $addonsTotal;
+        $dpAmount = min($totalPrice, $dpTotal);
 
         if (
             ! $allowImmediateToday
@@ -937,11 +1356,11 @@ class SlotAvailabilityService
 
         $requiresDp = $dpAmount > 0;
 
-        $assignedStaff = $assignedStaffId
+        $assignedStaff = ($assignedStaffId && $business->supportsCommissions())
             ? Staff::where('business_id', $business->id)->find($assignedStaffId)
             : null;
         $commissionAmount = $assignedStaff
-            ? $assignedStaff->calculateCommission($totalPrice)
+            ? app(StaffCommissionService::class)->calculateForStaff($assignedStaff, $commissionableTotal)
             : 0;
 
         $proofPath = null;

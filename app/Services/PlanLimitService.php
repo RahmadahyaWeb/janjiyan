@@ -136,4 +136,49 @@ class PlanLimitService
 
         return (bool) $subscription->plan->can_export_csv;
     }
+
+    public function canCreateAddon(Business $business): bool
+    {
+        $subscription = $this->ensureTrialSubscription($business->owner);
+        if ($business->isSuspended() || ! $subscription->hasActiveAccess()) {
+            return false;
+        }
+
+        $plan = $subscription->plan;
+        if ($plan->max_addons_per_business === null) {
+            return true;
+        }
+
+        return $business->serviceAddons()->count() < $plan->max_addons_per_business;
+    }
+
+    public function canUseGoogleReview(User $owner): bool
+    {
+        $subscription = $this->ensureTrialSubscription($owner);
+        if (! $subscription->hasActiveAccess()) {
+            return false;
+        }
+
+        return (bool) $subscription->plan->can_use_google_review;
+    }
+
+    public function canUseMultiServiceDropoff(User $owner): bool
+    {
+        $subscription = $this->ensureTrialSubscription($owner);
+        if (! $subscription->hasActiveAccess()) {
+            return false;
+        }
+
+        return $subscription->plan->slug !== 'basic' || (bool) $subscription->plan->can_export_csv;
+    }
+
+    public function canUseDailyCashierBreakdown(User $owner): bool
+    {
+        $subscription = $this->ensureTrialSubscription($owner);
+        if (! $subscription->hasActiveAccess()) {
+            return false;
+        }
+
+        return $subscription->plan->slug !== 'basic' || (bool) $subscription->plan->can_export_csv;
+    }
 }

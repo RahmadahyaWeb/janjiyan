@@ -49,6 +49,21 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
     settled: 'Lunas',
 };
 
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    cash: 'Tunai',
+    qris: 'QRIS',
+    transfer: 'Transfer Bank',
+    edc: 'Kartu / EDC',
+};
+
+export const PAYMENT_TYPE_LABELS: Record<string, string> = {
+    dp: 'Uang Muka',
+    settlement: 'Pelunasan',
+    partial: 'Pembayaran Sebagian',
+    adjustment: 'Penyesuaian',
+    refund: 'Pengembalian Dana',
+};
+
 export const INVOICE_STATUS_LABELS: Record<string, string> = {
     pending: 'Menunggu Pembayaran',
     paid: 'Lunas',

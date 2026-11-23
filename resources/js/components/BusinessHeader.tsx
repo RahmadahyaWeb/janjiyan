@@ -27,7 +27,7 @@ export function BusinessHeader({
 }) {
     return (
         <header style={brandVars(business.brand_color)} className="rounded-b-md bg-(--band) text-(--on-band) print:hidden">
-            <div className={cn('mx-auto px-3 pt-3 pb-5 sm:px-6', widthClassName)}>
+            <div className={cn('mx-auto px-3 pt-3 pb-4 sm:px-6 sm:pb-5', widthClassName)}>
                 <div className="flex items-center gap-2">
                     <Link
                         href={route('public.booking', business.slug)}
@@ -39,15 +39,15 @@ export function BusinessHeader({
                     <span className="flex-1" />
                     {children}
                 </div>
-                <div className="mt-3.5 flex items-center gap-3 px-1">
+                <div className="mt-2.5 flex items-center gap-3 px-1 sm:mt-3.5">
                     <BusinessMark
                         name={business.name}
                         logoUrl={business.logo_url ?? null}
-                        className="size-13 border-2 border-(--on-band)/80 text-base"
+                        className="size-11 border-2 border-(--on-band)/80 text-sm sm:size-13 sm:text-base"
                     />
                     <div className="min-w-0">
-                        <p className="text-sm">{label}</p>
-                        <p className="text-xl leading-snug font-bold [overflow-wrap:anywhere] sm:text-2xl">{business.name}</p>
+                        <p className="text-xs opacity-90 sm:text-sm">{label}</p>
+                        <p className="text-lg leading-snug font-bold [overflow-wrap:anywhere] sm:text-2xl">{business.name}</p>
                     </div>
                 </div>
             </div>

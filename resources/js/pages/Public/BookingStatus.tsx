@@ -1,5 +1,5 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Truck, Upload, XCircle } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Star, Truck, Upload, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { BusinessHeader, headerActionClass } from '@/components/BusinessHeader';
@@ -13,12 +13,19 @@ import {
     formatDateIndo,
     formatRupiah,
     FULFILLMENT_TYPE_LABELS,
+    PAYMENT_METHOD_LABELS,
     PAYMENT_STATUS_LABELS,
+    PAYMENT_TYPE_LABELS,
     RESERVATION_STATUS_LABELS,
     WORK_STATUS_LABELS,
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { BusinessType, PageProps, ServiceUnitLabel } from '@/types';
+import type {
+    BookingItemRecord,
+    BookingPaymentRecord,
+    BusinessType,
+    ServiceUnitLabel,
+} from '@/types';
 
 interface BookingStatusProps {
     business: {
@@ -36,12 +43,15 @@ interface BookingStatusProps {
             account_number: string;
             account_holder: string;
         }>;
+        review_enabled?: boolean;
+        can_use_google_review?: boolean;
     };
     booking: {
         booking_code: string;
         invoice_number: string | null;
         invoice_token: string | null;
         service_name: string;
+        service_summary?: string;
         staff_name: string | null;
         customer_name: string;
         customer_phone: string;
@@ -63,6 +73,14 @@ interface BookingStatusProps {
         created_at_local?: string | null;
         total_price: number;
         dp_amount: number;
+        paid_amount?: number;
+        remaining_balance?: number;
+        settled_at_local?: string | null;
+        has_review?: boolean;
+        can_review?: boolean;
+        review_url?: string | null;
+        items?: BookingItemRecord[];
+        payments?: BookingPaymentRecord[];
         reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
         payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
         has_dp_proof: boolean;
@@ -73,7 +91,6 @@ interface BookingStatusProps {
 }
 
 export default function BookingStatus({ business, booking }: BookingStatusProps) {
-    const { flash } = usePage<PageProps>().props;
     const [file, setFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>('');
     const [uploading, setUploading] = useState(false);
@@ -88,6 +105,16 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
     const scheduleLabel = booking.schedule_label ?? formatBookingScheduleShort(booking);
     const bookingNoun = businessType === 'dropoff' ? 'pesanan' : businessType === 'space_booking' ? 'booking' : 'reservasi';
     const lookupLabel = businessType === 'dropoff' ? 'Cek pesanan' : businessType === 'space_booking' ? 'Cek booking' : 'Cek reservasi';
+    const items = booking.items ?? [];
+    const payments = booking.payments ?? [];
+    const paidAmount =
+        booking.paid_amount ??
+        (booking.payment_status === 'settled' ? booking.total_price : 0);
+    const remainingBalance =
+        booking.remaining_balance ?? Math.max(0, booking.total_price - paidAmount);
+    const isSettled =
+        booking.payment_status === 'settled' ||
+        (remainingBalance === 0 && (paidAmount > 0 || booking.total_price === 0));
 
     const dropoffSteps = [
         {
@@ -224,17 +251,6 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
             </BusinessHeader>
 
             <main id="main-content" tabIndex={-1} className="mx-auto box-content max-w-xl space-y-6 px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] outline-none sm:px-6 print:py-0">
-                {flash.success && (
-                    <div role="status" className="rounded-sm bg-bone px-4 py-3 text-sm font-semibold text-ink print:hidden">
-                        {flash.success}
-                    </div>
-                )}
-                {flash.error && (
-                    <div role="alert" className="rounded-sm bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive print:hidden">
-                        {flash.error}
-                    </div>
-                )}
-
                 <div className="rounded-md border border-hairline-soft bg-canvas p-4 sm:p-8 print:border-0 print:p-0">
                     <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -358,14 +374,104 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                                 <span className="min-w-0 max-w-xs text-right break-words text-body">{booking.customer_notes}</span>
                             </div>
                         )}
-                        <div className="flex justify-between gap-4 border-t border-divider pt-3">
-                            <span className="shrink-0 text-mute">Total Biaya</span>
-                            <span className="font-semibold tabular-nums text-ink">{formatRupiah(booking.total_price)}</span>
-                        </div>
-                        {booking.dp_amount > 0 && (
+
+                        {items.length > 0 && (
+                            <div className="space-y-2.5 border-t border-divider pt-4">
+                                <p className="text-xs font-semibold text-mute">Rincian Item</p>
+                                <div className="space-y-2 rounded-sm bg-bone p-3.5">
+                                    {items.map((item) => (
+                                        <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
+                                            <div className="min-w-0">
+                                                <p className="font-semibold break-words text-ink">
+                                                    {item.name_snapshot}
+                                                    {item.item_type === 'addon' && (
+                                                        <span className="ml-1.5 rounded-full bg-canvas px-2 py-0.5 text-[10px] font-semibold text-mute">
+                                                            Add-on
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <p className="text-xs tabular-nums text-mute">
+                                                    {item.quantity} {item.unit_label_snapshot} × {formatRupiah(item.unit_price)}
+                                                </p>
+                                            </div>
+                                            <span className="shrink-0 font-semibold tabular-nums text-ink">
+                                                {formatRupiah(item.subtotal)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2 border-t border-divider pt-3">
                             <div className="flex justify-between gap-4">
-                                <span className="shrink-0 text-mute">Nominal Uang Muka</span>
-                                <span className="font-semibold tabular-nums text-electric">{formatRupiah(booking.dp_amount)}</span>
+                                <span className="shrink-0 text-mute">Total Biaya</span>
+                                <span className="font-semibold tabular-nums text-ink">{formatRupiah(booking.total_price)}</span>
+                            </div>
+                            {booking.dp_amount > 0 && (
+                                <div className="flex justify-between gap-4">
+                                    <span className="shrink-0 text-mute">Nominal Uang Muka</span>
+                                    <span className="font-semibold tabular-nums text-electric">{formatRupiah(booking.dp_amount)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between gap-4">
+                                <span className="shrink-0 text-mute">Sudah Dibayar</span>
+                                <span className="font-semibold tabular-nums text-ink">{formatRupiah(paidAmount)}</span>
+                            </div>
+                            {remainingBalance > 0 ? (
+                                <div className="flex justify-between gap-4">
+                                    <span className="shrink-0 font-medium text-ink">Sisa Tagihan</span>
+                                    <span className="font-semibold tabular-nums text-electric">{formatRupiah(remainingBalance)}</span>
+                                </div>
+                            ) : isSettled ? (
+                                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-1">
+                                    <span className="shrink-0 text-mute">Status Pelunasan</span>
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        {booking.settled_at_local && (
+                                            <span className="text-xs tabular-nums text-mute">{booking.settled_at_local}</span>
+                                        )}
+                                        <Badge variant="success">LUNAS</Badge>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {payments.length > 0 && (
+                            <div className="space-y-2.5 border-t border-divider pt-4">
+                                <p className="text-xs font-semibold text-mute">Riwayat Pembayaran</p>
+                                <div className="divide-y divide-divider rounded-sm bg-bone px-3.5">
+                                    {payments.map((pay) => {
+                                        const isRefund = pay.payment_type === 'refund' || pay.amount < 0;
+                                        return (
+                                            <div key={pay.id} className="flex items-start justify-between gap-3 py-2.5 text-xs">
+                                                <div className="min-w-0 space-y-0.5">
+                                                    <p className="font-semibold text-ink">
+                                                        {PAYMENT_TYPE_LABELS[pay.payment_type] ?? pay.payment_type} ·{' '}
+                                                        {PAYMENT_METHOD_LABELS[pay.payment_method] ?? pay.payment_method}
+                                                    </p>
+                                                    {(pay.paid_at_local || pay.paid_at) && (
+                                                        <p className="tabular-nums text-mute">{pay.paid_at_local || pay.paid_at}</p>
+                                                    )}
+                                                    {pay.payment_method === 'cash' && pay.change_amount > 0 && (
+                                                        <p className="tabular-nums text-mute">
+                                                            Kembalian {formatRupiah(pay.change_amount)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span
+                                                    className={cn(
+                                                        'shrink-0 font-semibold tabular-nums',
+                                                        isRefund ? 'text-destructive' : 'text-ink'
+                                                    )}
+                                                >
+                                                    {isRefund
+                                                        ? `-${formatRupiah(Math.abs(pay.amount))}`
+                                                        : formatRupiah(pay.amount)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -496,6 +602,33 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
                         </div>
                     )}
                 </div>
+
+                {booking.can_review && booking.review_url && (
+                    <section
+                        aria-labelledby="review-cta-heading"
+                        className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6 print:hidden"
+                    >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <Star className="size-4 shrink-0 text-electric" aria-hidden="true" />
+                                    <h2 id="review-cta-heading" className="text-base font-semibold text-ink">
+                                        Bagaimana pengalaman Anda di {business.name}?
+                                    </h2>
+                                </div>
+                                <p className="text-sm text-mute">
+                                    Ulasan singkat Anda sangat berarti untuk meningkatkan kualitas layanan kami.
+                                </p>
+                            </div>
+                            <Button asChild className="w-full shrink-0 sm:w-auto">
+                                <a href={booking.review_url}>
+                                    <Star className="size-4" aria-hidden="true" />
+                                    Beri Ulasan
+                                </a>
+                            </Button>
+                        </div>
+                    </section>
+                )}
 
                 <p className="text-center print:hidden">
                     <Link
