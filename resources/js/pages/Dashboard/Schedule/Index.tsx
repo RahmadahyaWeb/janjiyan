@@ -3,9 +3,11 @@ import { Info, Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { TimePicker } from '@/components/ui/time-picker';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatDateIndo } from '@/lib/format';
@@ -152,24 +154,27 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                                             <div className="min-w-0 space-y-1.5 sm:space-y-0">
                                                 <span className="block text-xs font-medium text-mute sm:hidden">Jam Buka</span>
                                                 <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
-                                                    <Input
-                                                        type="time"
+                                                    <TimePicker
                                                         aria-label={`Jam buka hari ${dayName}`}
                                                         aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.open_time` as keyof typeof hoursForm.errors])}
                                                         aria-describedby={errorId}
-                                                        className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                        wrapperClassName="sm:w-28"
+                                                        className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                        dialogTitle={`Jam Buka ${dayName}`}
                                                         value={row.open_time}
-                                                        onChange={(e) => updateHour(idx, 'open_time', e.target.value)}
+                                                        onChange={(val) => updateHour(idx, 'open_time', val)}
                                                     />
                                                     <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
-                                                    <Input
-                                                        type="time"
+                                                    <TimePicker
                                                         aria-label={`Jam tutup hari ${dayName}`}
                                                         aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.close_time` as keyof typeof hoursForm.errors])}
                                                         aria-describedby={errorId}
-                                                        className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                        align="end"
+                                                        wrapperClassName="sm:w-28"
+                                                        className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                        dialogTitle={`Jam Tutup ${dayName}`}
                                                         value={row.close_time}
-                                                        onChange={(e) => updateHour(idx, 'close_time', e.target.value)}
+                                                        onChange={(val) => updateHour(idx, 'close_time', val)}
                                                     />
                                                 </div>
                                             </div>
@@ -184,24 +189,29 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                                         <div className="space-y-1.5 border-t border-divider pt-2.5 sm:flex sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
                                             <span className="block text-xs font-medium text-mute">Istirahat (opsional)</span>
                                             <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
-                                                <Input
-                                                    type="time"
+                                                <TimePicker
+                                                    clearable
                                                     aria-label={`Mulai istirahat hari ${dayName}`}
                                                     aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.break_start` as keyof typeof hoursForm.errors])}
                                                     aria-describedby={errorId}
-                                                    className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                    wrapperClassName="sm:w-32"
+                                                    className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                    dialogTitle={`Mulai Istirahat ${dayName}`}
                                                     value={row.break_start}
-                                                    onChange={(e) => updateHour(idx, 'break_start', e.target.value)}
+                                                    onChange={(val) => updateHour(idx, 'break_start', val)}
                                                 />
                                                 <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
-                                                <Input
-                                                    type="time"
+                                                <TimePicker
+                                                    clearable
+                                                    align="end"
                                                     aria-label={`Selesai istirahat hari ${dayName}`}
                                                     aria-invalid={Boolean(hoursForm.errors[`hours.${idx}.break_end` as keyof typeof hoursForm.errors])}
                                                     aria-describedby={errorId}
-                                                    className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                    wrapperClassName="sm:w-32"
+                                                    className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                    dialogTitle={`Selesai Istirahat ${dayName}`}
                                                     value={row.break_end}
-                                                    onChange={(e) => updateHour(idx, 'break_end', e.target.value)}
+                                                    onChange={(val) => updateHour(idx, 'break_end', val)}
                                                 />
                                             </div>
                                         </div>
@@ -231,13 +241,12 @@ export default function ScheduleIndex({ operatingHours, holidays }: ScheduleInde
                     <form onSubmit={submitHoliday} className="space-y-3">
                         <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="holiday-date">Tanggal Libur</Label>
-                            <Input
+                            <DatePicker
                                 id="holiday-date"
-                                type="date"
-                                className="min-w-0"
                                 value={holidayForm.data.date}
-                                onChange={(e) => holidayForm.setData('date', e.target.value)}
+                                onChange={(val) => holidayForm.setData('date', val)}
                                 aria-invalid={Boolean(holidayForm.errors.date)}
+                                dialogTitle="Tanggal Libur"
                                 required
                             />
                             {holidayForm.errors.date && (

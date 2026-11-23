@@ -120,23 +120,22 @@
         letter-spacing: 0;
     }
 
-    /* iOS WebKit draws date/time inputs natively with wide intrinsic widths and centered values. */
-    input[type="date"],
-    input[type="time"] {
+    /* Hide native search clear icons & number spinners so custom inputs render consistently across browsers. */
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-decoration {
         -webkit-appearance: none;
         appearance: none;
-        display: block;
-        min-width: 0;
-        max-width: 100%;
-        box-sizing: border-box;
-        font-variant-numeric: tabular-nums;
     }
 
-    input[type="date"]::-webkit-date-and-time-value,
-    input[type="time"]::-webkit-date-and-time-value {
-        text-align: left;
-        min-height: 1.5em;
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
         margin: 0;
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
     }
 }
 

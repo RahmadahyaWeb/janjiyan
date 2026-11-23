@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import { formatBookingScheduleShort, formatDateIndo, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS } from '@/lib/format';
@@ -178,12 +178,12 @@ export function BookingCalendarView({
                             <Label htmlFor="calendar-jump-date" className="sr-only">
                                 Pilih tanggal kalender
                             </Label>
-                            <Input
+                            <DatePicker
                                 id="calendar-jump-date"
-                                type="date"
                                 value={calendar.selected_date}
-                                onChange={(e) => e.target.value && onSelectDate(e.target.value)}
-                                className="h-9 min-w-0 bg-canvas px-2.5 text-xs"
+                                onChange={(val) => val && onSelectDate(val)}
+                                dialogTitle="Pilih Tanggal Kalender"
+                                className="h-9 bg-canvas px-2.5 text-xs"
                             />
                         </div>
                         <Button

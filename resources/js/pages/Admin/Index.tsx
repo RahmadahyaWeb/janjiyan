@@ -1,11 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Ban, CheckCircle2, Clock, CreditCard, LogOut, Search } from 'lucide-react';
+import { Ban, CheckCircle2, Clock, CreditCard, LogOut } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SearchInput } from '@/components/ui/search-input';
+import { SelectField } from '@/components/ui/select';
 import { formatRupiah, INVOICE_STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -208,33 +208,33 @@ export default function AdminIndex({
                     </div>
 
                     <form onSubmit={applyFilter} className="flex flex-wrap items-center gap-2">
-                        <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
-                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mute" aria-hidden="true" />
-                            <Input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Cari nama, email, atau slug…"
-                                className="pl-9"
-                            />
-                        </div>
-                        <NativeSelect
+                        <SearchInput
+                            wrapperClassName="w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]"
+                            value={search}
+                            onValueChange={setSearch}
+                            placeholder="Cari nama, email, atau slug…"
+                            aria-label="Cari merchant"
+                        />
+                        <SelectField
                             aria-label="Filter status langganan"
                             value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
+                            onValueChange={(val) => {
+                                setStatusFilter(val);
                                 router.get(
                                     route('admin.index'),
-                                    { search: search || undefined, status: e.target.value || undefined },
+                                    { search: search || undefined, status: val || undefined },
                                     { preserveState: true, preserveScroll: true, replace: true }
                                 );
                             }}
-                            className="w-full font-normal sm:w-auto"
-                        >
-                            <option value="">Semua Status</option>
-                            <option value="active">Aktif</option>
-                            <option value="trialing">Trial</option>
-                            <option value="expired">Expired</option>
-                        </NativeSelect>
+                            wrapperClassName="w-full sm:w-auto"
+                            className="w-full font-normal sm:w-40"
+                            options={[
+                                { value: '', label: 'Semua Status' },
+                                { value: 'active', label: 'Aktif' },
+                                { value: 'trialing', label: 'Trial' },
+                                { value: 'expired', label: 'Expired' },
+                            ]}
+                        />
                         <Button type="submit" variant="outline" size="sm" className="w-full sm:w-auto">
                             Cari
                         </Button>

@@ -5,13 +5,12 @@ import {
     Minus,
     PackageCheck,
     Plus,
-    Search,
     Sparkles,
     Truck,
     UserCheck,
-    X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SearchInput } from '@/components/ui/search-input';
 import { formatRupiah, formatTurnaroundLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BusinessType, ServiceAddon } from '@/types';
@@ -98,30 +97,15 @@ export function ServiceSelectionStep({
             </div>
 
             {showSearch && (
-                <div className="relative mb-3.5">
-                    <Search
-                        className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-mute"
-                        aria-hidden="true"
-                    />
-                    <input
-                        type="search"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Cari layanan…"
-                        aria-label="Cari layanan"
-                        className="h-11 w-full rounded-sm border border-hairline bg-canvas pr-10 pl-10 text-base text-ink placeholder:text-mute focus-visible:border-ink focus-visible:ring-2 focus-visible:ring-ink/20 focus-visible:outline-none sm:text-sm"
-                    />
-                    {searchQuery && (
-                        <button
-                            type="button"
-                            onClick={() => setSearchQuery('')}
-                            aria-label="Hapus pencarian layanan"
-                            className="absolute top-1/2 right-2 inline-flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-mute transition-colors hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                        >
-                            <X className="size-4" aria-hidden="true" />
-                        </button>
-                    )}
-                </div>
+                <SearchInput
+                    wrapperClassName="mb-3.5"
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    placeholder="Cari layanan…"
+                    aria-label="Cari layanan"
+                    clearLabel="Hapus pencarian layanan"
+                    className="h-11 border-hairline bg-canvas text-base focus-visible:border-ink focus-visible:ring-ink/20 sm:text-sm"
+                />
             )}
 
             {filteredServices.length === 0 ? (

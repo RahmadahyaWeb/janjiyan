@@ -1,7 +1,8 @@
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { Button } from '@/components/ui/button';
+import { FileUpload } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -301,27 +302,19 @@ export function CustomerDetailsStep({
                                     </div>
                                 </div>
                             ) : (
-                                <label
-                                    htmlFor="dp-proof-upload"
+                                <FileUpload
+                                    id="dp-proof-upload"
+                                    file={dpProof}
+                                    accept="image/png,image/jpeg,image/webp"
+                                    placeholder="Pilih foto/screenshot bukti transfer (JPG/PNG/WebP, maks 5MB)"
+                                    aria-invalid={Boolean(dpProofError || errors.dp_proof)}
+                                    aria-describedby={dpProofError || errors.dp_proof ? 'dp-proof-error' : undefined}
                                     className={cn(
-                                        'flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed bg-field px-4 py-4 text-sm text-ink transition-colors duration-150 focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2 hover:bg-bone',
+                                        'justify-center py-4',
                                         dpProofError || errors.dp_proof ? 'border-destructive' : 'border-control-border'
                                     )}
-                                >
-                                    <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                                        Pilih foto/screenshot bukti transfer (JPG/PNG/WebP, maks 5MB)
-                                    </span>
-                                    <input
-                                        id="dp-proof-upload"
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        className="sr-only"
-                                        aria-invalid={Boolean(dpProofError || errors.dp_proof)}
-                                        aria-describedby={dpProofError || errors.dp_proof ? 'dp-proof-error' : undefined}
-                                        onChange={(e) => onChangeDpProof(e.target.files?.[0] ?? null)}
-                                    />
-                                </label>
+                                    onFileChange={onChangeDpProof}
+                                />
                             )}
                             {(dpProofError || errors.dp_proof) && (
                                 <p id="dp-proof-error" className="text-xs font-medium text-destructive">

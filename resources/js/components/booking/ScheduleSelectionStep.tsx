@@ -1,10 +1,17 @@
 import { Calendar, PackageCheck, Truck } from 'lucide-react';
 import { useMemo } from 'react';
 import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { DropoffAvailability, SlotItem } from '@/hooks/useSlotFetcher';
-import { formatDateIndo, PICKUP_SESSION_LABELS } from '@/lib/format';
+import {
+    formatDateChipShort,
+    formatDateIndo,
+    formatMonthShortUtc,
+    formatWeekdayShortUtc,
+    PICKUP_SESSION_LABELS,
+} from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BusinessType } from '@/types';
 import type { ActiveServiceLine, QuickDateItem, ServiceItem } from './types';
@@ -144,12 +151,7 @@ export function ScheduleSelectionStep({
 
     const customDateChipText = useMemo(() => {
         if (!isCustomDate || !selectedDate) return 'Tanggal lain';
-        const d = new Date(`${selectedDate}T00:00:00Z`);
-        return new Intl.DateTimeFormat('id-ID', {
-            day: 'numeric',
-            month: 'short',
-            timeZone: 'UTC',
-        }).format(d);
+        return formatDateChipShort(selectedDate);
     }, [isCustomDate, selectedDate]);
 
     const selectedUnitLabel = selectedService?.unit_label ?? 'item';
@@ -199,63 +201,48 @@ export function ScheduleSelectionStep({
                                             )}
                                         >
                                             <span className="text-xs font-semibold">
-                                                {date === todayLocal
-                                                    ? 'Hari ini'
-                                                    : new Intl.DateTimeFormat('id-ID', {
-                                                          weekday: 'short',
-                                                          timeZone: 'UTC',
-                                                      }).format(d)}
+                                                {date === todayLocal ? 'Hari ini' : formatWeekdayShortUtc(d)}
                                             </span>
                                             <span className="text-lg leading-6 font-semibold tabular-nums">
                                                 {d.getUTCDate()}
                                             </span>
-                                            <span className="text-xs">
-                                                {new Intl.DateTimeFormat('id-ID', {
-                                                    month: 'short',
-                                                    timeZone: 'UTC',
-                                                }).format(d)}
-                                            </span>
+                                            <span className="text-xs">{formatMonthShortUtc(d)}</span>
                                         </button>
                                     );
                                 })}
                             </HorizontalScrollContainer>
 
-                            <label
-                                className={cn(
-                                    'relative mb-1 flex w-22 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border px-1.5 py-2 text-center text-xs font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2',
-                                    isCustomDate
-                                        ? 'border-ink bg-ink text-canvas'
-                                        : 'border-dashed border-hairline bg-canvas text-ink hover:border-ink/40'
+                            <DatePicker
+                                value={selectedDate}
+                                min={todayLocal}
+                                max={maxDateLocal}
+                                align="end"
+                                dialogTitle="Pilih Tanggal"
+                                onChange={(val) => val && onSelectDate(val)}
+                                wrapperClassName="flex shrink-0 pb-1"
+                                renderTrigger={({ open }) => (
+                                    <button
+                                        id="booking-date"
+                                        type="button"
+                                        aria-haspopup="dialog"
+                                        aria-expanded={open}
+                                        aria-label={
+                                            isCustomDate
+                                                ? `Tanggal dipilih: ${formatDateIndo(selectedDate)}`
+                                                : 'Pilih tanggal lainnya'
+                                        }
+                                        className={cn(
+                                            'flex w-22 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border px-1.5 py-2 text-center text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none',
+                                            isCustomDate
+                                                ? 'border-ink bg-ink text-canvas'
+                                                : 'border-dashed border-hairline bg-canvas text-ink hover:border-ink/40'
+                                        )}
+                                    >
+                                        <Calendar className="size-4" aria-hidden="true" />
+                                        <span className="leading-tight">{customDateChipText}</span>
+                                    </button>
                                 )}
-                            >
-                                <Calendar className="size-4" aria-hidden="true" />
-                                <span className="leading-tight">{customDateChipText}</span>
-                                <input
-                                    id="booking-date"
-                                    type="date"
-                                    min={todayLocal}
-                                    max={maxDateLocal}
-                                    value={selectedDate}
-                                    onChange={(e) => e.target.value && onSelectDate(e.target.value)}
-                                    onClick={(e) => {
-                                        try {
-                                            e.currentTarget.showPicker();
-                                        } catch {
-                                            // Older browsers open the picker on tap anyway.
-                                        }
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                                        e.preventDefault();
-                                        try {
-                                            e.currentTarget.showPicker();
-                                        } catch {
-                                            // No picker API: arrow keys still change the date.
-                                        }
-                                    }}
-                                    className="absolute inset-0 size-full cursor-pointer opacity-0"
-                                />
-                            </label>
+                            />
                         </div>
 
                         <p className="text-sm text-mute">

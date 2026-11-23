@@ -1,11 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Star, Truck, Upload, XCircle } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, Clock, Download, FileText, MessageCircle, PackageCheck, Printer, Sparkles, Star, Truck, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { BusinessHeader, headerActionClass } from '@/components/BusinessHeader';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FileUpload } from '@/components/ui/file-upload';
 import { resolveBusinessType } from '@/lib/businessType';
 import {
     buildWhatsAppUrl,
@@ -527,23 +528,18 @@ export default function BookingStatus({ business, booking }: BookingStatusProps)
 
                             {!dpExpired && (
                             <form onSubmit={handleUpload} className="space-y-3">
-                                <label
-                                    htmlFor="status-dp-proof"
-                                    className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-4 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                                >
-                                    <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                    <span className="min-w-0 [overflow-wrap:anywhere]">{file ? file.name : 'Pilih gambar bukti bayar (JPG/PNG)'}</span>
-                                    <input
-                                        id="status-dp-proof"
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        className="sr-only"
-                                        onChange={(e) => {
-                                            setFile(e.target.files?.[0] ?? null);
-                                            setFileError('');
-                                        }}
-                                    />
-                                </label>
+                                <FileUpload
+                                    id="status-dp-proof"
+                                    file={file}
+                                    accept="image/png,image/jpeg,image/webp"
+                                    placeholder="Pilih gambar bukti bayar (JPG/PNG)"
+                                    clearLabel="Hapus gambar bukti bayar"
+                                    className="bg-canvas py-4"
+                                    onFileChange={(selected) => {
+                                        setFile(selected);
+                                        setFileError('');
+                                    }}
+                                />
                                 {fileError && (
                                     <p role="alert" className="text-xs font-medium text-destructive">
                                         {fileError}

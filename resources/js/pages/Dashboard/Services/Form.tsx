@@ -1,10 +1,12 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Lock, Upload } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { FileUpload } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -187,31 +189,19 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             </Button>
                         </div>
                     )}
-                    <label
-                        htmlFor="service-image-upload"
-                        className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                    >
-                        <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                        <span className="min-w-0 [overflow-wrap:anywhere]">
-                            {form.data.image
-                                ? form.data.image.name
-                                : 'Unggah thumbnail layanan (JPG/PNG/WebP, maks 3MB)'}
-                        </span>
-                        <input
-                            id="service-image-upload"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            className="sr-only"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-                                form.setData((prev) => ({
-                                    ...prev,
-                                    image: file,
-                                    remove_image: false,
-                                }));
-                            }}
-                        />
-                    </label>
+                    <FileUpload
+                        id="service-image-upload"
+                        file={form.data.image}
+                        accept="image/png,image/jpeg,image/webp"
+                        placeholder="Unggah thumbnail layanan (JPG/PNG/WebP, maks 3MB)"
+                        onFileChange={(file) => {
+                            form.setData((prev) => ({
+                                ...prev,
+                                image: file,
+                                remove_image: false,
+                            }));
+                        }}
+                    />
                     {form.errors.image && (
                         <p className="text-xs text-destructive">{form.errors.image}</p>
                     )}
@@ -222,20 +212,18 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="service-unit-label">Satuan Hitung *</Label>
-                                <NativeSelect
+                                <SelectField
                                     id="service-unit-label"
                                     value={form.data.unit_label}
-                                    onChange={(e) =>
-                                        form.setData('unit_label', e.target.value as ServiceUnitLabel)
+                                    onValueChange={(val) =>
+                                        form.setData('unit_label', val as ServiceUnitLabel)
                                     }
                                     aria-invalid={Boolean(form.errors.unit_label)}
-                                >
-                                    {UNIT_LABEL_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label} — {opt.hint}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                    options={UNIT_LABEL_OPTIONS.map((opt) => ({
+                                        value: opt.value,
+                                        label: `${opt.label} — ${opt.hint}`,
+                                    }))}
+                                />
                                 <p className="text-xs text-mute">{selectedUnitOption.hint}.</p>
                                 {form.errors.unit_label && (
                                     <p className="text-xs text-destructive">{form.errors.unit_label}</p>
@@ -245,12 +233,11 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                                 <Label htmlFor="service-price">
                                     Harga per {form.data.unit_label} (Rp) *
                                 </Label>
-                                <Input
+                                <CurrencyInput
                                     id="service-price"
-                                    type="number"
                                     min={0}
                                     value={form.data.price}
-                                    onChange={(e) => form.setData('price', parseNumericInput(e.target.value))}
+                                    onValueChange={(val) => form.setData('price', val)}
                                     aria-invalid={Boolean(form.errors.price)}
                                     required
                                 />
@@ -325,12 +312,11 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                         <div className="grid gap-3 sm:grid-cols-3">
                             <div className="space-y-1.5">
                                 <Label htmlFor="service-price">{config.services.priceLabel} (Rp) *</Label>
-                                <Input
+                                <CurrencyInput
                                     id="service-price"
-                                    type="number"
                                     min={0}
                                     value={form.data.price}
-                                    onChange={(e) => form.setData('price', parseNumericInput(e.target.value))}
+                                    onValueChange={(val) => form.setData('price', val)}
                                     aria-invalid={Boolean(form.errors.price)}
                                     required
                                 />
@@ -438,17 +424,18 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                         <Label htmlFor="service-dp-type">Uang Muka</Label>
-                        <NativeSelect
+                        <SelectField
                             id="service-dp-type"
                             value={form.data.dp_type}
-                            onChange={(e) =>
-                                form.setData('dp_type', e.target.value as 'none' | 'fixed' | 'percentage')
+                            onValueChange={(val) =>
+                                form.setData('dp_type', val as 'none' | 'fixed' | 'percentage')
                             }
-                        >
-                            <option value="none">Tanpa Uang Muka</option>
-                            <option value="fixed">Nominal Tetap (Rp)</option>
-                            <option value="percentage">Persentase (%)</option>
-                        </NativeSelect>
+                            options={[
+                                { value: 'none', label: 'Tanpa Uang Muka' },
+                                { value: 'fixed', label: 'Nominal Tetap (Rp)' },
+                                { value: 'percentage', label: 'Persentase (%)' },
+                            ]}
+                        />
                         <p className="text-xs text-mute">
                             {isDropoff
                                 ? 'Opsional. Aktifkan jika pelanggan perlu membayar uang muka untuk mengunci kuota harian.'
@@ -460,16 +447,27 @@ export default function ServiceForm({ service, staffList }: ServiceFormProps) {
                             <Label htmlFor="service-dp-value">
                                 {form.data.dp_type === 'fixed' ? 'Nominal Uang Muka (Rp)' : 'Persentase Uang Muka (%)'}
                             </Label>
-                            <Input
-                                id="service-dp-value"
-                                type="number"
-                                min={1}
-                                max={form.data.dp_type === 'percentage' ? 100 : undefined}
-                                value={form.data.dp_value}
-                                onChange={(e) => form.setData('dp_value', parseNumericInput(e.target.value))}
-                                aria-invalid={Boolean(form.errors.dp_value)}
-                                required
-                            />
+                            {form.data.dp_type === 'fixed' ? (
+                                <CurrencyInput
+                                    id="service-dp-value"
+                                    min={1}
+                                    value={form.data.dp_value}
+                                    onValueChange={(val) => form.setData('dp_value', val)}
+                                    aria-invalid={Boolean(form.errors.dp_value)}
+                                    required
+                                />
+                            ) : (
+                                <Input
+                                    id="service-dp-value"
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    value={form.data.dp_value}
+                                    onChange={(e) => form.setData('dp_value', parseNumericInput(e.target.value))}
+                                    aria-invalid={Boolean(form.errors.dp_value)}
+                                    required
+                                />
+                            )}
                             {form.errors.dp_value && (
                                 <p className="text-xs text-destructive">{form.errors.dp_value}</p>
                             )}

@@ -14,7 +14,6 @@ import {
     MoreHorizontal,
     Plus,
     Printer,
-    Search,
     SlidersHorizontal,
     UserX,
     Wallet,
@@ -34,6 +33,7 @@ import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { ReceiptPrintDialog } from '@/components/ReceiptPrintSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,9 +41,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SearchInput } from '@/components/ui/search-input';
+import { SelectField } from '@/components/ui/select';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import {
@@ -293,6 +293,10 @@ export default function BookingsIndex({
         if (!desktopFilterOpen) return;
         const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDesktopFilterOpen(false);
         const onPointerDown = (e: MouseEvent) => {
+            const target = e.target as Element | null;
+            if (target?.closest('[data-slot="popover-content"], [data-slot="dialog-content"], [data-slot="select-content"]')) {
+                return;
+            }
             if (desktopFilterRef.current && !desktopFilterRef.current.contains(e.target as Node)) {
                 setDesktopFilterOpen(false);
             }
@@ -934,33 +938,33 @@ export default function BookingsIndex({
                         {filters.view === 'calendar' ? (
                             <div className="flex flex-wrap items-center gap-2">
                                 {supportsStaffFilter && staffOptions.length > 0 && (
-                                    <NativeSelect
+                                    <SelectField
                                         aria-label="Filter staff di kalender"
-                                        value={filters.staff_id ?? ''}
-                                        onChange={(e) => applyFilters({ staff_id: e.target.value })}
+                                        value={String(filters.staff_id ?? '')}
+                                        onValueChange={(val) => applyFilters({ staff_id: val })}
                                         className="h-9 w-auto bg-canvas py-0 text-xs"
-                                    >
-                                        <option value="">Semua Staff</option>
-                                        {staffOptions.map((st) => (
-                                            <option key={st.id} value={String(st.id)}>
-                                                {st.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                        options={[
+                                            { value: '', label: 'Semua Staff' },
+                                            ...staffOptions.map((st) => ({
+                                                value: String(st.id),
+                                                label: st.name,
+                                            })),
+                                        ]}
+                                    />
                                 )}
-                                <NativeSelect
+                                <SelectField
                                     aria-label="Filter layanan di kalender"
-                                    value={filters.service_id ?? ''}
-                                    onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                    value={String(filters.service_id ?? '')}
+                                    onValueChange={(val) => applyFilters({ service_id: val })}
                                     className="h-9 w-auto bg-canvas py-0 text-xs"
-                                >
-                                    <option value="">Semua {config.services.pageTitle}</option>
-                                    {services.map((svc) => (
-                                        <option key={svc.id} value={String(svc.id)}>
-                                            {svc.name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                    options={[
+                                        { value: '', label: `Semua ${config.services.pageTitle}` },
+                                        ...services.map((svc) => ({
+                                            value: String(svc.id),
+                                            label: svc.name,
+                                        })),
+                                    ]}
+                                />
                             </div>
                         ) : (
                             <button
@@ -1115,32 +1119,19 @@ export default function BookingsIndex({
 
                         {/* Mobile Search + Filter Sheet Trigger */}
                         <div className="flex items-center gap-2 md:hidden">
-                            <div className="relative flex min-w-0 flex-1 items-center">
+                            <div className="min-w-0 flex-1">
                                 <label htmlFor="bookings-search-mobile" className="sr-only">
                                     Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
                                 </label>
-                                <Search className="pointer-events-none absolute left-3.5 size-4 text-ash" aria-hidden="true" />
-                                <Input
+                                <SearchInput
                                     id="bookings-search-mobile"
-                                    className="h-11 bg-field pl-10 pr-9"
+                                    className="h-11 bg-field pr-9"
                                     placeholder="Cari nama, kode, WA…"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onValueChange={setSearch}
+                                    onClear={() => applyFilters({ search: '' })}
                                     onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
                                 />
-                                {search && (
-                                    <button
-                                        type="button"
-                                        aria-label="Hapus pencarian"
-                                        onClick={() => {
-                                            setSearch('');
-                                            applyFilters({ search: '' });
-                                        }}
-                                        className="absolute right-1.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                    >
-                                        <X className="size-4" aria-hidden="true" />
-                                    </button>
-                                )}
                             </div>
 
                             <Button
@@ -1224,72 +1215,73 @@ export default function BookingsIndex({
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mobile-filter-payment">Status Pembayaran</Label>
-                                    <NativeSelect
+                                    <SelectField
                                         id="mobile-filter-payment"
                                         value={filters.payment}
-                                        onChange={(e) => applyFilters({ payment: e.target.value })}
-                                    >
-                                        <option value="">Semua Pembayaran</option>
-                                        <option value="unpaid">Belum Bayar</option>
-                                        <option value="waiting_verification">Cek Bukti DP</option>
-                                        <option value="dp_verified">DP Terverifikasi</option>
-                                        <option value="settled">Lunas</option>
-                                    </NativeSelect>
+                                        onValueChange={(val) => applyFilters({ payment: val })}
+                                        options={[
+                                            { value: '', label: 'Semua Pembayaran' },
+                                            { value: 'unpaid', label: 'Belum Bayar' },
+                                            { value: 'waiting_verification', label: 'Cek Bukti DP' },
+                                            { value: 'dp_verified', label: 'DP Terverifikasi' },
+                                            { value: 'settled', label: 'Lunas' },
+                                        ]}
+                                    />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mobile-filter-service">{config.services.pageTitle}</Label>
-                                    <NativeSelect
+                                    <SelectField
                                         id="mobile-filter-service"
-                                        value={filters.service_id ?? ''}
-                                        onChange={(e) => applyFilters({ service_id: e.target.value })}
-                                    >
-                                        <option value="">Semua {config.services.pageTitle}</option>
-                                        {services.map((svc) => (
-                                            <option key={svc.id} value={String(svc.id)}>
-                                                {svc.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                        value={String(filters.service_id ?? '')}
+                                        onValueChange={(val) => applyFilters({ service_id: val })}
+                                        options={[
+                                            { value: '', label: `Semua ${config.services.pageTitle}` },
+                                            ...services.map((svc) => ({
+                                                value: String(svc.id),
+                                                label: svc.name,
+                                            })),
+                                        ]}
+                                    />
                                 </div>
 
                                 {supportsStaffFilter && staffOptions.length > 0 && (
                                     <div className="space-y-1.5">
                                         <Label htmlFor="mobile-filter-staff">Staff</Label>
-                                        <NativeSelect
+                                        <SelectField
                                             id="mobile-filter-staff"
-                                            value={filters.staff_id ?? ''}
-                                            onChange={(e) => applyFilters({ staff_id: e.target.value })}
-                                        >
-                                            <option value="">Semua Staff</option>
-                                            {staffOptions.map((st) => (
-                                                <option key={st.id} value={String(st.id)}>
-                                                    {st.name}
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
+                                            value={String(filters.staff_id ?? '')}
+                                            onValueChange={(val) => applyFilters({ staff_id: val })}
+                                            options={[
+                                                { value: '', label: 'Semua Staff' },
+                                                ...staffOptions.map((st) => ({
+                                                    value: String(st.id),
+                                                    label: st.name,
+                                                })),
+                                            ]}
+                                        />
                                     </div>
                                 )}
 
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div className="min-w-0 space-y-1.5">
                                         <Label htmlFor="mobile-filter-date-from">Dari Tanggal</Label>
-                                        <Input
+                                        <DatePicker
                                             id="mobile-filter-date-from"
-                                            type="date"
-                                            className="min-w-0"
+                                            clearable
+                                            dialogTitle="Dari Tanggal"
                                             value={filters.date_from}
-                                            onChange={(e) => applyFilters({ date_from: e.target.value, sla: '' })}
+                                            onChange={(val) => applyFilters({ date_from: val, sla: '' })}
                                         />
                                     </div>
                                     <div className="min-w-0 space-y-1.5">
                                         <Label htmlFor="mobile-filter-date-to">Sampai Tanggal</Label>
-                                        <Input
+                                        <DatePicker
                                             id="mobile-filter-date-to"
-                                            type="date"
-                                            className="min-w-0"
+                                            clearable
+                                            dialogTitle="Sampai Tanggal"
                                             value={filters.date_to}
-                                            onChange={(e) => applyFilters({ date_to: e.target.value, sla: '' })}
+                                            onChange={(val) => applyFilters({ date_to: val, sla: '' })}
                                         />
                                     </div>
                                 </div>
@@ -1321,46 +1313,35 @@ export default function BookingsIndex({
 
                         {/* Desktop Single-Row Toolbar */}
                         <div className="hidden md:flex md:items-center md:gap-2.5">
-                            <div className="relative flex min-w-[200px] flex-1 items-center lg:max-w-sm">
+                            <div className="min-w-[200px] flex-1 lg:max-w-sm">
                                 <label htmlFor="bookings-search" className="sr-only">
                                     Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
                                 </label>
-                                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
-                                <Input
+                                <SearchInput
                                     id="bookings-search"
-                                    className="h-10 bg-canvas pl-10 pr-9 text-sm"
+                                    className="h-10 bg-canvas pr-9 text-sm"
                                     placeholder="Cari kode, nama, atau WA…"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onValueChange={setSearch}
+                                    onClear={() => applyFilters({ search: '' })}
                                     onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
                                 />
-                                {search && (
-                                    <button
-                                        type="button"
-                                        aria-label="Hapus pencarian"
-                                        onClick={() => {
-                                            setSearch('');
-                                            applyFilters({ search: '' });
-                                        }}
-                                        className="absolute right-1.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                    >
-                                        <X className="size-4" aria-hidden="true" />
-                                    </button>
-                                )}
                             </div>
 
-                            <NativeSelect
+                            <SelectField
                                 aria-label="Filter status pembayaran"
                                 value={filters.payment}
-                                onChange={(e) => applyFilters({ payment: e.target.value })}
+                                onValueChange={(val) => applyFilters({ payment: val })}
+                                wrapperClassName="shrink-0"
                                 className="h-10 w-auto min-w-[175px] max-w-[220px] shrink-0 bg-canvas text-sm"
-                            >
-                                <option value="">Semua Pembayaran</option>
-                                <option value="unpaid">Belum Bayar</option>
-                                <option value="waiting_verification">Cek Bukti DP</option>
-                                <option value="dp_verified">DP Terverifikasi</option>
-                                <option value="settled">Lunas</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Semua Pembayaran' },
+                                    { value: 'unpaid', label: 'Belum Bayar' },
+                                    { value: 'waiting_verification', label: 'Cek Bukti DP' },
+                                    { value: 'dp_verified', label: 'DP Terverifikasi' },
+                                    { value: 'settled', label: 'Lunas' },
+                                ]}
+                            />
 
                             <div ref={desktopFilterRef} className="relative shrink-0">
                                 <Button
@@ -1447,59 +1428,63 @@ export default function BookingsIndex({
 
                                         <div className="space-y-1.5">
                                             <Label htmlFor="desktop-filter-service">{config.services.pageTitle}</Label>
-                                            <NativeSelect
+                                            <SelectField
                                                 id="desktop-filter-service"
-                                                value={filters.service_id ?? ''}
-                                                onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                                value={String(filters.service_id ?? '')}
+                                                onValueChange={(val) => applyFilters({ service_id: val })}
                                                 className="h-10 bg-canvas text-sm"
-                                            >
-                                                <option value="">Semua {config.services.pageTitle}</option>
-                                                {services.map((svc) => (
-                                                    <option key={svc.id} value={String(svc.id)}>
-                                                        {svc.name}
-                                                    </option>
-                                                ))}
-                                            </NativeSelect>
+                                                options={[
+                                                    { value: '', label: `Semua ${config.services.pageTitle}` },
+                                                    ...services.map((svc) => ({
+                                                        value: String(svc.id),
+                                                        label: svc.name,
+                                                    })),
+                                                ]}
+                                            />
                                         </div>
 
                                         {supportsStaffFilter && staffOptions.length > 0 && (
                                             <div className="space-y-1.5">
                                                 <Label htmlFor="desktop-filter-staff">Staff</Label>
-                                                <NativeSelect
+                                                <SelectField
                                                     id="desktop-filter-staff"
-                                                    value={filters.staff_id ?? ''}
-                                                    onChange={(e) => applyFilters({ staff_id: e.target.value })}
+                                                    value={String(filters.staff_id ?? '')}
+                                                    onValueChange={(val) => applyFilters({ staff_id: val })}
                                                     className="h-10 bg-canvas text-sm"
-                                                >
-                                                    <option value="">Semua Staff</option>
-                                                    {staffOptions.map((st) => (
-                                                        <option key={st.id} value={String(st.id)}>
-                                                            {st.name}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
+                                                    options={[
+                                                        { value: '', label: 'Semua Staff' },
+                                                        ...staffOptions.map((st) => ({
+                                                            value: String(st.id),
+                                                            label: st.name,
+                                                        })),
+                                                    ]}
+                                                />
                                             </div>
                                         )}
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="min-w-0 space-y-1.5">
                                                 <Label htmlFor="bookings-date-from">Dari Tanggal</Label>
-                                                <Input
+                                                <DatePicker
                                                     id="bookings-date-from"
-                                                    type="date"
+                                                    clearable
+                                                    align="start"
+                                                    dialogTitle="Dari Tanggal"
                                                     value={filters.date_from}
-                                                    onChange={(e) => applyFilters({ date_from: e.target.value, sla: '' })}
-                                                    className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
+                                                    onChange={(val) => applyFilters({ date_from: val, sla: '' })}
+                                                    className="h-10 bg-canvas px-2.5 py-2 text-xs"
                                                 />
                                             </div>
                                             <div className="min-w-0 space-y-1.5">
                                                 <Label htmlFor="bookings-date-to">Sampai Tanggal</Label>
-                                                <Input
+                                                <DatePicker
                                                     id="bookings-date-to"
-                                                    type="date"
+                                                    clearable
+                                                    align="end"
+                                                    dialogTitle="Sampai Tanggal"
                                                     value={filters.date_to}
-                                                    onChange={(e) => applyFilters({ date_to: e.target.value, sla: '' })}
-                                                    className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
+                                                    onChange={(val) => applyFilters({ date_to: val, sla: '' })}
+                                                    className="h-10 bg-canvas px-2.5 py-2 text-xs"
                                                 />
                                             </div>
                                         </div>

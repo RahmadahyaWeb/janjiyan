@@ -8,9 +8,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { TimePicker } from '@/components/ui/time-picker';
 import { formatDateIndo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -243,21 +245,24 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                     <div className="min-w-0 space-y-1.5 sm:space-y-0">
                                                         <span className="block text-xs font-medium text-mute sm:hidden">Jam Shift</span>
                                                         <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
-                                                            <Input
-                                                                type="time"
+                                                            <TimePicker
                                                                 aria-label={`Mulai shift ${dayName}`}
-                                                                className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                                wrapperClassName="sm:w-28"
+                                                                className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                                dialogTitle={`Mulai Shift ${dayName}`}
                                                                 value={row.start_time}
-                                                                onChange={(e) => updateDay(idx, { start_time: e.target.value })}
+                                                                onChange={(val) => updateDay(idx, { start_time: val })}
                                                                 required
                                                             />
                                                             <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
-                                                            <Input
-                                                                type="time"
+                                                            <TimePicker
+                                                                align="end"
                                                                 aria-label={`Selesai shift ${dayName}`}
-                                                                className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                                wrapperClassName="sm:w-28"
+                                                                className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                                dialogTitle={`Selesai Shift ${dayName}`}
                                                                 value={row.end_time}
-                                                                onChange={(e) => updateDay(idx, { end_time: e.target.value })}
+                                                                onChange={(val) => updateDay(idx, { end_time: val })}
                                                                 required
                                                             />
                                                         </div>
@@ -273,20 +278,25 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                                                 <div className="space-y-1.5 border-t border-divider pt-2.5 sm:flex sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
                                                     <span className="block text-xs font-medium text-mute">Istirahat (opsional)</span>
                                                     <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs sm:flex sm:w-auto">
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
+                                                            clearable
                                                             aria-label={`Mulai istirahat ${dayName}`}
-                                                            className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-32"
+                                                            className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Mulai Istirahat ${dayName}`}
                                                             value={row.break_start}
-                                                            onChange={(e) => updateDay(idx, { break_start: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { break_start: val })}
                                                         />
                                                         <span className="shrink-0 text-center text-xs font-medium text-mute">s/d</span>
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
+                                                            clearable
+                                                            align="end"
                                                             aria-label={`Selesai istirahat ${dayName}`}
-                                                            className="h-11 w-full min-w-0 rounded-xl bg-canvas px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-32"
+                                                            className="h-11 rounded-xl bg-canvas px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Selesai Istirahat ${dayName}`}
                                                             value={row.break_end}
-                                                            onChange={(e) => updateDay(idx, { break_end: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { break_end: val })}
                                                         />
                                                     </div>
                                                 </div>
@@ -319,29 +329,30 @@ export function StaffScheduleDialog({ staffId, staffName, onClose }: StaffSchedu
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div className="min-w-0 space-y-1">
                                     <Label htmlFor="timeoff-start">Tanggal Mulai</Label>
-                                    <Input
+                                    <DatePicker
                                         id="timeoff-start"
-                                        type="date"
-                                        className="min-w-0 bg-canvas"
+                                        className="bg-canvas"
                                         value={timeOffForm.data.start_date}
-                                        onChange={(e) => {
-                                            timeOffForm.setData('start_date', e.target.value);
-                                            if (timeOffForm.data.end_date < e.target.value) {
-                                                timeOffForm.setData('end_date', e.target.value);
-                                            }
+                                        onChange={(next) => {
+                                            timeOffForm.setData({
+                                                ...timeOffForm.data,
+                                                start_date: next,
+                                                end_date: timeOffForm.data.end_date < next ? next : timeOffForm.data.end_date,
+                                            });
                                         }}
+                                        dialogTitle="Tanggal Mulai Cuti"
                                         required
                                     />
                                 </div>
                                 <div className="min-w-0 space-y-1">
                                     <Label htmlFor="timeoff-end">Tanggal Selesai</Label>
-                                    <Input
+                                    <DatePicker
                                         id="timeoff-end"
-                                        type="date"
-                                        className="min-w-0 bg-canvas"
+                                        className="bg-canvas"
                                         min={timeOffForm.data.start_date}
                                         value={timeOffForm.data.end_date}
-                                        onChange={(e) => timeOffForm.setData('end_date', e.target.value)}
+                                        onChange={(val) => timeOffForm.setData('end_date', val)}
+                                        dialogTitle="Tanggal Selesai Cuti"
                                         required
                                     />
                                 </div>

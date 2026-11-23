@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { BellRing, Check, ImagePlus, Lock, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Star, Tag, Trash2, Upload } from 'lucide-react';
+import { BellRing, Check, Lock, MessageCircle, Plus, QrCode, RotateCcw, Send, ShieldAlert, Star, Tag, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { BusinessMark } from '@/components/BusinessMark';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -8,9 +8,11 @@ import { QrPosterDialog } from '@/components/QrPosterDialog';
 import { QrReviewStickerDialog } from '@/components/QrReviewStickerDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ColorInput } from '@/components/ui/color-input';
+import { FileUpload } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -429,29 +431,19 @@ export default function SettingsIndex({
                                     </Button>
                                 </div>
                             )}
-                            <label
-                                htmlFor="settings-logo-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                            >
-                                <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="min-w-0 [overflow-wrap:anywhere]">
-                                    {form.data.logo_image ? form.data.logo_image.name : 'Unggah logo bisnis (JPG/PNG/WebP, maks 2MB)'}
-                                </span>
-                                <input
-                                    id="settings-logo-upload"
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    className="sr-only"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0] ?? null;
-                                        form.setData((prev) => ({
-                                            ...prev,
-                                            logo_image: file,
-                                            remove_logo: false,
-                                        }));
-                                    }}
-                                />
-                            </label>
+                            <FileUpload
+                                id="settings-logo-upload"
+                                file={form.data.logo_image}
+                                accept="image/png,image/jpeg,image/webp"
+                                placeholder="Unggah logo bisnis (JPG/PNG/WebP, maks 2MB)"
+                                onFileChange={(file) => {
+                                    form.setData((prev) => ({
+                                        ...prev,
+                                        logo_image: file,
+                                        remove_logo: false,
+                                    }));
+                                }}
+                            />
                             {form.errors.logo_image && (
                                 <p className="text-xs text-destructive">{form.errors.logo_image}</p>
                             )}
@@ -525,15 +517,16 @@ export default function SettingsIndex({
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="settings-timezone">Zona Waktu</Label>
-                                <NativeSelect
+                                <SelectField
                                     id="settings-timezone"
                                     value={form.data.timezone}
-                                    onChange={(e) => form.setData('timezone', e.target.value)}
-                                >
-                                    <option value="Asia/Jakarta">WIB (Asia/Jakarta)</option>
-                                    <option value="Asia/Makassar">WITA (Asia/Makassar)</option>
-                                    <option value="Asia/Jayapura">WIT (Asia/Jayapura)</option>
-                                </NativeSelect>
+                                    onValueChange={(val) => form.setData('timezone', val)}
+                                    options={[
+                                        { value: 'Asia/Jakarta', label: 'WIB (Asia/Jakarta)' },
+                                        { value: 'Asia/Makassar', label: 'WITA (Asia/Makassar)' },
+                                        { value: 'Asia/Jayapura', label: 'WIT (Asia/Jayapura)' },
+                                    ]}
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="settings-dp-expiry">Batas Waktu Bayar Uang Muka Nanti (Menit)</Label>
@@ -619,26 +612,17 @@ export default function SettingsIndex({
                                             );
                                         })}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="color"
-                                            aria-label="Pilih warna sendiri"
-                                            value={isHex(form.data.brand_color) ? form.data.brand_color : '#141414'}
-                                            onChange={(e) => form.setData('brand_color', e.target.value)}
-                                            className="size-10 shrink-0 cursor-pointer rounded-sm border border-control-border bg-field p-1"
-                                        />
+                                    <div className="space-y-1.5">
                                         <Label htmlFor="settings-brand-color" className="sr-only">
                                             Kode warna hex
                                         </Label>
-                                        <Input
+                                        <ColorInput
                                             id="settings-brand-color"
-                                            placeholder="#16423c"
-                                            maxLength={7}
                                             value={form.data.brand_color}
-                                            onChange={(e) => form.setData('brand_color', e.target.value.trim())}
+                                            onValueChange={(val) => form.setData('brand_color', val)}
                                             aria-invalid={Boolean(form.errors.brand_color)}
                                             aria-describedby={form.errors.brand_color ? 'settings-brand-color-error' : undefined}
-                                            className="max-w-36 font-mono"
+                                            className="max-w-48"
                                         />
                                     </div>
                                     {form.errors.brand_color && (
@@ -664,26 +648,16 @@ export default function SettingsIndex({
                                             Hapus foto cover
                                         </Button>
                                     )}
-                                    <label
-                                        htmlFor="settings-cover-upload"
-                                        className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                                    >
-                                        <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                        <span className="min-w-0 [overflow-wrap:anywhere]">
-                                            {form.data.cover_image ? form.data.cover_image.name : 'Unggah foto cover (JPG/PNG/WebP, maks 5MB, mendatar)'}
-                                        </span>
-                                        <input
-                                            id="settings-cover-upload"
-                                            aria-describedby={form.errors.cover_image ? 'settings-cover-error' : undefined}
-                                            type="file"
-                                            accept="image/png,image/jpeg,image/webp"
-                                            className="sr-only"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0] ?? null;
-                                                form.setData((prev) => ({ ...prev, cover_image: file, remove_cover: false }));
-                                            }}
-                                        />
-                                    </label>
+                                    <FileUpload
+                                        id="settings-cover-upload"
+                                        file={form.data.cover_image}
+                                        accept="image/png,image/jpeg,image/webp"
+                                        placeholder="Unggah foto cover (JPG/PNG/WebP, maks 5MB, mendatar)"
+                                        aria-describedby={form.errors.cover_image ? 'settings-cover-error' : undefined}
+                                        onFileChange={(file) => {
+                                            form.setData((prev) => ({ ...prev, cover_image: file, remove_cover: false }));
+                                        }}
+                                    />
                                     {form.errors.cover_image && (
                                         <p id="settings-cover-error" className="text-xs text-destructive">
                                             {form.errors.cover_image}
@@ -1145,27 +1119,19 @@ export default function SettingsIndex({
                                     </Button>
                                 </div>
                             )}
-                            <label
-                                htmlFor="settings-qris-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-field px-4 py-3 text-sm text-ink transition-colors hover:bg-bone focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                            >
-                                <Upload className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="min-w-0 [overflow-wrap:anywhere]">{form.data.qris_image ? form.data.qris_image.name : 'Unggah gambar QRIS (JPG/PNG)'}</span>
-                                <input
-                                    id="settings-qris-upload"
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    className="sr-only"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0] ?? null;
-                                        form.setData((prev) => ({
-                                            ...prev,
-                                            qris_image: file,
-                                            remove_qris: false,
-                                        }));
-                                    }}
-                                />
-                            </label>
+                            <FileUpload
+                                id="settings-qris-upload"
+                                file={form.data.qris_image}
+                                accept="image/png,image/jpeg,image/webp"
+                                placeholder="Unggah gambar QRIS (JPG/PNG)"
+                                onFileChange={(file) => {
+                                    form.setData((prev) => ({
+                                        ...prev,
+                                        qris_image: file,
+                                        remove_qris: false,
+                                    }));
+                                }}
+                            />
                             {form.errors.qris_image && (
                                 <p className="text-xs text-destructive">{form.errors.qris_image}</p>
                             )}
@@ -1261,17 +1227,18 @@ export default function SettingsIndex({
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="settings-review-min-rating">Minimal Rating Diarahkan ke Google</Label>
-                                <NativeSelect
+                                <SelectField
                                     id="settings-review-min-rating"
                                     disabled={!resolvedCanUseGoogleReview}
                                     value={String(form.data.review_redirect_min_rating)}
-                                    onChange={(e) => form.setData('review_redirect_min_rating', Number(e.target.value))}
+                                    onValueChange={(val) => form.setData('review_redirect_min_rating', Number(val))}
                                     aria-invalid={Boolean(form.errors.review_redirect_min_rating)}
-                                >
-                                    <option value="5">5 Bintang saja</option>
-                                    <option value="4">4 Bintang ke atas (Direkomendasikan)</option>
-                                    <option value="3">3 Bintang ke atas</option>
-                                </NativeSelect>
+                                    options={[
+                                        { value: '5', label: '5 Bintang saja' },
+                                        { value: '4', label: '4 Bintang ke atas (Direkomendasikan)' },
+                                        { value: '3', label: '3 Bintang ke atas' },
+                                    ]}
+                                />
                                 <p className="text-xs leading-relaxed text-mute">
                                     Penilaian di bawah batas ini tetap tersimpan sebagai masukan privat untuk tim Anda.
                                 </p>
@@ -1341,24 +1308,14 @@ export default function SettingsIndex({
                     <form onSubmit={handleAddGallery} className="space-y-3 rounded-md bg-bone p-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="gallery-image-upload">Foto Portofolio</Label>
-                            <label
-                                htmlFor="gallery-image-upload"
-                                className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-control-border bg-canvas px-4 py-3 text-sm text-ink transition-colors hover:bg-hairline-soft focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
-                            >
-                                <ImagePlus className="size-4 shrink-0 text-mute" aria-hidden="true" />
-                                <span className="min-w-0 [overflow-wrap:anywhere]">
-                                    {galleryForm.data.image
-                                        ? galleryForm.data.image.name
-                                        : 'Pilih foto portofolio (JPG/PNG/WebP, maks 3MB)'}
-                                </span>
-                                <input
-                                    id="gallery-image-upload"
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    className="sr-only"
-                                    onChange={(e) => galleryForm.setData('image', e.target.files?.[0] ?? null)}
-                                />
-                            </label>
+                            <FileUpload
+                                id="gallery-image-upload"
+                                file={galleryForm.data.image}
+                                accept="image/png,image/jpeg,image/webp"
+                                placeholder="Pilih foto portofolio (JPG/PNG/WebP, maks 3MB)"
+                                className="bg-canvas hover:bg-hairline-soft"
+                                onFileChange={(file) => galleryForm.setData('image', file)}
+                            />
                             {galleryForm.errors.image && (
                                 <p className="text-xs text-destructive">{galleryForm.errors.image}</p>
                             )}

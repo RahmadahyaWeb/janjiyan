@@ -6,10 +6,8 @@ import {
     MessageCircle,
     QrCode,
     ReceiptText,
-    Search,
     Settings,
     Star,
-    X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
@@ -17,8 +15,8 @@ import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { QrReviewStickerDialog } from '@/components/QrReviewStickerDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SearchInput } from '@/components/ui/search-input';
+import { SelectField } from '@/components/ui/select';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { buildWhatsAppUrl } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -264,50 +262,37 @@ export default function ReviewsIndex({
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                        <div className="relative flex min-w-0 flex-1 items-center sm:w-64">
+                        <div className="min-w-0 flex-1 sm:w-64">
                             <label htmlFor="review-search" className="sr-only">
                                 Cari ulasan berdasarkan nama, nomor WA, komentar, atau kode pesanan
                             </label>
-                            <Search
-                                className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash"
-                                aria-hidden="true"
-                            />
-                            <Input
+                            <SearchInput
                                 id="review-search"
-                                className="pl-10 pr-11 md:h-10 md:text-sm"
+                                className="md:h-10 md:text-sm"
                                 placeholder="Cari nama, komentar, kode…"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onValueChange={setSearch}
+                                clearLabel="Hapus kata kunci ulasan"
+                                onClear={() => applyFilters({ search: '' })}
                                 onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
                             />
-                            {search && (
-                                <button
-                                    type="button"
-                                    aria-label="Hapus kata kunci ulasan"
-                                    onClick={() => {
-                                        setSearch('');
-                                        applyFilters({ search: '' });
-                                    }}
-                                    className="absolute right-1.5 inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                >
-                                    <X className="size-4" aria-hidden="true" />
-                                </button>
-                            )}
                         </div>
 
-                        <NativeSelect
+                        <SelectField
                             aria-label="Filter berdasarkan bintang"
                             value={activeFilters.rating}
-                            onChange={(e) => applyFilters({ rating: e.target.value })}
-                            className="sm:w-40 md:h-10 md:py-0"
-                        >
-                            <option value="">Semua Bintang</option>
-                            <option value="5">5 Bintang</option>
-                            <option value="4">4 Bintang</option>
-                            <option value="3">3 Bintang</option>
-                            <option value="2">2 Bintang</option>
-                            <option value="1">1 Bintang</option>
-                        </NativeSelect>
+                            onValueChange={(val) => applyFilters({ rating: val })}
+                            wrapperClassName="sm:w-40"
+                            className="md:h-10 md:py-0"
+                            options={[
+                                { value: '', label: 'Semua Bintang' },
+                                { value: '5', label: '5 Bintang' },
+                                { value: '4', label: '4 Bintang' },
+                                { value: '3', label: '3 Bintang' },
+                                { value: '2', label: '2 Bintang' },
+                                { value: '1', label: '1 Bintang' },
+                            ]}
+                        />
 
                         {hasActiveFilter && (
                             <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>

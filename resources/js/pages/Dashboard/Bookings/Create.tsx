@@ -3,9 +3,11 @@ import { Check, Minus, Plus, Sparkles } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { type DropoffAvailability, type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
@@ -641,12 +643,11 @@ export default function BookingCreate({
                     ) : (
                         <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="manual-service">{config.services.pageTitle} *</Label>
-                            <NativeSelect
+                            <SelectField
                                 id="manual-service"
-                                value={form.data.service_id}
-                                onChange={(e) => {
+                                value={String(form.data.service_id)}
+                                onValueChange={(nextId) => {
                                     setTimeError('');
-                                    const nextId = e.target.value;
                                     const nextSvc = services.find((s) => String(s.id) === nextId);
                                     form.setData((prev) => ({
                                         ...prev,
@@ -661,17 +662,15 @@ export default function BookingCreate({
                                     }));
                                 }}
                                 required
-                            >
-                                {services.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.name} ({formatRupiah(s.price)} ·{' '}
-                                        {s.booking_mode === 'dropoff'
+                                options={services.map((s) => ({
+                                    value: String(s.id),
+                                    label: `${s.name} (${formatRupiah(s.price)} · ${
+                                        s.booking_mode === 'dropoff'
                                             ? formatTurnaroundLabel(s.turnaround_days ?? 1)
-                                            : `${s.duration_minutes} mnt`}
-                                        )
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                            : `${s.duration_minutes} mnt`
+                                    })`,
+                                }))}
+                            />
                             {isDropoff && !canUseMultiServiceDropoff && (
                                 <p className="text-xs text-mute">
                                     Ingin gabung beberapa layanan dalam 1 pesanan?{' '}
@@ -770,13 +769,12 @@ export default function BookingCreate({
                                         : 'Tanggal Drop-off *'
                                     : 'Tanggal *'}
                             </Label>
-                            <Input
+                            <DatePicker
                                 id="manual-date"
-                                type="date"
-                                className="min-w-0"
                                 min={todayString}
                                 value={form.data.date}
-                                onChange={(e) => form.setData('date', e.target.value)}
+                                onChange={(val) => form.setData('date', val)}
+                                dialogTitle="Pilih Tanggal"
                                 required
                             />
                         </div>
@@ -804,18 +802,18 @@ export default function BookingCreate({
                             config.bookings.supportsStaffColumn && selectedService?.assignment_mode === 'staff' && (
                                 <div className="min-w-0 space-y-1.5">
                                     <Label htmlFor="manual-staff">Staff</Label>
-                                    <NativeSelect
+                                    <SelectField
                                         id="manual-staff"
-                                        value={form.data.staff_id}
-                                        onChange={(e) => form.setData('staff_id', e.target.value)}
-                                    >
-                                        <option value="">Siapa saja yang tersedia</option>
-                                        {selectedService.staff.map((st) => (
-                                            <option key={st.id} value={st.id}>
-                                                {st.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                        value={String(form.data.staff_id)}
+                                        onValueChange={(val) => form.setData('staff_id', val)}
+                                        options={[
+                                            { value: '', label: 'Siapa saja yang tersedia' },
+                                            ...selectedService.staff.map((st) => ({
+                                                value: String(st.id),
+                                                label: st.name,
+                                            })),
+                                        ]}
+                                    />
                                 </div>
                             )
                         ) : null}
@@ -877,36 +875,37 @@ export default function BookingCreate({
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div className="min-w-0 space-y-1.5">
                                         <Label htmlFor="manual-fulfillment">Metode Penyerahan</Label>
-                                        <NativeSelect
+                                        <SelectField
                                             id="manual-fulfillment"
                                             value={form.data.fulfillment_type}
-                                            onChange={(e) =>
-                                                form.setData('fulfillment_type', e.target.value as 'dropoff' | 'pickup')
+                                            onValueChange={(val) =>
+                                                form.setData('fulfillment_type', val as 'dropoff' | 'pickup')
                                             }
-                                        >
-                                            <option value="dropoff">Antar ke Toko (Drop-off)</option>
-                                            <option value="pickup">Jemput &amp; Antar</option>
-                                        </NativeSelect>
+                                            options={[
+                                                { value: 'dropoff', label: 'Antar ke Toko (Drop-off)' },
+                                                { value: 'pickup', label: 'Jemput & Antar' },
+                                            ]}
+                                        />
                                     </div>
                                     {form.data.fulfillment_type === 'pickup' && (
                                         <div className="min-w-0 space-y-1.5">
                                             <Label htmlFor="manual-pickup-session">Sesi Jemput</Label>
-                                            <NativeSelect
+                                            <SelectField
                                                 id="manual-pickup-session"
                                                 value={form.data.pickup_session}
-                                                onChange={(e) =>
+                                                onValueChange={(val) =>
                                                     form.setData(
                                                         'pickup_session',
-                                                        e.target.value as 'morning' | 'afternoon' | 'evening' | 'anytime'
+                                                        val as 'morning' | 'afternoon' | 'evening' | 'anytime'
                                                     )
                                                 }
-                                            >
-                                                {(['morning', 'afternoon', 'evening', 'anytime'] as const).map((sess) => (
-                                                    <option key={sess} value={sess}>
-                                                        {PICKUP_SESSION_LABELS[sess]}
-                                                    </option>
-                                                ))}
-                                            </NativeSelect>
+                                                options={(['morning', 'afternoon', 'evening', 'anytime'] as const).map(
+                                                    (sess) => ({
+                                                        value: sess,
+                                                        label: PICKUP_SESSION_LABELS[sess],
+                                                    })
+                                                )}
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -1176,23 +1175,25 @@ export default function BookingCreate({
                         </div>
                         <div className="min-w-0 space-y-1.5">
                             <Label htmlFor="manual-payment-status">Status Pembayaran Awal *</Label>
-                            <NativeSelect
+                            <SelectField
                                 id="manual-payment-status"
                                 value={form.data.initial_payment_status}
-                                onChange={(e) => form.setData('initial_payment_status', e.target.value)}
-                            >
-                                {serviceRequiresDp && (
-                                    <option value="dp_verified">DP Terverifikasi · Konfirmasi</option>
-                                )}
-                                <option value="settled">Lunas · Konfirmasi</option>
-                                <option value="unpaid">
-                                    {serviceRequiresDp
-                                        ? 'Belum Bayar · Menunggu'
-                                        : isDropoff
-                                          ? 'Belum Bayar · Bayar di Toko'
-                                          : 'Belum Bayar · Bayar di Tempat'}
-                                </option>
-                            </NativeSelect>
+                                onValueChange={(val) => form.setData('initial_payment_status', val)}
+                                options={[
+                                    ...(serviceRequiresDp
+                                        ? [{ value: 'dp_verified', label: 'DP Terverifikasi · Konfirmasi' }]
+                                        : []),
+                                    { value: 'settled', label: 'Lunas · Konfirmasi' },
+                                    {
+                                        value: 'unpaid',
+                                        label: serviceRequiresDp
+                                            ? 'Belum Bayar · Menunggu'
+                                            : isDropoff
+                                              ? 'Belum Bayar · Bayar di Toko'
+                                              : 'Belum Bayar · Bayar di Tempat',
+                                    },
+                                ]}
+                            />
                         </div>
                     </div>
 
@@ -1235,17 +1236,13 @@ export default function BookingCreate({
                                         <Label htmlFor="manual-received-amount" className="text-xs">
                                             Uang Tunai Diterima (Opsional)
                                         </Label>
-                                        <Input
+                                        <CurrencyInput
                                             id="manual-received-amount"
-                                            type="number"
                                             min={0}
-                                            inputMode="numeric"
                                             placeholder={String(expectedInitialPayAmount)}
-                                            className="h-10 bg-canvas tabular-nums md:text-sm"
+                                            className="h-10 bg-canvas md:text-sm"
                                             value={form.data.received_amount}
-                                            onChange={(e) =>
-                                                form.setData('received_amount', parseNumericInput(e.target.value))
-                                            }
+                                            onValueChange={(val) => form.setData('received_amount', val)}
                                         />
                                     </div>
                                     <div className="flex items-center justify-between rounded-xl bg-canvas px-3.5 py-2.5 text-xs">

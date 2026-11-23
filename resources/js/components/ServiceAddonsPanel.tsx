@@ -12,9 +12,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getBusinessTypeConfig, UNIT_LABEL_OPTIONS } from '@/lib/businessType';
@@ -167,14 +168,11 @@ function AddonFormModal({
                     <div className={cn('grid gap-3', isDropoff ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
                         <div className="space-y-1.5">
                             <Label htmlFor="addon-price">Harga (Rp) *</Label>
-                            <Input
+                            <CurrencyInput
                                 id="addon-price"
-                                type="number"
                                 min={0}
-                                inputMode="numeric"
-                                className="tabular-nums"
                                 value={form.data.price}
-                                onChange={(e) => form.setData('price', parseNumericInput(e.target.value))}
+                                onValueChange={(val) => form.setData('price', val)}
                                 aria-invalid={Boolean(form.errors.price)}
                                 aria-describedby={form.errors.price ? 'addon-price-error' : undefined}
                                 required
@@ -186,21 +184,19 @@ function AddonFormModal({
 
                         <div className="space-y-1.5">
                             <Label htmlFor="addon-unit">Satuan *</Label>
-                            <NativeSelect
+                            <SelectField
                                 id="addon-unit"
                                 value={form.data.unit_label}
-                                onChange={(e) =>
-                                    form.setData('unit_label', e.target.value as ServiceUnitLabel)
+                                onValueChange={(val) =>
+                                    form.setData('unit_label', val as ServiceUnitLabel)
                                 }
                                 aria-invalid={Boolean(form.errors.unit_label)}
                                 aria-describedby={form.errors.unit_label ? 'addon-unit-error' : undefined}
-                            >
-                                {UNIT_LABEL_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={UNIT_LABEL_OPTIONS.map((opt) => ({
+                                    value: opt.value,
+                                    label: opt.label,
+                                }))}
+                            />
                             {form.errors.unit_label && (
                                 <p id="addon-unit-error" className="text-xs text-destructive">{form.errors.unit_label}</p>
                             )}

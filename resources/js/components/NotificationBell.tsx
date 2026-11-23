@@ -16,6 +16,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { buildCsrfHeaders } from '@/lib/csrf';
+import { formatShortDateTimeIndo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { InAppNotificationItem, NotificationCategory } from '@/types';
 
@@ -42,12 +43,7 @@ function formatRelativeTime(iso: string | null): string {
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays} hr lalu`;
 
-    return new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
+    return formatShortDateTimeIndo(date);
 }
 
 function getCategoryMeta(category: NotificationCategory) {

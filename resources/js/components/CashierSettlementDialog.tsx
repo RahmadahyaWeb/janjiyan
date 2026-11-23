@@ -22,6 +22,7 @@ import {
 } from '@/components/ReceiptPrintSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
     Dialog,
     DialogContent,
@@ -31,7 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { UNIT_LABEL_OPTIONS } from '@/lib/businessType';
 import {
@@ -730,18 +731,16 @@ export function CashierSettlementDialog({
 
                                 {itemMode === 'service' && services.length > 0 && (
                                     <div className="flex flex-col gap-2 rounded-xl bg-bone p-3 sm:flex-row sm:items-center">
-                                        <NativeSelect
+                                        <SelectField
                                             aria-label="Pilih layanan tambahan"
                                             className="h-11 bg-canvas text-base md:h-10 md:text-sm"
-                                            value={selectedAddServiceId}
-                                            onChange={(e) => setSelectedAddServiceId(e.target.value)}
-                                        >
-                                            {services.map((s) => (
-                                                <option key={s.id} value={s.id}>
-                                                    {s.name} ({formatRupiah(s.price)})
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
+                                            value={String(selectedAddServiceId)}
+                                            onValueChange={(val) => setSelectedAddServiceId(val)}
+                                            options={services.map((s) => ({
+                                                value: String(s.id),
+                                                label: `${s.name} (${formatRupiah(s.price)})`,
+                                            }))}
+                                        />
                                         <Button type="button" size="sm" className="min-h-11 sm:min-h-9" onClick={handleAddServiceItem}>
                                             Tambahkan
                                         </Button>
@@ -750,18 +749,16 @@ export function CashierSettlementDialog({
 
                                 {itemMode === 'addon' && activeAddons.length > 0 && (
                                     <div className="flex flex-col gap-2 rounded-xl bg-bone p-3 sm:flex-row sm:items-center">
-                                        <NativeSelect
+                                        <SelectField
                                             aria-label="Pilih add-on tambahan"
                                             className="h-11 bg-canvas text-base md:h-10 md:text-sm"
-                                            value={selectedAddAddonId}
-                                            onChange={(e) => setSelectedAddAddonId(e.target.value)}
-                                        >
-                                            {activeAddons.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name} ({formatRupiah(a.price)} / {a.unit_label})
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
+                                            value={String(selectedAddAddonId)}
+                                            onValueChange={(val) => setSelectedAddAddonId(val)}
+                                            options={activeAddons.map((a) => ({
+                                                value: String(a.id),
+                                                label: `${a.name} (${formatRupiah(a.price)} / ${a.unit_label})`,
+                                            }))}
+                                        />
                                         <Button type="button" size="sm" className="min-h-11 sm:min-h-9" onClick={handleAddAddonItem}>
                                             Tambahkan
                                         </Button>
@@ -798,14 +795,13 @@ export function CashierSettlementDialog({
                                                 <Label htmlFor="custom-item-price" className="text-xs">
                                                     Harga Satuan (Rp) *
                                                 </Label>
-                                                <Input
+                                                <CurrencyInput
                                                     id="custom-item-price"
-                                                    type="number"
                                                     min={0}
-                                                    inputMode="numeric"
-                                                    className="h-11 bg-canvas text-base tabular-nums md:h-10 md:text-sm"
+                                                    showPrefix={false}
+                                                    className="h-11 bg-canvas text-base md:h-10 md:text-sm"
                                                     value={customPrice}
-                                                    onChange={(e) => setCustomPrice(parseNumericInput(e.target.value))}
+                                                    onValueChange={setCustomPrice}
                                                 />
                                             </div>
                                         </div>
@@ -814,18 +810,16 @@ export function CashierSettlementDialog({
                                                 <Label htmlFor="custom-item-unit" className="text-xs">
                                                     Satuan
                                                 </Label>
-                                                <NativeSelect
+                                                <SelectField
                                                     id="custom-item-unit"
                                                     className="h-11 bg-canvas text-base md:h-10 md:text-sm"
                                                     value={customUnit}
-                                                    onChange={(e) => setCustomUnit(e.target.value as ServiceUnitLabel)}
-                                                >
-                                                    {UNIT_LABEL_OPTIONS.map((opt) => (
-                                                        <option key={opt.value} value={opt.value}>
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
+                                                    onValueChange={(val) => setCustomUnit(val as ServiceUnitLabel)}
+                                                    options={UNIT_LABEL_OPTIONS.map((opt) => ({
+                                                        value: opt.value,
+                                                        label: opt.label,
+                                                    }))}
+                                                />
                                             </div>
                                             <div className="space-y-1">
                                                 <Label htmlFor="custom-item-qty" className="text-xs">
@@ -988,15 +982,13 @@ export function CashierSettlementDialog({
                                     <Label htmlFor="cashier-amount" className="text-xs">
                                         {paymentType === 'refund' ? 'Nominal Refund (Rp) *' : 'Nominal Dibayar (Rp) *'}
                                     </Label>
-                                    <Input
+                                    <CurrencyInput
                                         id="cashier-amount"
-                                        type="number"
                                         min={0}
                                         max={paymentType === 'refund' ? paidAmount : undefined}
-                                        inputMode="numeric"
-                                        className="h-11 text-base tabular-nums md:h-10 md:text-sm"
+                                        className="h-11 text-base md:h-10 md:text-sm"
                                         value={amount}
-                                        onChange={(e) => setAmount(parseNumericInput(e.target.value))}
+                                        onValueChange={setAmount}
                                         required
                                     />
                                 </div>
@@ -1006,15 +998,13 @@ export function CashierSettlementDialog({
                                         <Label htmlFor="cashier-received" className="text-xs">
                                             Uang Tunai Diterima (Rp)
                                         </Label>
-                                        <Input
+                                        <CurrencyInput
                                             id="cashier-received"
-                                            type="number"
                                             min={0}
-                                            inputMode="numeric"
                                             placeholder={numericAmount > 0 ? String(numericAmount) : '0'}
-                                            className="h-11 text-base tabular-nums md:h-10 md:text-sm"
+                                            className="h-11 text-base md:h-10 md:text-sm"
                                             value={receivedAmount}
-                                            onChange={(e) => setReceivedAmount(parseNumericInput(e.target.value))}
+                                            onValueChange={setReceivedAmount}
                                             aria-invalid={cashInsufficient}
                                         />
                                         {suggestedCashValues.length > 0 && (

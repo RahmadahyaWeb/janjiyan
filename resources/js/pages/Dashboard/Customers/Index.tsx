@@ -1,11 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronRight, Download, MessageCircle, Search, StickyNote, Users, X } from 'lucide-react';
+import { ChevronRight, Download, MessageCircle, StickyNote, Users } from 'lucide-react';
 import { useState } from 'react';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SearchInput } from '@/components/ui/search-input';
+import { SelectField } from '@/components/ui/select';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
 import { buildWhatsAppUrl, formatRupiah } from '@/lib/format';
@@ -87,62 +87,53 @@ export default function CustomersIndex({
             <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 lg:w-auto lg:max-w-3xl lg:flex-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                        <div className="relative flex min-w-0 items-center sm:col-span-2 lg:col-span-1">
+                        <div className="min-w-0 sm:col-span-2 lg:col-span-1">
                             <label htmlFor="customer-search" className="sr-only">
                                 Cari pelanggan berdasarkan nama, email, atau nomor WhatsApp
                             </label>
-                            <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
-                            <Input
+                            <SearchInput
                                 id="customer-search"
-                                className="pl-10 pr-11 md:h-10 md:text-sm"
+                                className="md:h-10 md:text-sm"
                                 placeholder="Cari nama, email, atau WA…"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onValueChange={setSearch}
+                                clearLabel="Hapus pencarian pelanggan"
+                                onClear={() => applyFilters({ search: '' })}
                                 onKeyDown={(e) => e.key === 'Enter' && applyFilters({ search })}
                             />
-                            {search && (
-                                <button
-                                    type="button"
-                                    aria-label="Hapus pencarian pelanggan"
-                                    onClick={() => {
-                                        setSearch('');
-                                        applyFilters({ search: '' });
-                                    }}
-                                    className="absolute right-1.5 inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                >
-                                    <X className="size-4" aria-hidden="true" />
-                                </button>
-                            )}
                         </div>
 
-                        <NativeSelect
+                        <SelectField
                             aria-label="Filter segmen pelanggan"
                             value={activeFilters.segment}
-                            onChange={(e) => applyFilters({ segment: e.target.value })}
+                            onValueChange={(val) => applyFilters({ segment: val })}
                             className="md:h-10 md:py-0"
-                        >
-                            <option value="all">Semua Pelanggan</option>
-                            <option value="vip">Pelanggan VIP</option>
-                            <option value="repeat">Pelanggan Berulang (≥2x)</option>
-                            {config.bookings.supportsNoShow && (
-                                <option value="has_no_show">Pernah Tidak Hadir</option>
-                            )}
-                            <option value="blocked">Booking Online Diblokir</option>
-                            <option value="duplicates">
-                                Potensi Nama Ganda{duplicateCustomersCount ? ` (${duplicateCustomersCount})` : ''}
-                            </option>
-                        </NativeSelect>
+                            options={[
+                                { value: 'all', label: 'Semua Pelanggan' },
+                                { value: 'vip', label: 'Pelanggan VIP' },
+                                { value: 'repeat', label: 'Pelanggan Berulang (≥2x)' },
+                                ...(config.bookings.supportsNoShow
+                                    ? [{ value: 'has_no_show', label: 'Pernah Tidak Hadir' }]
+                                    : []),
+                                { value: 'blocked', label: 'Booking Online Diblokir' },
+                                {
+                                    value: 'duplicates',
+                                    label: `Potensi Nama Ganda${duplicateCustomersCount ? ` (${duplicateCustomersCount})` : ''}`,
+                                },
+                            ]}
+                        />
 
-                        <NativeSelect
+                        <SelectField
                             aria-label="Urutkan pelanggan"
                             value={activeFilters.sort}
-                            onChange={(e) => applyFilters({ sort: e.target.value })}
+                            onValueChange={(val) => applyFilters({ sort: val })}
                             className="md:h-10 md:py-0"
-                        >
-                            <option value="latest">Terbaru Terdaftar</option>
-                            <option value="top_spent">Transaksi Tertinggi</option>
-                            <option value="most_bookings">{config.bookings.itemSingular} Terbanyak</option>
-                        </NativeSelect>
+                            options={[
+                                { value: 'latest', label: 'Terbaru Terdaftar' },
+                                { value: 'top_spent', label: 'Transaksi Tertinggi' },
+                                { value: 'most_bookings', label: `${config.bookings.itemSingular} Terbanyak` },
+                            ]}
+                        />
                     </div>
 
                     <div className="ml-auto flex items-center gap-2">

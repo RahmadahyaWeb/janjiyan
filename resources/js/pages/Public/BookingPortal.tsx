@@ -23,7 +23,13 @@ import type {
 import { Button } from '@/components/ui/button';
 import { type DropoffAvailability, type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import { getBusinessTypeConfig, resolveBusinessType } from '@/lib/businessType';
-import { buildWhatsAppUrl, formatDateShortIndo, formatRupiah, getLocalDayOfWeek } from '@/lib/format';
+import {
+    buildWhatsAppUrl,
+    formatDateShortIndo,
+    formatRupiah,
+    getLocalDayOfWeek,
+    getTodayInTimezone,
+} from '@/lib/format';
 import { cn, scrollToFirstInvalid } from '@/lib/utils';
 import type { PageProps, ServiceAddon } from '@/types';
 
@@ -51,10 +57,7 @@ export default function BookingPortal({
     const { errors = {} } = usePage<PageProps & { errors?: Record<string, string> }>().props;
 
     const tz = business.timezone || 'Asia/Jakarta';
-    const todayLocal = useMemo(
-        () => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()),
-        [tz]
-    );
+    const todayLocal = useMemo(() => getTodayInTimezone(tz), [tz]);
     const maxAdvanceDays = Math.max(0, business.max_booking_advance_days ?? 60);
     const maxDateLocal = useMemo(() => {
         const d = new Date(`${todayLocal}T00:00:00Z`);

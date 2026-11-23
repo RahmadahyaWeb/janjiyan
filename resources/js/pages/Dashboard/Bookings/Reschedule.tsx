@@ -2,9 +2,9 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { CalendarClock } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { type SlotItem, useSlotFetcher } from '@/hooks/useSlotFetcher';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
@@ -114,13 +114,12 @@ export default function BookingReschedule({ booking, staffOptions, todayDate }: 
 
                 <div className="min-w-0 space-y-1.5">
                     <Label htmlFor="reschedule-date">Tanggal Baru</Label>
-                    <Input
+                    <DatePicker
                         id="reschedule-date"
-                        type="date"
-                        className="min-w-0"
                         min={todayString}
                         value={form.data.date}
-                        onChange={(e) => form.setData('date', e.target.value)}
+                        onChange={(val) => form.setData('date', val)}
+                        dialogTitle="Pilih Tanggal Baru"
                         required
                     />
                 </div>
@@ -128,19 +127,18 @@ export default function BookingReschedule({ booking, staffOptions, todayDate }: 
                 {config.bookings.supportsStaffColumn && !isDropoff && booking.service_assignment_mode === 'staff' && staffOptions.length > 0 && (
                     <div className="space-y-1.5">
                         <Label htmlFor="reschedule-staff">Staff (Opsional)</Label>
-                        <NativeSelect
+                        <SelectField
                             id="reschedule-staff"
                             value={form.data.staff_id}
-                            onChange={(e) => form.setData('staff_id', e.target.value)}
-                        >
-                            <option value="">Siapa saja yang tersedia</option>
-                            {staffOptions.map((st) => (
-                                <option key={st.id} value={st.id}>
-                                    {st.name}
-                                    {st.title ? ` (${st.title})` : ''}
-                                </option>
-                            ))}
-                        </NativeSelect>
+                            onValueChange={(val) => form.setData('staff_id', val)}
+                            options={[
+                                { value: '', label: 'Siapa saja yang tersedia' },
+                                ...staffOptions.map((st) => ({
+                                    value: String(st.id),
+                                    label: st.title ? `${st.name} (${st.title})` : st.name,
+                                })),
+                            ]}
+                        />
                     </div>
                 )}
 

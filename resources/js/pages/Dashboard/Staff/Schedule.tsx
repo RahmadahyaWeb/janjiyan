@@ -2,9 +2,11 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CalendarOff, Clock, Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { TimePicker } from '@/components/ui/time-picker';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { formatDateIndo } from '@/lib/format';
 
@@ -178,40 +180,48 @@ export default function StaffSchedule({
                                             {row.is_working ? (
                                                 <div className="flex w-full min-w-0 flex-col gap-2.5 text-xs sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                                                     <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:w-auto">
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
                                                             aria-label={`Mulai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-11 min-w-0 w-full rounded-xs px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-28"
+                                                            className="h-11 rounded-xs px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Mulai Shift ${DAY_NAMES[row.day_of_week]}`}
                                                             value={row.start_time}
-                                                            onChange={(e) => updateDay(idx, { start_time: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { start_time: val })}
                                                             required
                                                         />
                                                         <span className="shrink-0 text-mute">–</span>
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
+                                                            align="end"
                                                             aria-label={`Selesai shift ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-11 min-w-0 w-full rounded-xs px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-28"
+                                                            className="h-11 rounded-xs px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Selesai Shift ${DAY_NAMES[row.day_of_week]}`}
                                                             value={row.end_time}
-                                                            onChange={(e) => updateDay(idx, { end_time: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { end_time: val })}
                                                             required
                                                         />
                                                     </div>
                                                     <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1 sm:flex sm:w-auto">
                                                         <span className="col-span-3 text-mute sm:col-span-1 sm:ml-1">Istirahat:</span>
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
+                                                            clearable
                                                             aria-label={`Mulai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-11 min-w-0 w-full rounded-xs px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-32"
+                                                            className="h-11 rounded-xs px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Mulai Istirahat ${DAY_NAMES[row.day_of_week]}`}
                                                             value={row.break_start}
-                                                            onChange={(e) => updateDay(idx, { break_start: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { break_start: val })}
                                                         />
                                                         <span className="shrink-0 text-mute">–</span>
-                                                        <Input
-                                                            type="time"
+                                                        <TimePicker
+                                                            clearable
+                                                            align="end"
                                                             aria-label={`Selesai istirahat ${DAY_NAMES[row.day_of_week]}`}
-                                                            className="h-11 min-w-0 w-full rounded-xs px-2.5 py-2 text-base tabular-nums sm:h-10 sm:w-28 sm:py-1.5 md:text-sm"
+                                                            wrapperClassName="sm:w-32"
+                                                            className="h-11 rounded-xs px-2.5 py-2 text-base sm:h-10 sm:py-1.5 md:text-sm"
+                                                            dialogTitle={`Selesai Istirahat ${DAY_NAMES[row.day_of_week]}`}
                                                             value={row.break_end}
-                                                            onChange={(e) => updateDay(idx, { break_end: e.target.value })}
+                                                            onChange={(val) => updateDay(idx, { break_end: val })}
                                                         />
                                                     </div>
                                                 </div>
@@ -246,29 +256,28 @@ export default function StaffSchedule({
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1">
                                     <Label htmlFor="timeoff-start">Tanggal Mulai</Label>
-                                    <Input
+                                    <DatePicker
                                         id="timeoff-start"
-                                        type="date"
                                         value={timeOffForm.data.start_date}
-                                        onChange={(e) => {
-                                            const next = e.target.value;
+                                        onChange={(next) => {
                                             timeOffForm.setData({
                                                 ...timeOffForm.data,
                                                 start_date: next,
                                                 end_date: timeOffForm.data.end_date < next ? next : timeOffForm.data.end_date,
                                             });
                                         }}
+                                        dialogTitle="Tanggal Mulai Cuti"
                                         required
                                     />
                                 </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="timeoff-end">Tanggal Selesai</Label>
-                                    <Input
+                                    <DatePicker
                                         id="timeoff-end"
-                                        type="date"
                                         min={timeOffForm.data.start_date}
                                         value={timeOffForm.data.end_date}
-                                        onChange={(e) => timeOffForm.setData('end_date', e.target.value)}
+                                        onChange={(val) => timeOffForm.setData('end_date', val)}
+                                        dialogTitle="Tanggal Selesai Cuti"
                                         required
                                     />
                                 </div>

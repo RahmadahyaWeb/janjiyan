@@ -27,6 +27,47 @@ export function formatDateShortIndo(dateString: string): string {
     }).format(date);
 }
 
+/** Returns `YYYY-MM-DD` for "today" in the given IANA timezone. */
+export function getTodayInTimezone(timeZone: string): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
+}
+
+/** Short date chip label like `23 Nov` from a `YYYY-MM-DD` string. */
+export function formatDateChipShort(dateString: string): string {
+    const date = new Date(`${dateString}T00:00:00Z`);
+    return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+    }).format(date);
+}
+
+/** Short weekday (`Sen`, `Sel`, …) for a UTC Date parsed from `YYYY-MM-DD`. */
+export function formatWeekdayShortUtc(date: Date): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'short',
+        timeZone: 'UTC',
+    }).format(date);
+}
+
+/** Short month (`Nov`, `Des`, …) for a UTC Date parsed from `YYYY-MM-DD`. */
+export function formatMonthShortUtc(date: Date): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        month: 'short',
+        timeZone: 'UTC',
+    }).format(date);
+}
+
+/** Short timestamp like `23 Nov, 17.59` for notifications older than 7 days. */
+export function formatShortDateTimeIndo(date: Date): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
 export function buildWhatsAppUrl(phone: string | null | undefined, message: string): string {
     const cleanPhone = (phone ?? '').replace(/\D+/g, '');
     const normalized = cleanPhone.startsWith('0') ? `62${cleanPhone.slice(1)}` : cleanPhone;

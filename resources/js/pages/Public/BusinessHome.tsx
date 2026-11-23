@@ -24,6 +24,7 @@ import {
     formatShortTime,
     formatTurnaroundLabel,
     getLocalDayOfWeek,
+    getTodayInTimezone,
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BusinessType, ServiceUnitLabel } from '@/types';
@@ -152,7 +153,7 @@ export default function BusinessHome({
     bookingDisabledReason,
 }: BusinessHomeProps) {
     const tz = business.timezone || 'Asia/Jakarta';
-    const todayLocal = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    const todayLocal = getTodayInTimezone(tz);
     const todayDayOfWeek = getLocalDayOfWeek(todayLocal);
     const [hoursExpanded, setHoursExpanded] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);

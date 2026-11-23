@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -177,24 +177,24 @@ export default function CommissionsIndex({
                                     <Label htmlFor="comm-date-from" className="text-xs text-mute">
                                         Dari Tanggal
                                     </Label>
-                                    <Input
+                                    <DatePicker
                                         id="comm-date-from"
-                                        type="date"
                                         value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5"
+                                        onChange={setDateFrom}
+                                        dialogTitle="Dari Tanggal"
+                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5 sm:text-sm"
                                     />
                                 </div>
                                 <div className="min-w-0">
                                     <Label htmlFor="comm-date-to" className="text-xs text-mute">
                                         Sampai Tanggal
                                     </Label>
-                                    <Input
+                                    <DatePicker
                                         id="comm-date-to"
-                                        type="date"
                                         value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5"
+                                        onChange={setDateTo}
+                                        dialogTitle="Sampai Tanggal"
+                                        className="mt-1 h-11 w-full rounded-sm py-2 sm:h-10 sm:w-40 sm:rounded-full sm:py-1.5 sm:text-sm"
                                     />
                                 </div>
                                 <Button

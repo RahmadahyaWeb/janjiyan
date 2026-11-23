@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Download, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { formatDateShortIndo, formatRupiah, PAYMENT_METHOD_LABELS } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -124,16 +124,16 @@ export function DailyCashierSummaryCard({
                         <Label htmlFor="cashier-summary-date" className="sr-only">
                             Tanggal ringkasan kasir
                         </Label>
-                        <Input
+                        <DatePicker
                             id="cashier-summary-date"
-                            type="date"
                             value={selectedDate}
-                            onChange={(e) => {
-                                if (e.target.value) {
-                                    setSelectedDate(e.target.value);
+                            onChange={(val) => {
+                                if (val) {
+                                    setSelectedDate(val);
                                 }
                             }}
-                            className="h-10 min-w-0 bg-canvas text-base md:text-xs"
+                            dialogTitle="Tanggal Ringkasan Kasir"
+                            className="h-10 bg-canvas text-sm md:text-xs"
                         />
                     </div>
 

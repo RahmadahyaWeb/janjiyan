@@ -1,9 +1,10 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
@@ -200,20 +201,21 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                             <p className="text-xs text-mute">
                                 Dihitung otomatis tiap reservasi staff ini. Rekapnya ada di menu Komisi Staff.
                             </p>
-                            <NativeSelect
+                            <SelectField
                                 id="staff-commission-type"
                                 value={form.data.commission_type}
-                                onChange={(e) =>
+                                onValueChange={(val) =>
                                     form.setData(
                                         'commission_type',
-                                        e.target.value as 'none' | 'percentage' | 'fixed'
+                                        val as 'none' | 'percentage' | 'fixed'
                                     )
                                 }
-                            >
-                                <option value="none">Tidak Ada Komisi</option>
-                                <option value="percentage">Persentase dari Harga Layanan (%)</option>
-                                <option value="fixed">Nominal Tetap per Reservasi (Rp)</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: 'none', label: 'Tidak Ada Komisi' },
+                                    { value: 'percentage', label: 'Persentase dari Harga Layanan (%)' },
+                                    { value: 'fixed', label: 'Nominal Tetap per Reservasi (Rp)' },
+                                ]}
+                            />
                         </div>
                         {form.data.commission_type !== 'none' && (
                             <div className="space-y-1.5">
@@ -222,15 +224,26 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                                         ? 'Persentase Komisi (%)'
                                         : 'Nominal Komisi per Sesi (Rp)'}
                                 </Label>
-                                <Input
-                                    id="staff-commission-value"
-                                    type="number"
-                                    min={0}
-                                    max={form.data.commission_type === 'percentage' ? 100 : 100000000}
-                                    value={form.data.commission_value}
-                                    onChange={(e) => form.setData('commission_value', parseNumericInput(e.target.value))}
-                                    aria-invalid={Boolean(form.errors.commission_value)}
-                                />
+                                {form.data.commission_type === 'fixed' ? (
+                                    <CurrencyInput
+                                        id="staff-commission-value"
+                                        min={0}
+                                        max={100000000}
+                                        value={form.data.commission_value}
+                                        onValueChange={(val) => form.setData('commission_value', val)}
+                                        aria-invalid={Boolean(form.errors.commission_value)}
+                                    />
+                                ) : (
+                                    <Input
+                                        id="staff-commission-value"
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={form.data.commission_value}
+                                        onChange={(e) => form.setData('commission_value', parseNumericInput(e.target.value))}
+                                        aria-invalid={Boolean(form.errors.commission_value)}
+                                    />
+                                )}
                                 {form.errors.commission_value && (
                                     <p className="text-xs text-destructive">{form.errors.commission_value}</p>
                                 )}
@@ -283,14 +296,15 @@ export default function StaffForm({ staffMember }: StaffFormProps) {
                     <div className="space-y-3 rounded-sm border border-hairline-soft p-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="staff-role">Tingkat Akses</Label>
-                            <NativeSelect
+                            <SelectField
                                 id="staff-role"
                                 value={form.data.role}
-                                onChange={(e) => form.setData('role', e.target.value as 'admin' | 'staff')}
-                            >
-                                <option value="staff">Staff / Kasir (pilih menu)</option>
-                                <option value="admin">Admin (semua menu)</option>
-                            </NativeSelect>
+                                onValueChange={(val) => form.setData('role', val as 'admin' | 'staff')}
+                                options={[
+                                    { value: 'staff', label: 'Staff / Kasir (pilih menu)' },
+                                    { value: 'admin', label: 'Admin (semua menu)' },
+                                ]}
+                            />
                             <p className="text-xs text-mute">
                                 {form.data.role === 'admin'
                                     ? 'Admin bisa membuka semua menu, sama seperti pemilik.'

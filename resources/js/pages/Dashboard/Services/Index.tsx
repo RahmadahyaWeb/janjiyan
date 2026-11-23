@@ -1,12 +1,12 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ServiceAddonsPanel } from '@/components/ServiceAddonsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchInput } from '@/components/ui/search-input';
 import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
@@ -94,28 +94,18 @@ export default function ServicesIndex({
 
             <div className="flex flex-wrap items-center justify-between gap-3">
                 {services.length > 0 ? (
-                    <div className="relative flex w-full items-center sm:w-72">
+                    <div className="w-full sm:w-72">
                         <Label htmlFor="services-search" className="sr-only">
                             Cari layanan
                         </Label>
-                        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ash" aria-hidden="true" />
-                        <Input
+                        <SearchInput
                             id="services-search"
-                            className="pl-10 pr-11 md:h-10 md:text-sm"
+                            className="md:h-10 md:text-sm"
                             placeholder="Cari layanan…"
+                            clearLabel="Hapus pencarian layanan"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onValueChange={setSearchQuery}
                         />
-                        {searchQuery && (
-                            <button
-                                type="button"
-                                aria-label="Hapus pencarian layanan"
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-1.5 inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                            >
-                                <X className="size-4" aria-hidden="true" />
-                            </button>
-                        )}
                     </div>
                 ) : null}
             </div>

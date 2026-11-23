@@ -5,7 +5,7 @@ import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/ui/select';
 import { formatRupiah } from '@/lib/format';
 
 interface ActivatePlanProps {
@@ -67,28 +67,27 @@ export default function AdminActivatePlan({ merchant, plans }: ActivatePlanProps
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="admin-plan-slug">Pilih Paket</Label>
-                        <NativeSelect
+                        <SelectField
                             id="admin-plan-slug"
                             value={form.data.plan_slug}
-                            onChange={(e) => form.setData('plan_slug', e.target.value)}
-                        >
-                            {plans.map((p) => (
-                                <option key={p.id} value={p.slug}>
-                                    {p.name} ({formatRupiah(p.price_monthly)}/bln)
-                                </option>
-                            ))}
-                        </NativeSelect>
+                            onValueChange={(val) => form.setData('plan_slug', val)}
+                            options={plans.map((p) => ({
+                                value: p.slug,
+                                label: `${p.name} (${formatRupiah(p.price_monthly)}/bln)`,
+                            }))}
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="admin-billing-cycle">Siklus</Label>
-                        <NativeSelect
+                        <SelectField
                             id="admin-billing-cycle"
                             value={form.data.billing_cycle}
-                            onChange={(e) => form.setData('billing_cycle', e.target.value as 'monthly' | 'yearly')}
-                        >
-                            <option value="monthly">Bulanan (+1 Bulan)</option>
-                            <option value="yearly">Tahunan (+1 Tahun)</option>
-                        </NativeSelect>
+                            onValueChange={(val) => form.setData('billing_cycle', val as 'monthly' | 'yearly')}
+                            options={[
+                                { value: 'monthly', label: 'Bulanan (+1 Bulan)' },
+                                { value: 'yearly', label: 'Tahunan (+1 Tahun)' },
+                            ]}
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="admin-plan-notes">Catatan Audit (Opsional)</Label>
