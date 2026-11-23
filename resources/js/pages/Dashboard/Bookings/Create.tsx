@@ -53,6 +53,13 @@ interface BookingCreateProps {
     services: ServiceOption[];
     addons?: ServiceAddon[];
     canUseMultiServiceDropoff?: boolean;
+    todayDate?: string;
+    prefill?: {
+        date?: string | null;
+        time?: string;
+        staff_id?: string;
+        customer?: CustomerSuggestion | null;
+    };
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'qris', 'transfer', 'edc'];
@@ -72,6 +79,8 @@ export default function BookingCreate({
     services,
     addons = [],
     canUseMultiServiceDropoff = false,
+    todayDate,
+    prefill,
 }: BookingCreateProps) {
     const { activeBusiness } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
@@ -82,7 +91,9 @@ export default function BookingCreate({
     const [lookupQuery, setLookupQuery] = useState('');
     const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<CustomerSuggestion | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerSuggestion | null>(
+        prefill?.customer ?? null
+    );
     const [dropoffCart, setDropoffCart] = useState<Array<{ service_id: number; quantity: number }>>(() =>
         services[0]?.id ? [{ service_id: services[0].id, quantity: 1 }] : []
     );
@@ -91,21 +102,22 @@ export default function BookingCreate({
     const [multiDropoffLoading, setMultiDropoffLoading] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const customerLookupRef = useRef<HTMLDivElement>(null);
-    const todayString = new Date().toISOString().slice(0, 10);
+    const postActionRef = useRef<'index' | 'receipt'>('index');
+    const todayString = todayDate || new Date().toISOString().slice(0, 10);
 
     const form = useForm({
         service_id: services[0]?.id ? String(services[0].id) : '',
-        date: todayString,
-        time: '',
+        date: prefill?.date || todayString,
+        time: prefill?.time || '',
         quantity: 1 as number | '',
         fulfillment_type: 'dropoff' as 'dropoff' | 'pickup',
         pickup_session: 'anytime' as 'morning' | 'afternoon' | 'evening' | 'anytime',
         pickup_address: '',
         start_in_progress: true as boolean,
-        staff_id: '',
-        customer_name: '',
-        customer_phone: '',
-        customer_email: '',
+        staff_id: prefill?.staff_id || '',
+        customer_name: prefill?.customer?.name || '',
+        customer_phone: prefill?.customer?.phone || '',
+        customer_email: prefill?.customer?.email || '',
         customer_notes: '',
         initial_payment_status: (services[0]?.dp_amount ?? 0) > 0 ? 'dp_verified' : 'settled',
         payment_method: 'cash' as PaymentMethod,
@@ -492,6 +504,7 @@ export default function BookingCreate({
                     ? Number(data.received_amount)
                     : null,
             start_in_progress: isDropoff && data.fulfillment_type === 'dropoff' ? Boolean(data.start_in_progress) : false,
+            post_action: postActionRef.current,
         }));
         form.post(route('dashboard.bookings.store'), {
             onError: () => scrollToFirstInvalid(formRef.current),
@@ -527,8 +540,9 @@ export default function BookingCreate({
                 <form
                     ref={formRef}
                     onSubmit={handleSubmit}
-                    className="max-w-2xl space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
+                    className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"
                 >
+                    <div className="min-w-0 space-y-5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
                     {isMultiDropoffMode ? (
                         <div className="space-y-2.5">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -537,7 +551,7 @@ export default function BookingCreate({
                                     {activeServiceLines.length} layanan dipilih
                                 </span>
                             </div>
-                            <div className="grid gap-2.5 sm:grid-cols-2">
+                            <div className="space-y-2">
                                 {services.map((s) => {
                                     const cartItem = dropoffCart.find((item) => item.service_id === s.id);
                                     const isSelected = Boolean(cartItem);
@@ -549,7 +563,7 @@ export default function BookingCreate({
                                         <div
                                             key={s.id}
                                             className={cn(
-                                                'flex flex-col justify-between gap-2.5 rounded-sm border p-3.5 transition-colors',
+                                                'flex flex-col gap-2.5 rounded-sm border p-3.5 transition-colors sm:flex-row sm:items-center sm:justify-between',
                                                 isSelected
                                                     ? 'border-ink bg-canvas ring-1 ring-ink'
                                                     : 'border-hairline-soft bg-canvas hover:border-ink/40'
@@ -559,15 +573,8 @@ export default function BookingCreate({
                                                 type="button"
                                                 aria-pressed={isSelected}
                                                 onClick={() => toggleDropoffCartService(s.id)}
-                                                className="flex w-full cursor-pointer items-start justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                             >
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold break-words text-ink">{s.name}</p>
-                                                    <p className="mt-0.5 text-xs tabular-nums text-mute">
-                                                        {formatRupiah(s.price)} / {svcUnit} ·{' '}
-                                                        {formatTurnaroundLabel(s.turnaround_days ?? 1)}
-                                                    </p>
-                                                </div>
                                                 <span
                                                     className={cn(
                                                         'inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-xs',
@@ -578,44 +585,52 @@ export default function BookingCreate({
                                                 >
                                                     <Check className="size-3" aria-hidden="true" />
                                                 </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold break-words text-ink">{s.name}</p>
+                                                    <p className="mt-0.5 text-xs tabular-nums text-mute">
+                                                        {formatRupiah(s.price)} / {svcUnit} ·{' '}
+                                                        {formatTurnaroundLabel(s.turnaround_days ?? 1)}
+                                                        {isSelected && (
+                                                            <span className="ml-1.5 text-ink">
+                                                                ·{' '}
+                                                                {multiDropoffLoading
+                                                                    ? 'Cek kuota…'
+                                                                    : info?.available
+                                                                      ? `Sisa ${info.remaining_capacity} ${svcUnit}`
+                                                                      : info?.reason ?? 'Kuota penuh'}
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </button>
 
                                             {isSelected && cartItem && (
-                                                <div className="flex items-center justify-between gap-2 border-t border-divider pt-2.5">
-                                                    <span className="text-xs text-mute tabular-nums">
-                                                        {multiDropoffLoading
-                                                            ? 'Cek kuota…'
-                                                            : info?.available
-                                                              ? `Sisa ${info.remaining_capacity} ${svcUnit}`
-                                                              : info?.reason ?? 'Kuota penuh'}
+                                                <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider pt-2 sm:border-t-0 sm:pt-0">
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Kurangi jumlah ${s.name}`}
+                                                        disabled={cartItem.quantity <= 1}
+                                                        onClick={() =>
+                                                            updateDropoffCartQty(s.id, cartItem.quantity - 1)
+                                                        }
+                                                        className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
+                                                    >
+                                                        <Minus className="size-3.5" aria-hidden="true" />
+                                                    </button>
+                                                    <span className="min-w-6 text-center font-mono text-xs font-semibold tabular-nums text-ink">
+                                                        {cartItem.quantity}
                                                     </span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Kurangi jumlah ${s.name}`}
-                                                            disabled={cartItem.quantity <= 1}
-                                                            onClick={() =>
-                                                                updateDropoffCartQty(s.id, cartItem.quantity - 1)
-                                                            }
-                                                            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40"
-                                                        >
-                                                            <Minus className="size-3.5" aria-hidden="true" />
-                                                        </button>
-                                                        <span className="min-w-6 text-center font-mono text-xs font-semibold tabular-nums text-ink">
-                                                            {cartItem.quantity}
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Tambah jumlah ${s.name}`}
-                                                            disabled={cartItem.quantity >= maxQty}
-                                                            onClick={() =>
-                                                                updateDropoffCartQty(s.id, cartItem.quantity + 1)
-                                                            }
-                                                            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40"
-                                                        >
-                                                            <Plus className="size-3.5" aria-hidden="true" />
-                                                        </button>
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Tambah jumlah ${s.name}`}
+                                                        disabled={cartItem.quantity >= maxQty}
+                                                        onClick={() =>
+                                                            updateDropoffCartQty(s.id, cartItem.quantity + 1)
+                                                        }
+                                                        className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
+                                                    >
+                                                        <Plus className="size-3.5" aria-hidden="true" />
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
@@ -690,14 +705,14 @@ export default function BookingCreate({
                                     </span>
                                 )}
                             </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="space-y-2">
                                 {applicableAddons.map((addon) => {
                                     const qty = addonQuantities[addon.id] ?? 0;
                                     return (
                                         <div
                                             key={addon.id}
                                             className={cn(
-                                                'flex flex-col justify-between gap-2.5 rounded-xl border bg-canvas px-3 py-2.5',
+                                                'flex flex-col gap-2.5 rounded-xl border bg-canvas px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3',
                                                 qty > 0 ? 'border-ink ring-1 ring-ink' : 'border-hairline-soft'
                                             )}
                                         >
@@ -705,9 +720,7 @@ export default function BookingCreate({
                                                 <p className="text-xs font-semibold break-words text-ink">
                                                     {addon.name}
                                                 </p>
-                                            </div>
-                                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-divider pt-2">
-                                                <p className="text-[11px] tabular-nums text-mute">
+                                                <p className="mt-0.5 text-xs tabular-nums text-mute">
                                                     <span>
                                                         {formatRupiah(addon.price)} / {addon.unit_label}
                                                     </span>
@@ -717,29 +730,29 @@ export default function BookingCreate({
                                                         </span>
                                                     )}
                                                 </p>
-                                                <div className="flex shrink-0 items-center gap-1.5">
-                                                    <button
-                                                        type="button"
-                                                        aria-label={`Kurangi add-on ${addon.name}`}
-                                                        disabled={qty <= 0}
-                                                        onClick={() => updateAddonQty(addon.id, qty - 1)}
-                                                        className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
-                                                    >
-                                                        <Minus className="size-3.5" aria-hidden="true" />
-                                                    </button>
-                                                    <span className="min-w-5 text-center font-mono text-xs font-semibold tabular-nums text-ink">
-                                                        {qty}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        aria-label={`Tambah add-on ${addon.name}`}
-                                                        disabled={qty >= 50}
-                                                        onClick={() => updateAddonQty(addon.id, qty + 1)}
-                                                        className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
-                                                    >
-                                                        <Plus className="size-3.5" aria-hidden="true" />
-                                                    </button>
-                                                </div>
+                                            </div>
+                                            <div className="flex shrink-0 items-center justify-end gap-1.5 border-t border-divider pt-2 sm:border-t-0 sm:pt-0">
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Kurangi add-on ${addon.name}`}
+                                                    disabled={qty <= 0}
+                                                    onClick={() => updateAddonQty(addon.id, qty - 1)}
+                                                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
+                                                >
+                                                    <Minus className="size-3.5" aria-hidden="true" />
+                                                </button>
+                                                <span className="min-w-5 text-center font-mono text-xs font-semibold tabular-nums text-ink">
+                                                    {qty}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Tambah add-on ${addon.name}`}
+                                                    disabled={qty >= 50}
+                                                    onClick={() => updateAddonQty(addon.id, qty + 1)}
+                                                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-hairline bg-canvas text-ink hover:bg-bone disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
+                                                >
+                                                    <Plus className="size-3.5" aria-hidden="true" />
+                                                </button>
                                             </div>
                                         </div>
                                     );
@@ -1169,15 +1182,15 @@ export default function BookingCreate({
                                 onChange={(e) => form.setData('initial_payment_status', e.target.value)}
                             >
                                 {serviceRequiresDp && (
-                                    <option value="dp_verified">Uang Muka Terverifikasi (Langsung Konfirmasi)</option>
+                                    <option value="dp_verified">DP Terverifikasi · Konfirmasi</option>
                                 )}
-                                <option value="settled">Lunas (Langsung Konfirmasi)</option>
+                                <option value="settled">Lunas · Konfirmasi</option>
                                 <option value="unpaid">
                                     {serviceRequiresDp
-                                        ? 'Belum Dibayar (Menunggu Konfirmasi)'
+                                        ? 'Belum Bayar · Menunggu'
                                         : isDropoff
-                                          ? 'Belum Dibayar (Bayar Saat Selesai / Di Toko)'
-                                          : 'Belum Dibayar (Bayar di Tempat)'}
+                                          ? 'Belum Bayar · Bayar di Toko'
+                                          : 'Belum Bayar · Bayar di Tempat'}
                                 </option>
                             </NativeSelect>
                         </div>
@@ -1272,38 +1285,6 @@ export default function BookingCreate({
                         />
                     </div>
 
-                    {(selectedService || activeServiceLines.length > 0) && (
-                        <div className="space-y-1.5 rounded-sm bg-bone px-4 py-3 text-sm">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-mute">
-                                    Total biaya
-                                    {isMultiDropoffMode
-                                        ? ` (${activeServiceLines.length} layanan${selectedAddonLines.length > 0 ? ` + ${selectedAddonLines.length} add-on` : ''})`
-                                        : isDropoff
-                                          ? ` (${effectiveQty} ${unitLabel}${selectedAddonLines.length > 0 ? ` + ${selectedAddonLines.length} add-on` : ''})`
-                                          : selectedAddonLines.length > 0
-                                            ? ` (+${selectedAddonLines.length} add-on)`
-                                            : ''}
-                                </span>
-                                <div className="text-right">
-                                    <p className="font-semibold tabular-nums text-ink">
-                                        {formatRupiah(estimatedTotalPrice)}
-                                    </p>
-                                    {serviceRequiresDp && (
-                                        <p className="text-xs tabular-nums text-electric">
-                                            Uang muka: {formatRupiah(estimatedDpAmount)}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            {!isDropoff && extraAddonDuration > 0 && selectedService && (
-                                <p className="text-xs tabular-nums text-mute">
-                                    Total durasi sesi: {selectedService.duration_minutes + extraAddonDuration} menit ({selectedService.duration_minutes} + {extraAddonDuration} mnt add-on)
-                                </p>
-                            )}
-                        </div>
-                    )}
-
                     {Object.keys(form.errors).length > 0 && (
                         <div
                             role="alert"
@@ -1313,17 +1294,123 @@ export default function BookingCreate({
                             Periksa kembali data pemesan atau jadwal yang ditandai merah di atas.
                         </div>
                     )}
-
-                    <div className="flex flex-col-reverse gap-2.5 pt-2 sm:flex-row sm:justify-end">
-                        <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
-                            <Link href={route('dashboard.bookings')}>Batal</Link>
-                        </Button>
-                        <Button type="submit" className="w-full sm:w-auto" disabled={form.processing}>
-                            {form.processing
-                                ? 'Menyimpan…'
-                                : `Simpan ${config.bookings.itemSingular} Manual`}
-                        </Button>
                     </div>
+
+                    {/* Sticky POS Summary & Submit Column */}
+                    <aside className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5 lg:sticky lg:top-22">
+                        <div>
+                            <h2 className="text-base font-semibold text-ink">Ringkasan {config.bookings.itemSingular}</h2>
+                            <p className="text-xs text-mute">
+                                Periksa detail layanan dan pembayaran sebelum menyimpan.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 rounded-sm bg-bone p-3.5 text-xs">
+                            {activeServiceLines.length > 0 ? (
+                                <div className="space-y-1.5">
+                                    {activeServiceLines.map((line) => (
+                                        <div key={line.service.id} className="flex items-start justify-between gap-2">
+                                            <span className="font-medium text-ink">
+                                                {line.service.name}
+                                                {isDropoff ? ` (${line.quantity} ${line.service.unit_label ?? 'item'})` : ''}
+                                            </span>
+                                            <span className="shrink-0 font-semibold tabular-nums text-ink">
+                                                {formatRupiah(line.service.price * line.quantity)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {selectedAddonLines.map((line) => (
+                                        <div key={line.addon.id} className="flex items-start justify-between gap-2 text-mute">
+                                            <span>
+                                                + {line.addon.name} ({line.quantity} {line.addon.unit_label})
+                                            </span>
+                                            <span className="shrink-0 tabular-nums text-ink">
+                                                {formatRupiah(line.addon.price * line.quantity)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-mute">Pilih layanan terlebih dahulu.</p>
+                            )}
+
+                            <div className="space-y-1 border-t border-divider pt-2 text-mute">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span>Tanggal</span>
+                                    <span className="font-semibold tabular-nums text-ink">
+                                        {form.data.date ? formatDateShortIndo(form.data.date) : '—'}
+                                    </span>
+                                </div>
+                                {!isDropoff && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Jam</span>
+                                        <span className="font-mono font-semibold tabular-nums text-ink">
+                                            {form.data.time || 'Belum dipilih'}
+                                        </span>
+                                    </div>
+                                )}
+                                {!isDropoff && selectedService && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Durasi</span>
+                                        <span className="tabular-nums text-ink">
+                                            {selectedService.duration_minutes + extraAddonDuration} menit
+                                        </span>
+                                    </div>
+                                )}
+                                {form.data.customer_name && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Pelanggan</span>
+                                        <span className="truncate font-semibold text-ink">{form.data.customer_name}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-baseline justify-between gap-2 border-t border-divider pt-2.5 text-sm">
+                                <span className="font-semibold text-ink">Total Biaya</span>
+                                <div className="text-right">
+                                    <p className="text-base font-semibold tabular-nums text-ink">
+                                        {formatRupiah(estimatedTotalPrice)}
+                                    </p>
+                                    {serviceRequiresDp && (
+                                        <p className="text-xs tabular-nums text-electric">
+                                            Uang muka: {formatRupiah(estimatedDpAmount)}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <Button
+                                type="submit"
+                                className="w-full"
+                                disabled={form.processing}
+                                onClick={() => {
+                                    postActionRef.current = 'index';
+                                }}
+                            >
+                                {form.processing && postActionRef.current === 'index'
+                                    ? 'Menyimpan…'
+                                    : `Simpan ${config.bookings.itemSingular} Manual`}
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                className="w-full"
+                                disabled={form.processing}
+                                onClick={() => {
+                                    postActionRef.current = 'receipt';
+                                }}
+                            >
+                                {form.processing && postActionRef.current === 'receipt'
+                                    ? 'Menyimpan…'
+                                    : 'Simpan & Cetak Struk'}
+                            </Button>
+                            <Button asChild type="button" variant="ghost" className="w-full">
+                                <Link href={route('dashboard.bookings')}>Batal</Link>
+                            </Button>
+                        </div>
+                    </aside>
                 </form>
             )}
         </DashboardLayout>

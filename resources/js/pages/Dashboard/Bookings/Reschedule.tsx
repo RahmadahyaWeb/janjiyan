@@ -33,9 +33,10 @@ interface ReschedulePageProps {
         start_time_local: string;
     };
     staffOptions: StaffOption[];
+    todayDate?: string;
 }
 
-export default function BookingReschedule({ booking, staffOptions }: ReschedulePageProps) {
+export default function BookingReschedule({ booking, staffOptions, todayDate }: ReschedulePageProps) {
     const { activeBusiness } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
     const [timeError, setTimeError] = useState('');
@@ -48,7 +49,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
     const isDropoff = booking.booking_mode === 'dropoff';
     const requiredQty = Math.max(1, booking.quantity ?? 1);
     const unitLabel = booking.unit_label ?? 'item';
-    const todayString = new Date().toISOString().slice(0, 10);
+    const todayString = todayDate || new Date().toISOString().slice(0, 10);
 
     const slotUrl = useMemo(() => {
         if (!form.data.date) return null;
@@ -237,12 +238,7 @@ export default function BookingReschedule({ booking, staffOptions }: RescheduleP
                     <Button
                         type="submit"
                         className="w-full sm:w-auto"
-                        disabled={
-                            form.processing ||
-                            (isDropoff
-                                ? !(dropoff?.available && dropoff.remaining_capacity >= requiredQty)
-                                : !form.data.time)
-                        }
+                        disabled={form.processing}
                     >
                         {form.processing ? 'Menyimpan…' : 'Simpan Jadwal Baru'}
                     </Button>

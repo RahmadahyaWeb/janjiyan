@@ -58,6 +58,8 @@ class BookingController extends Controller
         $viewMode = ($request->string('view')->toString() === 'calendar' && ! $isDropoff) ? 'calendar' : 'list';
         $calendarDateString = $this->sanitizeDateString($request->string('calendar_date')->toString())
             ?? $todayDate;
+        $openCashierId = $request->integer('open_cashier') ?: null;
+        $openReceiptId = $request->integer('open_receipt') ?: null;
 
         $canVerifyPayments = $business ? $user->hasBusinessPermission($business, 'verify_payments') : false;
         $canViewCashierSummary = $business ? ($canVerifyPayments || $user->hasBusinessPermission($business, 'manage_settings')) : false;
@@ -65,17 +67,41 @@ class BookingController extends Controller
         $canUseMultiServiceDropoff = $business ? $planLimitService->canUseMultiServiceDropoff($business->owner) : false;
 
         $dropoffStageCounts = null;
+        $dropoffSlaCounts = null;
         if ($business && $isDropoff) {
-            $activeDropoffWorkStatuses = $business->bookings()
+            $activeDropoffRows = $business->bookings()
                 ->where('booking_mode', 'dropoff')
                 ->whereIn('reservation_status', ['pending', 'confirmed'])
-                ->pluck('work_status');
+                ->get(['work_status', 'estimated_ready_date']);
 
             $dropoffStageCounts = [
-                'active' => $activeDropoffWorkStatuses->count(),
-                'awaiting_dropoff' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === null || $ws === 'awaiting_dropoff')->count(),
-                'in_progress' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === 'in_progress')->count(),
-                'ready_for_pickup' => $activeDropoffWorkStatuses->filter(fn ($ws) => $ws === 'ready_for_pickup')->count(),
+                'active' => $activeDropoffRows->count(),
+                'awaiting_dropoff' => $activeDropoffRows->filter(fn ($r) => $r->work_status === null || $r->work_status === 'awaiting_dropoff')->count(),
+                'in_progress' => $activeDropoffRows->filter(fn ($r) => $r->work_status === 'in_progress')->count(),
+                'ready_for_pickup' => $activeDropoffRows->filter(fn ($r) => $r->work_status === 'ready_for_pickup')->count(),
+            ];
+
+            $dropoffSlaCounts = [
+                'overdue' => $activeDropoffRows->filter(function ($r) use ($todayDate): bool {
+                    if (! $r->estimated_ready_date) {
+                        return false;
+                    }
+                    if (in_array($r->work_status, ['ready_for_pickup', 'picked_up'], true)) {
+                        return false;
+                    }
+
+                    return $r->estimated_ready_date->toDateString() < $todayDate;
+                })->count(),
+                'due_today' => $activeDropoffRows->filter(function ($r) use ($todayDate): bool {
+                    if (! $r->estimated_ready_date) {
+                        return false;
+                    }
+                    if (in_array($r->work_status, ['ready_for_pickup', 'picked_up'], true)) {
+                        return false;
+                    }
+
+                    return $r->estimated_ready_date->toDateString() === $todayDate;
+                })->count(),
             ];
         }
 
@@ -121,6 +147,7 @@ class BookingController extends Controller
             'has_dp_proof' => filled($b->dp_proof_path),
             'dp_proof_url' => $b->dp_proof_path ? route('dashboard.bookings.proof', $b->id) : null,
             'dp_expires_at' => $b->dp_expires_at?->toIso8601String(),
+            'dp_expires_at_local' => $b->dp_expires_at?->setTimezone($tz)->format('d M, H:i'),
             'customer_notes' => $b->customer_notes,
             'cancellation_reason' => $b->cancellation_reason,
             'rescheduled_count' => (int) ($b->rescheduled_count ?? 0),
@@ -133,6 +160,7 @@ class BookingController extends Controller
 
         $isDropoffActiveQueue = $isDropoff
             && in_array($statusFilter, ['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup'], true);
+        $sortOrder = $filters['sort'];
 
         $paginatedBookings = $business
             ? $business->bookings()
@@ -146,18 +174,25 @@ class BookingController extends Controller
                         'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
                     ]),
                 ])
-                ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode))
+                ->tap(fn ($q) => $this->applyListFilters($q, ['status' => $statusFilter] + $filters, $mode, $todayDate))
                 ->when(
-                    $isDropoffActiveQueue,
+                    $sortOrder === 'upcoming',
                     fn ($q) => $q
-                        ->orderByRaw('CASE WHEN estimated_ready_date IS NULL THEN 1 ELSE 0 END ASC')
-                        ->orderBy('estimated_ready_date', 'asc')
                         ->orderBy('booking_date', 'asc')
+                        ->orderBy('start_at', 'asc')
                         ->orderBy('id', 'asc'),
-                    fn ($q) => $q
-                        ->orderByDesc('booking_date')
-                        ->orderByDesc('start_at')
-                        ->orderByDesc('id')
+                    fn ($q) => $q->when(
+                        $isDropoffActiveQueue && $sortOrder !== 'newest',
+                        fn ($dq) => $dq
+                            ->orderByRaw('CASE WHEN estimated_ready_date IS NULL THEN 1 ELSE 0 END ASC')
+                            ->orderBy('estimated_ready_date', 'asc')
+                            ->orderBy('booking_date', 'asc')
+                            ->orderBy('id', 'asc'),
+                        fn ($dq) => $dq
+                            ->orderByDesc('booking_date')
+                            ->orderByDesc('start_at')
+                            ->orderByDesc('id')
+                    )
                 )
                 ->paginate(20)
                 ->withQueryString()
@@ -183,6 +218,17 @@ class BookingController extends Controller
                 ])
                 ->whereBookingDateBetween($weekStart->toDateString(), $weekEnd->toDateString())
                 ->whereNotIn('reservation_status', ['cancelled'])
+                ->when($filters['staff_id'], fn ($q) => $q->where('staff_id', $filters['staff_id']))
+                ->when(
+                    $filters['service_id'],
+                    fn ($q) => $q->where(function ($sq) use ($filters): void {
+                        $sq->where('service_id', $filters['service_id'])
+                            ->orWhereHas('items', function ($iq) use ($filters): void {
+                                $iq->where('item_type', BookingItem::TYPE_SERVICE)
+                                    ->where('service_id', $filters['service_id']);
+                            });
+                    })
+                )
                 ->orderBy('start_at')
                 ->get()
             : collect();
@@ -252,11 +298,16 @@ class BookingController extends Controller
                 'search' => $search,
                 'date_from' => $filters['date_from'] ?? '',
                 'date_to' => $filters['date_to'] ?? '',
+                'sla' => $filters['sla'],
+                'sort' => $filters['sort'],
                 'mode' => $mode,
                 'view' => $viewMode,
                 'calendar_date' => $calendarDateString,
             ],
+            'openCashierId' => $openCashierId,
+            'openReceiptId' => $openReceiptId,
             'dropoffStageCounts' => $dropoffStageCounts,
+            'dropoffSlaCounts' => $dropoffSlaCounts,
             'todayDate' => $todayDate,
             'calendar' => [
                 'selected_date' => $calendarDateString,
@@ -288,10 +339,62 @@ class BookingController extends Controller
         $business = $user->resolveActiveBusiness();
         abort_unless($business && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
 
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $todayDate = CarbonImmutable::now($tz)->toDateString();
+
+        $prefillDate = $this->sanitizeDateString($request->string('date')->toString());
+        if ($prefillDate !== null && $prefillDate < $todayDate) {
+            $prefillDate = null;
+        }
+
+        $rawTime = $request->string('time')->toString();
+        $prefillTime = preg_match('/^\d{2}:\d{2}$/', $rawTime) === 1 ? $rawTime : '';
+
+        $rawStaffId = $request->integer('staff_id') ?: null;
+        $prefillStaffId = null;
+        if ($rawStaffId !== null && $business->isStaffAppointment()) {
+            $prefillStaffId = $business->staff()
+                ->where('id', $rawStaffId)
+                ->where('is_active', true)
+                ->value('id');
+        }
+
+        $rawCustomerId = $request->integer('customer_id') ?: null;
+        $prefillCustomer = null;
+        if ($rawCustomerId !== null) {
+            $cust = $business->customers()
+                ->withCount([
+                    'bookings',
+                    'bookings as no_show_count' => fn ($bq) => $bq->where('reservation_status', 'no_show'),
+                ])
+                ->where('id', $rawCustomerId)
+                ->first();
+            if ($cust) {
+                $prefillCustomer = [
+                    'id' => $cust->id,
+                    'name' => $cust->name,
+                    'name_aliases' => is_array($cust->name_aliases) ? array_values($cust->name_aliases) : [],
+                    'phone' => $cust->phone,
+                    'email' => $cust->email,
+                    'tags' => is_array($cust->tags) ? array_values($cust->tags) : [],
+                    'is_blocked' => (bool) $cust->is_blocked,
+                    'bookings_count' => (int) $cust->bookings_count,
+                    'no_show_count' => (int) $cust->no_show_count,
+                ];
+            }
+        }
+
         return Inertia::render('Dashboard/Bookings/Create', [
             'services' => $this->getActiveBookingServices($business),
             'addons' => $this->getActiveBookingAddons($business),
             'canUseMultiServiceDropoff' => $planLimitService->canUseMultiServiceDropoff($business->owner),
+            'todayDate' => $todayDate,
+            'prefill' => [
+                'date' => $prefillDate,
+                'time' => $prefillTime,
+                'staff_id' => $prefillStaffId ? (string) $prefillStaffId : '',
+                'customer' => $prefillCustomer,
+            ],
         ]);
     }
 
@@ -302,9 +405,11 @@ class BookingController extends Controller
         abort_unless($business && $booking->business_id === $business->id && $user->hasBusinessPermission($business, 'manage_bookings'), 403);
 
         $tz = $business->timezone ?: 'Asia/Jakarta';
+        $todayDate = CarbonImmutable::now($tz)->toDateString();
         $booking->loadMissing(['service.staff' => fn ($q) => $q->where('staff.is_active', true), 'customer', 'staff']);
 
         return Inertia::render('Dashboard/Bookings/Reschedule', [
+            'todayDate' => $todayDate,
             'booking' => [
                 'id' => $booking->id,
                 'booking_code' => $booking->booking_code,
@@ -652,6 +757,14 @@ class BookingController extends Controller
                 ? "Booking manual {$booking->booking_code} berhasil dibuat."
                 : "Reservasi manual {$booking->booking_code} berhasil dibuat.");
 
+        $postAction = $request->string('post_action')->toString();
+        if ($postAction === 'receipt') {
+            return to_route('dashboard.bookings', ['open_receipt' => $booking->id])->with('success', $flashMessage);
+        }
+        if ($postAction === 'cashier') {
+            return to_route('dashboard.bookings', ['open_cashier' => $booking->id])->with('success', $flashMessage);
+        }
+
         return to_route('dashboard.bookings')->with('success', $flashMessage);
     }
 
@@ -670,6 +783,7 @@ class BookingController extends Controller
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['nullable', 'date_format:H:i'],
             'staff_id' => ['nullable', 'integer'],
+            'stay_on_page' => ['nullable', 'boolean'],
         ]);
 
         if (! $booking->isDropoff() && empty($validated['time'])) {
@@ -697,6 +811,10 @@ class BookingController extends Controller
         $message = $updated->isDropoff()
             ? "Tanggal drop-off {$updated->booking_code} berhasil diubah ke {$validated['date']}."
             : "Jadwal reservasi {$updated->booking_code} berhasil diubah ke {$validated['date']} pukul {$validated['time']}.";
+
+        if ($request->boolean('stay_on_page')) {
+            return back()->with('success', $message);
+        }
 
         return to_route('dashboard.bookings')->with('success', $message);
     }
@@ -883,12 +1001,25 @@ class BookingController extends Controller
             'amount' => ['required', 'integer', 'min:0'],
             'received_amount' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string', 'max:255'],
+            'mark_completed' => ['nullable', 'boolean'],
         ]);
 
         try {
             $updated = $ledgerService->recordPayment($booking, $validated, $user);
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
+        }
+
+        if (
+            $request->boolean('mark_completed')
+            && $updated->payment_status === 'settled'
+            && ! in_array($updated->reservation_status, ['cancelled', 'no_show', 'completed'], true)
+            && $user->hasBusinessPermission($business, 'manage_bookings')
+        ) {
+            $updated->update([
+                'reservation_status' => 'completed',
+                ...($updated->isDropoff() ? ['work_status' => 'picked_up'] : []),
+            ]);
         }
 
         $actionLabel = $validated['payment_type'] === BookingPayment::TYPE_REFUND
@@ -1032,17 +1163,18 @@ class BookingController extends Controller
         $mode = $business->serviceBookingMode();
         $filters['status'] = $this->sanitizeStatus($filters['status'], $mode);
         $filters['search'] = '';
+        $tz = $business->timezone ?: 'Asia/Jakarta';
+        $todayDate = CarbonImmutable::now($tz)->toDateString();
 
         $bookingsQuery = $this->applyListFilters(
             $business->bookings()->with(['service', 'staff', 'customer', 'items']),
             $filters,
-            $mode
+            $mode,
+            $todayDate
         )
             ->orderByDesc('booking_date')
             ->orderByDesc('start_at')
             ->orderByDesc('id');
-
-        $tz = $business->timezone ?: 'Asia/Jakarta';
 
         return response()->streamDownload(function () use ($bookingsQuery, $tz) {
             $handle = fopen('php://output', 'w');
@@ -1076,12 +1208,16 @@ class BookingController extends Controller
     ];
 
     /**
-     * @return array{status: string, payment: string, staff_id: ?int, service_id: ?int, search: string, date_from: ?string, date_to: ?string}
+     * @return array{status: string, payment: string, staff_id: ?int, service_id: ?int, search: string, date_from: ?string, date_to: ?string, sla: string, sort: string}
      */
     private function listFilters(Request $request): array
     {
         $staffFilter = $request->integer('staff_id') ?: null;
         $serviceFilter = $request->integer('service_id') ?: null;
+        $sla = $request->string('sla')->toString();
+        $sla = in_array($sla, ['overdue', 'due_today'], true) ? $sla : '';
+        $sort = $request->string('sort')->toString();
+        $sort = in_array($sort, ['upcoming', 'newest'], true) ? $sort : '';
 
         $hasExplicitFilter = $request->has('status')
             || $request->filled('payment')
@@ -1101,6 +1237,8 @@ class BookingController extends Controller
             'search' => $request->string('search')->toString(),
             'date_from' => $this->sanitizeDateString($request->string('date_from')->toString()),
             'date_to' => $this->sanitizeDateString($request->string('date_to')->toString()),
+            'sla' => $sla,
+            'sort' => $sort,
         ];
     }
 
@@ -1110,10 +1248,11 @@ class BookingController extends Controller
     }
 
     /** Expects an already-sanitized status (see sanitizeStatus). */
-    private function applyListFilters($query, array $filters, string $mode)
+    private function applyListFilters($query, array $filters, string $mode, string $todayDate = '')
     {
         $status = $this->sanitizeStatus($filters['status'], $mode);
         $search = $filters['search'];
+        $sla = $mode === 'dropoff' ? ($filters['sla'] ?? '') : '';
 
         return $query
             ->when(
@@ -1132,6 +1271,17 @@ class BookingController extends Controller
                 in_array($status, ['pending', 'confirmed', 'completed', 'no_show', 'cancelled'], true),
                 fn ($q) => $q->where('reservation_status', $status)
             )
+            ->when($sla !== '' && $todayDate !== '', function ($q) use ($sla, $todayDate): void {
+                $q->whereIn('reservation_status', ['pending', 'confirmed'])
+                    ->whereNotNull('estimated_ready_date')
+                    ->where(fn ($w) => $w->whereNull('work_status')->orWhereIn('work_status', ['awaiting_dropoff', 'in_progress']));
+
+                if ($sla === 'overdue') {
+                    $q->whereDate('estimated_ready_date', '<', $todayDate);
+                } elseif ($sla === 'due_today') {
+                    $q->whereDate('estimated_ready_date', '=', $todayDate);
+                }
+            })
             ->when($filters['payment'], fn ($q) => $q->where('payment_status', $filters['payment']))
             ->when($filters['staff_id'], fn ($q) => $q->where('staff_id', $filters['staff_id']))
             ->when(

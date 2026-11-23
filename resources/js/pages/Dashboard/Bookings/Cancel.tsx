@@ -52,7 +52,7 @@ export default function BookingCancel({ booking }: BookingCancelProps) {
 
             <form
                 onSubmit={handleSubmit}
-                className="max-w-lg space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6"
+                className="max-w-lg space-y-3.5 rounded-md border border-hairline-soft bg-canvas p-3.5 sm:space-y-4 sm:p-6"
             >
                 <div className="space-y-1 rounded-sm bg-bone p-3.5 text-sm sm:p-4">
                     <p className="font-mono text-xs font-semibold text-mute">{booking.booking_code}</p>

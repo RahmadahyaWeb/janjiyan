@@ -25,7 +25,7 @@ export function DailyCashierSummaryCard({
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState('');
     const [retryNonce, setRetryNonce] = useState(0);
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
         if (selectedDate === initialSummary.date) {
@@ -89,16 +89,15 @@ export function DailyCashierSummaryCard({
                                 >
                                     Ringkasan Kasir Harian
                                 </h2>
-                                <Badge variant="secondary" className="tabular-nums">
+                                <Badge variant="outline" className="border-hairline bg-canvas text-ink tabular-nums">
                                     {summary.transactions_count} transaksi
                                 </Badge>
                             </div>
-                            <p className="text-xs text-mute">
-                                {formatDateShortIndo(summary.date)} ·{' '}
-                                <span className="font-semibold tabular-nums text-ink">
+                            <p className="mt-0.5 text-xs text-mute">
+                                {formatDateShortIndo(summary.date)} · Bersih{' '}
+                                <span className="font-semibold whitespace-nowrap tabular-nums text-ink">
                                     {formatRupiah(summary.net_collected)}
-                                </span>{' '}
-                                bersih
+                                </span>
                             </p>
                         </div>
                     </div>
@@ -121,7 +120,7 @@ export function DailyCashierSummaryCard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="min-w-0 flex-1 sm:w-44 sm:flex-initial">
+                    <div className="w-full min-w-0 min-[360px]:w-auto min-[360px]:flex-1 sm:w-44 sm:flex-initial">
                         <Label htmlFor="cashier-summary-date" className="sr-only">
                             Tanggal ringkasan kasir
                         </Label>
@@ -189,29 +188,29 @@ export function DailyCashierSummaryCard({
                             </button>
                         </div>
                     )}
-                    <div className="grid gap-2.5 sm:grid-cols-3">
-                        <div className="rounded-sm border border-hairline-soft bg-canvas p-3.5">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                        <div className="col-span-2 rounded-sm border border-hairline-soft bg-canvas p-3 sm:col-span-1 sm:p-3.5">
                             <p className="text-xs font-medium text-mute">Pemasukan Bersih</p>
                             <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
                                 {formatRupiah(summary.net_collected)}
                             </p>
                         </div>
-                        <div className="rounded-sm border border-hairline-soft bg-canvas p-3.5">
-                            <p className="text-xs font-medium text-mute">Total Pembayaran Masuk</p>
-                            <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
+                        <div className="rounded-sm border border-hairline-soft bg-canvas p-3 sm:p-3.5">
+                            <p className="text-xs font-medium text-mute">Total Masuk</p>
+                            <p className="mt-1 text-base font-semibold tabular-nums text-ink sm:text-lg">
                                 {formatRupiah(summary.total_collected)}
                             </p>
                         </div>
-                        <div className="rounded-sm border border-hairline-soft bg-canvas p-3.5">
-                            <p className="text-xs font-medium text-mute">Pengembalian Dana</p>
-                            <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
+                        <div className="rounded-sm border border-hairline-soft bg-canvas p-3 sm:p-3.5">
+                            <p className="text-xs font-medium text-mute">Pengembalian</p>
+                            <p className="mt-1 text-base font-semibold tabular-nums text-ink sm:text-lg">
                                 {formatRupiah(summary.total_refunds)}
                             </p>
                         </div>
                     </div>
 
                     {summary.can_view_breakdown ? (
-                        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                             {METHOD_ORDER.map((methodKey) => {
                                 const entry = summary.by_method?.[methodKey] ?? { amount: 0, count: 0 };
                                 return (

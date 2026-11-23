@@ -100,13 +100,13 @@ export function HorizontalScrollContainer({
                 <div
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none absolute inset-y-0 left-0 flex w-8 items-center justify-start bg-gradient-to-r from-canvas from-20% via-canvas/75 to-transparent pl-1',
+                        'pointer-events-none absolute inset-y-0 left-0 flex w-6 items-center justify-start bg-gradient-to-r from-canvas from-15% via-canvas/70 to-transparent pl-0.5',
                         fadeBreakpointClass
                     )}
                 >
                     {showScrollCue && (
-                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
-                            <ChevronLeft className="size-3.5" />
+                        <span className="inline-flex size-4 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
+                            <ChevronLeft className="size-3" />
                         </span>
                     )}
                 </div>
@@ -115,13 +115,13 @@ export function HorizontalScrollContainer({
                 <div
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-canvas from-20% via-canvas/75 to-transparent pr-1',
+                        'pointer-events-none absolute inset-y-0 right-0 flex w-6 items-center justify-end bg-gradient-to-l from-canvas from-15% via-canvas/70 to-transparent pr-0.5',
                         fadeBreakpointClass
                     )}
                 >
                     {showScrollCue && (
-                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
-                            <ChevronRight className="size-3.5" />
+                        <span className="inline-flex size-4 items-center justify-center rounded-full bg-canvas/95 text-mute ring-1 ring-hairline-soft">
+                            <ChevronRight className="size-3" />
                         </span>
                     )}
                 </div>

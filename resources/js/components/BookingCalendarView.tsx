@@ -1,40 +1,16 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { getBusinessTypeConfig } from '@/lib/businessType';
-import { formatBookingScheduleShort, formatDateIndo, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import { formatBookingScheduleShort, formatDateIndo, PAYMENT_STATUS_LABELS, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { BusinessType } from '@/types';
+import type { BookingRow } from '@/types/booking';
 
-export interface CalendarBookingItem {
-    id: number;
-    booking_code: string;
-    customer_id: number;
-    customer_name: string;
-    customer_phone: string;
-    service_id: number;
-    service_name: string;
-    service_assignment_mode: 'staff' | 'capacity';
-    booking_mode?: 'time_slot' | 'dropoff';
-    quantity?: number;
-    unit_label?: string;
-    fulfillment_type?: 'dropoff' | 'pickup';
-    pickup_session?: string | null;
-    staff_id: number | null;
-    staff_name: string | null;
-    booking_date: string;
-    start_time_local: string;
-    end_time_local: string;
-    total_price: number;
-    dp_amount: number;
-    reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-    payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
-    has_dp_proof: boolean;
-    dp_proof_url: string | null;
-    invoice_url: string | null;
-    customer_notes: string | null;
-    cancellation_reason: string | null;
-    rescheduled_count: number;
-}
+export type CalendarBookingItem = BookingRow;
 
 export interface CalendarPayload {
     selected_date: string;
@@ -57,16 +33,28 @@ export interface CalendarPayload {
 interface BookingCalendarViewProps {
     calendar: CalendarPayload;
     businessType?: BusinessType;
+    todayDate?: string;
+    canCreateBooking?: boolean;
     onSelectDate: (date: string) => void;
     onSelectBooking: (booking: CalendarBookingItem) => void;
 }
 
 const SHORT_DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const HOUR_HEIGHT_PX = 68;
 
 function shiftDate(dateStr: string, deltaDays: number): string {
     const d = new Date(`${dateStr}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + deltaDays);
     return d.toISOString().slice(0, 10);
+}
+
+function parseTimeToMinutes(timeStr: string | null | undefined, fallbackMinutes: number): number {
+    if (!timeStr) return fallbackMinutes;
+    const parts = timeStr.split(':');
+    const hh = Number.parseInt(parts[0] ?? '', 10);
+    const mm = Number.parseInt(parts[1] ?? '0', 10);
+    if (Number.isNaN(hh)) return fallbackMinutes;
+    return hh * 60 + (Number.isNaN(mm) ? 0 : mm);
 }
 
 function statusPillClasses(status: string): string {
@@ -79,15 +67,73 @@ function statusPillClasses(status: string): string {
     return 'border-warning-border bg-warning-soft text-warning hover:bg-warning-border/40';
 }
 
+interface PositionedBooking {
+    booking: CalendarBookingItem;
+    topPx: number;
+    heightPx: number;
+    lane: number;
+    totalLanes: number;
+}
+
+/** Assign horizontal lanes when multiple bookings overlap in the same column (e.g. capacity > 1 or unassigned). */
+function layoutColumnBookings(
+    items: CalendarBookingItem[],
+    startMinutes: number,
+    endMinutes: number
+): PositionedBooking[] {
+    if (items.length === 0) return [];
+
+    const sorted = [...items].sort((a, b) => {
+        const aStart = parseTimeToMinutes(a.start_time_local, startMinutes);
+        const bStart = parseTimeToMinutes(b.start_time_local, startMinutes);
+        return aStart - bStart || a.id - b.id;
+    });
+
+    const events = sorted.map((b) => {
+        const s = Math.max(startMinutes, parseTimeToMinutes(b.start_time_local, startMinutes));
+        const rawEnd = parseTimeToMinutes(b.end_time_local, s + 30);
+        const e = Math.min(endMinutes, Math.max(s + 30, rawEnd));
+        return { booking: b, s, e };
+    });
+
+    const laneEnds: number[] = [];
+    const assigned = events.map((ev) => {
+        let lane = laneEnds.findIndex((endVal) => endVal <= ev.s);
+        if (lane === -1) {
+            lane = laneEnds.length;
+            laneEnds.push(ev.e);
+        } else {
+            laneEnds[lane] = ev.e;
+        }
+        return { ...ev, lane };
+    });
+
+    return assigned.map((ev) => {
+        const concurrent = assigned.filter((other) => other.s < ev.e && other.e > ev.s);
+        const maxLane = Math.max(0, ...concurrent.map((c) => c.lane));
+        const topPx = ((ev.s - startMinutes) / 60) * HOUR_HEIGHT_PX;
+        const heightPx = Math.max(46, ((ev.e - ev.s) / 60) * HOUR_HEIGHT_PX - 2);
+        return {
+            booking: ev.booking,
+            topPx,
+            heightPx,
+            lane: ev.lane,
+            totalLanes: maxLane + 1,
+        };
+    });
+}
+
 export function BookingCalendarView({
     calendar,
     businessType,
+    todayDate,
+    canCreateBooking = true,
     onSelectDate,
     onSelectBooking,
 }: BookingCalendarViewProps) {
     const config = getBusinessTypeConfig(businessType);
     const isSpaceBooking = config.type === 'space_booking';
-    const todayString = new Date().toISOString().slice(0, 10);
+    const todayString = todayDate || new Date().toISOString().slice(0, 10);
     const hasUnassignedBookings = calendar.bookings.some((b) => b.staff_id === null);
 
     const columns: Array<{ id: number | null; name: string; title: string | null }> = [
@@ -96,10 +142,23 @@ export function BookingCalendarView({
             ? [
                   isSpaceBooking
                       ? { id: null, name: 'Jadwal / Sesi', title: 'Semua fasilitas & paket' }
-                      : { id: null, name: 'Jadwal / Sesi', title: 'Belum ditetapkan ke staff' },
+                      : { id: null, name: 'Belum Ditetapkan', title: 'Tanpa staff khusus' },
               ]
             : []),
     ];
+
+    const openMinsRaw = parseTimeToMinutes(calendar.open_time, 8 * 60);
+    const closeMinsRaw = parseTimeToMinutes(calendar.close_time, 20 * 60);
+    const startHour = Math.max(0, Math.min(22, Math.floor(openMinsRaw / 60)));
+    const endHour = Math.max(startHour + 1, Math.min(24, Math.ceil(closeMinsRaw / 60)));
+    const startMinutes = startHour * 60;
+    const endMinutes = endHour * 60;
+    const hours = Array.from({ length: endHour - startHour }, (_, idx) => startHour + idx);
+    const gridHeightPx = hours.length * HOUR_HEIGHT_PX;
+
+    const sortedMobileBookings = [...calendar.bookings].sort((a, b) =>
+        (a.start_time_local || '').localeCompare(b.start_time_local || '')
+    );
 
     return (
         <div className="space-y-4">
@@ -114,11 +173,24 @@ export function BookingCalendarView({
                                 : 'Bisnis tutup pada hari ini'}
                         </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="min-w-0 flex-1 sm:w-40 sm:flex-initial">
+                            <Label htmlFor="calendar-jump-date" className="sr-only">
+                                Pilih tanggal kalender
+                            </Label>
+                            <Input
+                                id="calendar-jump-date"
+                                type="date"
+                                value={calendar.selected_date}
+                                onChange={(e) => e.target.value && onSelectDate(e.target.value)}
+                                className="h-9 min-w-0 bg-canvas px-2.5 text-xs"
+                            />
+                        </div>
                         <Button
                             type="button"
                             variant="outline"
                             size="icon"
+                            className="size-9"
                             aria-label="Minggu sebelumnya"
                             onClick={() => onSelectDate(shiftDate(calendar.selected_date, -7))}
                         >
@@ -128,7 +200,7 @@ export function BookingCalendarView({
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="flex-1 sm:flex-initial"
+                            className="h-9"
                             onClick={() => onSelectDate(todayString)}
                         >
                             Hari Ini
@@ -137,6 +209,7 @@ export function BookingCalendarView({
                             type="button"
                             variant="outline"
                             size="icon"
+                            className="size-9"
                             aria-label="Minggu berikutnya"
                             onClick={() => onSelectDate(shiftDate(calendar.selected_date, 7))}
                         >
@@ -187,75 +260,203 @@ export function BookingCalendarView({
                 </div>
             </div>
 
-            {/* Staff / Resource Columns for Selected Day */}
-            {calendar.bookings.length === 0 ? (
-                <div className="rounded-md bg-bone p-8 text-center sm:p-12">
-                    <p className="text-base font-semibold text-ink">
-                        Tidak ada {config.bookings.itemSingular.toLowerCase()} aktif pada {formatDateIndo(calendar.selected_date)}.
-                    </p>
-                    <p className="mt-1 text-sm text-mute">
-                        Pilih tanggal lain di kalender mingguan di atas atau buat {config.bookings.itemSingular.toLowerCase()} manual.
-                    </p>
-                </div>
-            ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {columns.map((col) => {
-                        const colBookings = calendar.bookings.filter((b) =>
-                            col.id === null ? b.staff_id === null : b.staff_id === col.id
-                        );
+            {/* Mobile Hourly Agenda (< md) */}
+            <div className="space-y-2.5 md:hidden">
+                {sortedMobileBookings.length === 0 ? (
+                    <div className="space-y-3 rounded-md bg-bone p-8 text-center">
+                        <p className="text-base font-semibold text-ink">
+                            Tidak ada {config.bookings.itemSingular.toLowerCase()} aktif pada {formatDateIndo(calendar.selected_date)}.
+                        </p>
+                        <p className="text-xs text-mute">
+                            Pilih tanggal lain atau buat {config.bookings.itemSingular.toLowerCase()} baru pada tanggal ini.
+                        </p>
+                        {canCreateBooking && calendar.is_open && calendar.selected_date >= todayString && (
+                            <Button asChild size="sm">
+                                <Link href={route('dashboard.bookings.create', { date: calendar.selected_date })}>
+                                    <Plus className="size-4" aria-hidden="true" />
+                                    {config.bookings.createButtonLabel}
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    sortedMobileBookings.map((b) => (
+                        <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => onSelectBooking(b)}
+                            className={`w-full cursor-pointer rounded-md border p-3.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${statusPillClasses(b.reservation_status)}`}
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-mono text-xs font-semibold tabular-nums">
+                                    {formatBookingScheduleShort(b)}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] font-semibold">
+                                        {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
+                                    </span>
+                                    <span className="text-[11px] opacity-80">
+                                        · {PAYMENT_STATUS_LABELS[b.payment_status] ?? b.payment_status}
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="mt-1 text-sm font-semibold">{b.customer_name}</p>
+                            <p className="text-xs">
+                                {b.service_summary || b.service_name}
+                                {b.staff_name ? ` · ${b.staff_name}` : ''}
+                            </p>
+                        </button>
+                    ))
+                )}
+            </div>
 
-                        return (
-                            <div
-                                key={col.id ?? 'unassigned'}
-                                className={`flex-col rounded-md border border-hairline-soft bg-canvas ${
-                                    colBookings.length === 0 ? 'hidden md:flex' : 'flex'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-2 rounded-t-md border-b border-divider bg-bone/60 px-4 py-3">
+            {/* Desktop Interactive Time-Grid (md+) */}
+            <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas md:block">
+                <div
+                    className="min-w-full"
+                    style={{ minWidth: `${64 + columns.length * 165}px` }}
+                >
+                    {/* Header Row */}
+                    <div
+                        className="grid border-b border-divider bg-bone/70"
+                        style={{ gridTemplateColumns: `64px repeat(${columns.length}, minmax(165px, 1fr))` }}
+                    >
+                        <div className="border-r border-divider px-2 py-3 text-center font-mono text-xs font-semibold text-mute">
+                            Jam
+                        </div>
+                        {columns.map((col) => {
+                            const colCount = calendar.bookings.filter((b) =>
+                                col.id === null ? b.staff_id === null : b.staff_id === col.id
+                            ).length;
+                            return (
+                                <div
+                                    key={col.id ?? 'unassigned'}
+                                    className="flex items-center justify-between gap-2 border-r border-divider px-3 py-2.5 last:border-r-0"
+                                >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold text-ink">{col.name}</p>
                                         {col.title && <p className="truncate text-xs text-mute">{col.title}</p>}
                                     </div>
                                     <Badge variant="secondary" className="shrink-0 tabular-nums">
-                                        {colBookings.length} jadwal
+                                        {colCount}
                                     </Badge>
                                 </div>
+                            );
+                        })}
+                    </div>
 
-                                <div className="flex-1 space-y-2.5 p-3">
-                                    {colBookings.length === 0 ? (
-                                        <p className="py-6 text-center text-xs text-mute">Kosong sepanjang hari</p>
-                                    ) : (
-                                        colBookings.map((b) => (
+                    {/* Grid Body */}
+                    <div
+                        className="relative grid"
+                        style={{ gridTemplateColumns: `64px repeat(${columns.length}, minmax(165px, 1fr))` }}
+                    >
+                        {/* Hour Axis */}
+                        <div className="border-r border-divider bg-canvas" style={{ height: `${gridHeightPx}px` }}>
+                            {hours.map((hr) => {
+                                const label = `${String(hr).padStart(2, '0')}:00`;
+                                return (
+                                    <div
+                                        key={hr}
+                                        className="border-b border-dashed border-divider px-2 pt-1.5 text-right font-mono text-[11px] font-medium tabular-nums text-mute last:border-b-0"
+                                        style={{ height: `${HOUR_HEIGHT_PX}px` }}
+                                    >
+                                        {label}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Resource Columns */}
+                        {columns.map((col) => {
+                            const colBookings = calendar.bookings.filter((b) =>
+                                col.id === null ? b.staff_id === null : b.staff_id === col.id
+                            );
+                            const laidOut = layoutColumnBookings(colBookings, startMinutes, endMinutes);
+                            const canBookOnDate =
+                                canCreateBooking && calendar.is_open && calendar.selected_date >= todayString;
+
+                            return (
+                                <div
+                                    key={col.id ?? 'unassigned'}
+                                    className="relative border-r border-divider last:border-r-0"
+                                    style={{ height: `${gridHeightPx}px` }}
+                                >
+                                    {/* Clickable Hourly Slot Cells */}
+                                    {hours.map((hr) => {
+                                        const timeStr = `${String(hr).padStart(2, '0')}:00`;
+                                        const createHref = route('dashboard.bookings.create', {
+                                            date: calendar.selected_date,
+                                            time: timeStr,
+                                            ...(col.id ? { staff_id: col.id } : {}),
+                                        });
+
+                                        return canBookOnDate ? (
+                                            <Link
+                                                key={hr}
+                                                href={createHref}
+                                                aria-label={`Buat jadwal baru pukul ${timeStr}${col.id ? ` untuk ${col.name}` : ''}`}
+                                                className="group flex items-start justify-end border-b border-dashed border-divider px-2 pt-1.5 transition-colors hover:bg-bone/60 focus-visible:bg-bone focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset last:border-b-0"
+                                                style={{ height: `${HOUR_HEIGHT_PX}px` }}
+                                            >
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-2 py-0.5 text-xs font-semibold text-mute opacity-0 transition-opacity group-hover:opacity-100">
+                                                    <Plus className="size-3" aria-hidden="true" />
+                                                    {timeStr}
+                                                </span>
+                                            </Link>
+                                        ) : (
+                                            <div
+                                                key={hr}
+                                                className="border-b border-dashed border-divider last:border-b-0"
+                                                style={{ height: `${HOUR_HEIGHT_PX}px` }}
+                                            />
+                                        );
+                                    })}
+
+                                    {/* Positioned Booking Blocks */}
+                                    {laidOut.map(({ booking: b, topPx, heightPx, lane, totalLanes }) => {
+                                        const widthPct = 100 / totalLanes;
+                                        const leftPct = lane * widthPct;
+                                        return (
                                             <button
                                                 key={b.id}
                                                 type="button"
                                                 onClick={() => onSelectBooking(b)}
-                                                className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${statusPillClasses(b.reservation_status)}`}
+                                                style={{
+                                                    top: `${topPx + 2}px`,
+                                                    height: `${heightPx}px`,
+                                                    left: `calc(${leftPct}% + 4px)`,
+                                                    width: `calc(${widthPct}% - 8px)`,
+                                                }}
+                                                className={cn(
+                                                    'absolute z-10 flex cursor-pointer flex-col justify-start overflow-hidden rounded-xl border px-2.5 py-1.5 text-left transition-colors focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                    statusPillClasses(b.reservation_status)
+                                                )}
                                             >
-                                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-                                                    <span className="font-mono text-xs font-semibold tabular-nums">
-                                                        {formatBookingScheduleShort(b)}
-                                                    </span>
-                                                    <span className="text-xs font-medium">
-                                                        {RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status}
-                                                    </span>
+                                                <div className="flex items-center justify-between gap-1 text-xs font-semibold tabular-nums">
+                                                    <span className="truncate font-mono">{b.start_time_local}–{b.end_time_local}</span>
+                                                    {b.payment_status === 'waiting_verification' && (
+                                                        <span className="shrink-0 rounded-full bg-warning px-1.5 py-0.5 text-[11px] leading-none text-canvas">
+                                                            DP
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <p className="mt-1 break-words text-sm font-semibold">{b.customer_name}</p>
-                                                <p className="break-words text-xs">
-                                                    {b.service_name}
-                                                    {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
-                                                        ? ` · ${b.quantity} ${b.unit_label ?? 'item'}`
-                                                        : ''}
+                                                <p className="truncate text-xs font-semibold leading-tight">
+                                                    {b.customer_name}
                                                 </p>
+                                                {heightPx >= 62 && (
+                                                    <p className="truncate text-[11px] opacity-85">
+                                                        {b.service_summary || b.service_name}
+                                                    </p>
+                                                )}
                                             </button>
-                                        ))
-                                    )}
+                                        );
+                                    })}
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

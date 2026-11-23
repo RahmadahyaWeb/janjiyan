@@ -40,12 +40,14 @@ interface StaffOption {
 interface BookingRescheduleDialogProps {
     booking: ReschedulableBooking | null;
     staffOptions: StaffOption[];
+    todayDate?: string;
     onClose: () => void;
 }
 
 export function BookingRescheduleDialog({
     booking,
     staffOptions,
+    todayDate,
     onClose,
 }: BookingRescheduleDialogProps) {
     const { activeBusiness } = usePage<PageProps>().props;
@@ -56,6 +58,7 @@ export function BookingRescheduleDialog({
         date: '',
         time: '',
         staff_id: '',
+        stay_on_page: true,
     });
 
     useEffect(() => {
@@ -66,6 +69,7 @@ export function BookingRescheduleDialog({
             date: booking.booking_date,
             time: booking.start_time_local,
             staff_id: booking.staff_id ? String(booking.staff_id) : '',
+            stay_on_page: true,
         });
     }, [booking?.id]);
 
@@ -118,7 +122,7 @@ export function BookingRescheduleDialog({
         });
     };
 
-    const todayString = new Date().toISOString().slice(0, 10);
+    const todayString = todayDate || new Date().toISOString().slice(0, 10);
 
     return (
         <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>

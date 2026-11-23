@@ -1,11 +1,27 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowUpRight, Calendar, Check, CheckCircle2, Clock, Copy, Users } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowUpRight,
+    Calendar,
+    Check,
+    CheckCircle2,
+    Clock,
+    Copy,
+    Users,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { getBusinessTypeConfig } from '@/lib/businessType';
-import { formatDateIndo, formatRupiah, RESERVATION_STATUS_LABELS } from '@/lib/format';
+import {
+    formatDateIndo,
+    formatDateShortIndo,
+    formatRupiah,
+    PAYMENT_STATUS_LABELS,
+    RESERVATION_STATUS_LABELS,
+    WORK_STATUS_LABELS,
+} from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PageProps } from '@/types';
 
@@ -16,6 +32,34 @@ interface TrendPoint {
     bookings_count: number;
     /** Null when the viewer may not see revenue. */
     revenue: number | null;
+}
+
+interface OverviewBookingItem {
+    id: number;
+    booking_code: string;
+    customer_name: string;
+    customer_phone: string;
+    service_name: string;
+    staff_name: string | null;
+    booking_mode?: 'time_slot' | 'dropoff';
+    quantity?: number;
+    unit_label?: string;
+    fulfillment_type?: 'dropoff' | 'pickup';
+    work_status?: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up' | null;
+    estimated_ready_date?: string | null;
+    booking_date: string;
+    start_time_local: string;
+    total_price: number;
+    dp_amount: number;
+    reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+    payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
+}
+
+interface DropoffPipelineStats {
+    awaiting_dropoff: number;
+    in_progress: number;
+    ready_for_pickup: number;
+    overdue: number;
 }
 
 interface DashboardIndexProps {
@@ -34,24 +78,9 @@ interface DashboardIndexProps {
         has_bookings: boolean;
     } | null;
     weeklyTrend?: TrendPoint[];
-    recentBookings: Array<{
-        id: number;
-        booking_code: string;
-        customer_name: string;
-        customer_phone: string;
-        service_name: string;
-        staff_name: string | null;
-        booking_mode?: 'time_slot' | 'dropoff';
-        quantity?: number;
-        unit_label?: string;
-        fulfillment_type?: 'dropoff' | 'pickup';
-        booking_date: string;
-        start_time_local: string;
-        total_price: number;
-        dp_amount: number;
-        reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-        payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
-    }>;
+    recentBookings: OverviewBookingItem[];
+    todaySchedule?: OverviewBookingItem[];
+    dropoffPipeline?: DropoffPipelineStats | null;
     topServices: Array<{
         id: number;
         name: string;
@@ -66,13 +95,18 @@ export default function DashboardIndex({
     onboarding,
     weeklyTrend = [],
     recentBookings,
+    todaySchedule = [],
+    dropoffPipeline = null,
     topServices,
 }: DashboardIndexProps) {
     const { activeBusiness } = usePage<PageProps>().props;
     const config = getBusinessTypeConfig(activeBusiness?.business_type);
+    const isDropoff = config.type === 'dropoff';
     const bookingsItemLower = config.bookings.itemSingular.toLowerCase();
+    const todayStr = todayDate || new Date().toISOString().slice(0, 10);
     const [copied, setCopied] = useState(false);
     const [trendMetric, setTrendMetric] = useState<'bookings' | 'revenue'>('bookings');
+    const [bookingListTab, setBookingListTab] = useState<'schedule' | 'recent'>('schedule');
 
     const publicUrl = activeBusiness
         ? `${typeof window !== 'undefined' ? window.location.origin : ''}/b/${activeBusiness.slug}`
@@ -85,11 +119,41 @@ export default function DashboardIndex({
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const statusBadge = (status: string) => {
-        const label = RESERVATION_STATUS_LABELS[status] ?? status;
-        if (status === 'confirmed' || status === 'completed') return <Badge variant="success">{label}</Badge>;
-        if (status === 'cancelled') return <Badge variant="danger">{label}</Badge>;
+    const statusBadge = (b: OverviewBookingItem) => {
+        if (b.booking_mode === 'dropoff' && b.work_status && b.reservation_status !== 'cancelled') {
+            return (
+                <Badge
+                    variant={
+                        b.work_status === 'picked_up'
+                            ? 'success'
+                            : b.work_status === 'awaiting_dropoff'
+                              ? 'warning'
+                              : 'outline'
+                    }
+                >
+                    {WORK_STATUS_LABELS[b.work_status] ?? b.work_status}
+                </Badge>
+            );
+        }
+        const label = RESERVATION_STATUS_LABELS[b.reservation_status] ?? b.reservation_status;
+        if (b.reservation_status === 'confirmed' || b.reservation_status === 'completed') {
+            return <Badge variant="success">{label}</Badge>;
+        }
+        if (b.reservation_status === 'cancelled') {
+            return <Badge variant="danger">{label}</Badge>;
+        }
         return <Badge variant="warning">{label}</Badge>;
+    };
+
+    const paymentBadge = (status: OverviewBookingItem['payment_status']) => {
+        const label = PAYMENT_STATUS_LABELS[status] ?? status;
+        if (status === 'dp_verified' || status === 'settled') {
+            return <Badge variant="success">{label}</Badge>;
+        }
+        if (status === 'waiting_verification') {
+            return <Badge variant="warning">{label}</Badge>;
+        }
+        return <Badge variant="secondary">{label}</Badge>;
     };
 
     const setupSteps = onboarding
@@ -121,6 +185,7 @@ export default function DashboardIndex({
 
     const completedSteps = setupSteps.filter((s) => s.done).length;
     const showOnboarding = setupSteps.length > 0 && completedSteps < setupSteps.length;
+    const isMatureWorkspace = Boolean(onboarding?.has_bookings && !showOnboarding);
 
     const maxTrendValue = Math.max(
         1,
@@ -146,16 +211,18 @@ export default function DashboardIndex({
     const kpiCardClass =
         'group flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-3.5 transition-colors hover:border-ink/30 hover:bg-bone/40 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none sm:p-5';
 
+    const activeBookingList = bookingListTab === 'schedule' ? todaySchedule : recentBookings;
+
     return (
         <DashboardLayout title="Ringkasan Bisnis">
             <Head title="Dashboard" />
 
-            {/* Public Link Share Banner */}
-            {activeBusiness && (
-                <div className="flex flex-col justify-between gap-3.5 rounded-md bg-bone p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
-                    <div className="min-w-0">
-                        <p className="text-xs font-semibold text-mute">Link Booking Publik Anda</p>
-                        <p className="mt-0.5 truncate font-mono text-sm font-semibold text-ink">
+            {/* Public Link Share Banner (shown only during early setup; mature workspaces use topbar Portal Booking) */}
+            {activeBusiness && !isMatureWorkspace && (
+                <div className="flex flex-col justify-between gap-3 rounded-md bg-bone p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                        <p className="text-xs font-semibold text-mute">Link Booking Publik:</p>
+                        <p className="truncate font-mono text-sm font-semibold text-ink">
                             /b/{activeBusiness.slug}
                         </p>
                     </div>
@@ -239,6 +306,40 @@ export default function DashboardIndex({
                 </section>
             )}
 
+            {/* Priority Operational Alerts */}
+            {(stats.pending_dp > 0 || (dropoffPipeline?.overdue ?? 0) > 0) && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    {stats.pending_dp > 0 && (
+                        <Link
+                            href={route('dashboard.bookings', { status: 'all', payment: 'waiting_verification' })}
+                            className="flex flex-1 items-center justify-between gap-3 rounded-md border border-warning-border bg-warning-soft/50 px-4 py-3 text-xs font-semibold text-ink transition-colors hover:bg-warning-soft"
+                        >
+                            <span className="flex items-center gap-2">
+                                <Clock className="size-4 shrink-0 text-warning" aria-hidden="true" />
+                                <span className="tabular-nums">
+                                    {stats.pending_dp} bukti uang muka menunggu verifikasi Anda
+                                </span>
+                            </span>
+                            <span className="shrink-0 text-electric">Periksa →</span>
+                        </Link>
+                    )}
+                    {(dropoffPipeline?.overdue ?? 0) > 0 && (
+                        <Link
+                            href={route('dashboard.bookings', { status: 'active', sla: 'overdue' })}
+                            className="flex flex-1 items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive-soft px-4 py-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive-soft/80"
+                        >
+                            <span className="flex items-center gap-2">
+                                <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+                                <span className="tabular-nums">
+                                    {dropoffPipeline?.overdue} pesanan melewati target selesai
+                                </span>
+                            </span>
+                            <span className="shrink-0 underline">Lihat Antrean →</span>
+                        </Link>
+                    )}
+                </div>
+            )}
+
             {/* Clickable KPI Cards */}
             <div
                 className={cn(
@@ -249,7 +350,9 @@ export default function DashboardIndex({
                 <Link
                     href={route(
                         'dashboard.bookings',
-                        todayDate ? { status: 'all', date_from: todayDate, date_to: todayDate } : { status: 'all' }
+                        todayDate
+                            ? { status: 'active', date_from: todayDate, date_to: todayDate, sort: 'upcoming' }
+                            : { status: 'active' }
                     )}
                     className={kpiCardClass}
                 >
@@ -292,10 +395,11 @@ export default function DashboardIndex({
                             <span className="min-w-0 text-xs leading-snug font-semibold">Omzet Terverifikasi (Bln)</span>
                             <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
                         </div>
-                        <div className="mt-2.5 flex items-baseline justify-between gap-2 sm:mt-3">
-                            <p className="min-w-0 text-base leading-tight font-semibold break-words tabular-nums text-ink min-[360px]:text-lg sm:text-2xl xl:text-3xl">
+                        <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:mt-3">
+                            <p className="min-w-0 text-lg leading-tight font-semibold break-words tabular-nums text-ink sm:text-2xl">
                                 {formatRupiah(stats.monthly_revenue)}
                             </p>
+                            <span className="text-xs font-semibold text-electric">Lihat</span>
                         </div>
                     </Link>
                 )}
@@ -316,6 +420,58 @@ export default function DashboardIndex({
                     </div>
                 </Link>
             </div>
+
+            {/* Drop-off Pipeline Summary Bar */}
+            {isDropoff && dropoffPipeline && (
+                <section aria-label="Antrean produksi drop-off" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <Link
+                        href={route('dashboard.bookings', { status: 'awaiting_dropoff' })}
+                        className="rounded-md border border-hairline-soft bg-canvas p-3.5 transition-colors hover:border-ink/30 hover:bg-bone/40"
+                    >
+                        <p className="text-xs font-medium text-mute">Menunggu Masuk</p>
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-ink">
+                            {dropoffPipeline.awaiting_dropoff}
+                        </p>
+                    </Link>
+                    <Link
+                        href={route('dashboard.bookings', { status: 'in_progress' })}
+                        className="rounded-md border border-hairline-soft bg-canvas p-3.5 transition-colors hover:border-ink/30 hover:bg-bone/40"
+                    >
+                        <p className="text-xs font-medium text-mute">Sedang Dikerjakan</p>
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-ink">
+                            {dropoffPipeline.in_progress}
+                        </p>
+                    </Link>
+                    <Link
+                        href={route('dashboard.bookings', { status: 'ready_for_pickup' })}
+                        className="rounded-md border border-hairline-soft bg-canvas p-3.5 transition-colors hover:border-ink/30 hover:bg-bone/40"
+                    >
+                        <p className="text-xs font-medium text-mute">Siap Diambil</p>
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-electric">
+                            {dropoffPipeline.ready_for_pickup}
+                        </p>
+                    </Link>
+                    <Link
+                        href={route('dashboard.bookings', { status: 'active', sla: 'overdue' })}
+                        className={cn(
+                            'rounded-md border p-3.5 transition-colors',
+                            dropoffPipeline.overdue > 0
+                                ? 'border-destructive/30 bg-destructive-soft/50 hover:bg-destructive-soft'
+                                : 'border-hairline-soft bg-canvas hover:border-ink/30 hover:bg-bone/40'
+                        )}
+                    >
+                        <p className="text-xs font-medium text-mute">Lewat Tenggat</p>
+                        <p
+                            className={cn(
+                                'mt-1 text-xl font-semibold tabular-nums',
+                                dropoffPipeline.overdue > 0 ? 'text-destructive' : 'text-ink'
+                            )}
+                        >
+                            {dropoffPipeline.overdue}
+                        </p>
+                    </Link>
+                </section>
+            )}
 
             {/* 7-Day Trend Chart */}
             {weeklyTrend.length > 0 && (
@@ -346,27 +502,26 @@ export default function DashboardIndex({
                                     className={cn(
                                         'min-h-9 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
                                         trendMetric === 'bookings' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
-                                )}
-                            >
-                                {config.bookings.itemSingular}
-                            </button>
-                            <button
-                                type="button"
-                                aria-pressed={trendMetric === 'revenue'}
-                                onClick={() => setTrendMetric('revenue')}
-                                className={cn(
-                                    'min-h-9 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
-                                    trendMetric === 'revenue' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
-                                )}
-                            >
-                                Omzet
-                            </button>
-                        </div>
+                                    )}
+                                >
+                                    {config.bookings.itemSingular}
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-pressed={trendMetric === 'revenue'}
+                                    onClick={() => setTrendMetric('revenue')}
+                                    className={cn(
+                                        'min-h-9 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                        trendMetric === 'revenue' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                                    )}
+                                >
+                                    Omzet
+                                </button>
+                            </div>
                         )}
                     </div>
 
                     <div className="mt-6 flex items-start gap-3">
-                        {/* Y-axis scale aligned to the h-32 bar plot */}
                         <div
                             aria-hidden="true"
                             className="hidden h-38 shrink-0 flex-col justify-between pt-6 text-right text-xs tabular-nums text-mute sm:flex"
@@ -384,7 +539,6 @@ export default function DashboardIndex({
                             <span className="translate-y-1/2">0</span>
                         </div>
 
-                        {/* Plot area with reference gridlines and crisp bars */}
                         <div className="relative min-w-0 flex-1">
                             <div
                                 aria-hidden="true"
@@ -470,60 +624,104 @@ export default function DashboardIndex({
             )}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-                {/* Recent Bookings */}
+                {/* Operational Schedule / Recent Bookings */}
                 <div className="min-w-0 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-6">
-                    <div className="mb-4 flex items-center justify-between gap-2">
-                        <h2 className="min-w-0 text-lg font-semibold text-ink">
-                            {config.dashboard.recentSectionTitle}
-                        </h2>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <div
+                            className="inline-flex rounded-full border border-hairline-soft bg-bone p-1"
+                            role="group"
+                            aria-label="Daftar ringkasan operasional"
+                        >
+                            <button
+                                type="button"
+                                aria-pressed={bookingListTab === 'schedule'}
+                                onClick={() => setBookingListTab('schedule')}
+                                className={cn(
+                                    'min-h-8 cursor-pointer rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap transition-colors',
+                                    bookingListTab === 'schedule' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                                )}
+                            >
+                                {isDropoff ? 'Antrean' : 'Hari Ini'}
+                                {todaySchedule.length > 0 ? ` (${todaySchedule.length})` : ''}
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={bookingListTab === 'recent'}
+                                onClick={() => setBookingListTab('recent')}
+                                className={cn(
+                                    'min-h-8 cursor-pointer rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap transition-colors',
+                                    bookingListTab === 'recent' ? 'bg-ink text-canvas' : 'text-mute hover:text-ink'
+                                )}
+                            >
+                                Terbaru
+                            </button>
+                        </div>
+
                         <Link
-                            href={route('dashboard.bookings', { status: 'all' })}
-                            className="inline-flex min-h-10 shrink-0 items-center rounded-sm text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
+                            href={route('dashboard.bookings', { status: 'active' })}
+                            className="inline-flex min-h-9 shrink-0 items-center rounded-sm text-sm font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
                         >
                             Lihat Semua
                         </Link>
                     </div>
 
-                    {recentBookings.length === 0 ? (
+                    {activeBookingList.length === 0 ? (
                         <p className="rounded-sm bg-bone p-6 text-center text-sm text-mute">
-                            {config.dashboard.emptyRecentText}
+                            {bookingListTab === 'schedule'
+                                ? isDropoff
+                                    ? 'Tidak ada pesanan drop-off yang sedang aktif.'
+                                    : `Belum ada ${bookingsItemLower} aktif untuk hari ini.`
+                                : config.dashboard.emptyRecentText}
                         </p>
                     ) : (
                         <div className="divide-y divide-divider">
-                            {recentBookings.map((b) => (
-                                <Link
-                                    key={b.id}
-                                    href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
-                                    className="block rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                                >
-                                    <div className="flex flex-col items-start gap-1.5 min-[360px]:flex-row min-[360px]:justify-between min-[360px]:gap-2.5 sm:gap-4">
-                                        <div className="w-full min-w-0 min-[360px]:w-auto min-[360px]:flex-1">
-                                            <p className="truncate text-sm font-semibold text-ink">
-                                                {b.customer_name}
-                                            </p>
-                                            <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">
-                                                {b.booking_code}
-                                            </p>
+                            {activeBookingList.map((b) => {
+                                const isOverdue =
+                                    b.booking_mode === 'dropoff' &&
+                                    Boolean(b.estimated_ready_date) &&
+                                    b.estimated_ready_date! < todayStr &&
+                                    b.work_status !== 'ready_for_pickup' &&
+                                    b.work_status !== 'picked_up';
+
+                                return (
+                                    <Link
+                                        key={b.id}
+                                        href={route('dashboard.bookings', { status: 'all', search: b.booking_code })}
+                                        className="block rounded-xl px-2 py-3.5 transition-colors hover:bg-bone/60 focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                    >
+                                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+                                            <div className="w-full min-w-0 sm:w-auto sm:flex-1">
+                                                <p className="truncate text-sm font-semibold text-ink">
+                                                    {b.customer_name}
+                                                </p>
+                                                <p className="mt-0.5 font-mono text-xs tabular-nums text-mute">
+                                                    {b.booking_code}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
+                                                {isOverdue && <Badge variant="danger">Lewat Tenggat</Badge>}
+                                                {statusBadge(b)}
+                                                {paymentBadge(b.payment_status)}
+                                            </div>
                                         </div>
-                                        <div className="shrink-0">
-                                            {statusBadge(b.reservation_status)}
-                                        </div>
-                                    </div>
-                                    <p className="mt-1 line-clamp-1 text-xs text-mute">
-                                        {b.service_name}
-                                        {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
-                                            ? ` (${b.quantity} ${b.unit_label ?? 'item'})`
-                                            : ''}{' '}
-                                        · {formatDateIndo(b.booking_date)} (
-                                        {b.booking_mode === 'dropoff'
-                                            ? b.fulfillment_type === 'pickup'
-                                                ? 'Jemput-Antar'
-                                                : 'Drop-off'
-                                            : b.start_time_local}
-                                        )
-                                    </p>
-                                </Link>
-                            ))}
+                                        <p className="mt-1 line-clamp-1 text-xs text-mute">
+                                            {b.service_name}
+                                            {b.booking_mode === 'dropoff' && (b.quantity ?? 1) > 1
+                                                ? ` (${b.quantity} ${b.unit_label ?? 'item'})`
+                                                : ''}{' '}
+                                            · {formatDateIndo(b.booking_date)} (
+                                            {b.booking_mode === 'dropoff'
+                                                ? b.estimated_ready_date
+                                                    ? `Target ${formatDateShortIndo(b.estimated_ready_date)}`
+                                                    : b.fulfillment_type === 'pickup'
+                                                      ? 'Jemput-Antar'
+                                                      : 'Drop-off'
+                                                : b.start_time_local}
+                                            )
+                                        </p>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

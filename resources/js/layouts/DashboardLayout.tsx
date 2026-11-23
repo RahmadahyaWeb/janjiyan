@@ -582,7 +582,7 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 href={route(item.routeName)}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'relative flex min-h-16 min-w-0 flex-col items-center justify-start gap-1 pt-2 pb-1.5 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset',
+                                    'relative flex min-h-16 min-w-0 flex-col items-center justify-start gap-1 pt-2 pb-1.5 text-[10px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-inset min-[360px]:text-[11px]',
                                     isActive ? 'text-ink' : 'text-mute hover:text-ink'
                                 )}
                             >
@@ -604,13 +604,13 @@ export default function DashboardLayout({ title, children, back, actions }: Dash
                                 </span>
                                 {mobileLabel !== item.label ? (
                                     <>
-                                        <span aria-hidden="true" className="max-w-full truncate px-1 text-center leading-tight">
+                                        <span aria-hidden="true" className="max-w-full truncate px-0.5 text-center leading-tight min-[360px]:px-1">
                                             {mobileLabel}
                                         </span>
                                         <span className="sr-only">{item.label}</span>
                                     </>
                                 ) : (
-                                    <span className="max-w-full truncate px-1 text-center leading-tight">{mobileLabel}</span>
+                                    <span className="max-w-full truncate px-0.5 text-center leading-tight min-[360px]:px-1">{mobileLabel}</span>
                                 )}
                                 {showQueueCount && (
                                     <span className="sr-only">

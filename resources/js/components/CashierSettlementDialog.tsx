@@ -80,6 +80,8 @@ interface CashierSettlementDialogProps {
     services: CashierServiceOption[];
     addons: ServiceAddon[];
     canVerifyPayments: boolean;
+    canManageBookings?: boolean;
+    defaultMarkCompleted?: boolean;
     supportsCommissions: boolean;
     businessName: string;
     businessAddress?: string | null;
@@ -145,6 +147,8 @@ export function CashierSettlementDialog({
     services,
     addons,
     canVerifyPayments,
+    canManageBookings = true,
+    defaultMarkCompleted = false,
     supportsCommissions,
     businessName,
     businessAddress,
@@ -190,6 +194,7 @@ export function CashierSettlementDialog({
     const [amount, setAmount] = useState<number | ''>(0);
     const [receivedAmount, setReceivedAmount] = useState<number | ''>('');
     const [notes, setNotes] = useState('');
+    const [markCompleted, setMarkCompleted] = useState(defaultMarkCompleted);
     const [submittingPayment, setSubmittingPayment] = useState(false);
     const [actionError, setActionError] = useState('');
 
@@ -239,8 +244,9 @@ export function CashierSettlementDialog({
         }
         setReceivedAmount('');
         setNotes('');
+        setMarkCompleted(defaultMarkCompleted);
         setActionError('');
-    }, [open, booking?.id, remainingBalance, paidAmount, isCancelledOrNoShow]);
+    }, [open, booking?.id, remainingBalance, paidAmount, isCancelledOrNoShow, defaultMarkCompleted]);
 
     if (!booking) {
         return null;
@@ -450,6 +456,8 @@ export function CashierSettlementDialog({
                 received_amount:
                     paymentMethod === 'cash' && paymentType !== 'refund' ? numericReceived : null,
                 notes: notes.trim() || undefined,
+                mark_completed:
+                    paymentType === 'settlement' && canManageBookings ? markCompleted : false,
             },
             {
                 preserveScroll: true,
@@ -1062,6 +1070,26 @@ export function CashierSettlementDialog({
                                     onChange={(e) => setNotes(e.target.value)}
                                 />
                             </div>
+
+                            {canManageBookings &&
+                                paymentType === 'settlement' &&
+                                booking.reservation_status !== 'completed' &&
+                                !isCancelledOrNoShow && (
+                                    <div className="flex items-center justify-between gap-3 rounded-xl bg-bone px-3.5 py-2.5">
+                                        <Label
+                                            htmlFor="cashier-mark-completed"
+                                            className="cursor-pointer text-xs font-medium text-ink"
+                                        >
+                                            Sekaligus tandai selesai / sudah diambil setelah lunas
+                                        </Label>
+                                        <Switch
+                                            id="cashier-mark-completed"
+                                            size="sm"
+                                            checked={markCompleted}
+                                            onCheckedChange={setMarkCompleted}
+                                        />
+                                    </div>
+                                )}
 
                             <Button
                                 type="submit"

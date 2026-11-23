@@ -38,6 +38,8 @@ class DashboardController extends Controller
                 ],
                 'weeklyTrend' => [],
                 'recentBookings' => [],
+                'todaySchedule' => [],
+                'dropoffPipeline' => null,
                 'topServices' => [],
             ]);
         }
@@ -68,31 +70,76 @@ class DashboardController extends Controller
 
         $totalCustomers = $business->customers()->count();
 
+        $mapOverviewBooking = fn (Booking $b): array => [
+            'id' => $b->id,
+            'booking_code' => $b->booking_code,
+            'customer_name' => $b->customer->name,
+            'customer_phone' => $b->customer->phone,
+            'service_name' => $b->resolvedServiceSummary(),
+            'staff_name' => $b->staff?->name,
+            'booking_mode' => $b->booking_mode ?? 'time_slot',
+            'quantity' => (int) ($b->quantity ?? 1),
+            'unit_label' => $b->resolvedUnitLabel(),
+            'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
+            'work_status' => $b->work_status,
+            'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
+            'booking_date' => $b->booking_date->toDateString(),
+            'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
+            'total_price' => $b->total_price,
+            'dp_amount' => $b->dp_amount,
+            'reservation_status' => $b->reservation_status,
+            'payment_status' => $b->payment_status,
+        ];
+
         $recentBookings = $business->bookings()
-            ->with(['service', 'staff', 'customer'])
+            ->with(['service', 'staff', 'customer', 'items'])
             ->latest()
             ->limit(8)
             ->get()
-            ->map(fn (Booking $b) => [
-                'id' => $b->id,
-                'booking_code' => $b->booking_code,
-                'customer_name' => $b->customer->name,
-                'customer_phone' => $b->customer->phone,
-                'service_name' => $b->service->name,
-                'staff_name' => $b->staff?->name,
-                'booking_mode' => $b->booking_mode ?? 'time_slot',
-                'quantity' => (int) ($b->quantity ?? 1),
-                'unit_label' => $b->resolvedUnitLabel(),
-                'fulfillment_type' => $b->fulfillment_type ?? 'dropoff',
-                'work_status' => $b->work_status,
-                'estimated_ready_date' => $b->estimated_ready_date?->toDateString(),
-                'booking_date' => $b->booking_date->toDateString(),
-                'start_time_local' => $b->start_at->setTimezone($tz)->format('H:i'),
-                'total_price' => $b->total_price,
-                'dp_amount' => $b->dp_amount,
-                'reservation_status' => $b->reservation_status,
-                'payment_status' => $b->payment_status,
-            ]);
+            ->map($mapOverviewBooking);
+
+        $isDropoff = $business->isDropoff();
+        $todaySchedule = $isDropoff
+            ? $business->bookings()
+                ->with(['service', 'staff', 'customer', 'items'])
+                ->where('booking_mode', 'dropoff')
+                ->whereIn('reservation_status', ['pending', 'confirmed'])
+                ->orderByRaw('CASE WHEN estimated_ready_date IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('estimated_ready_date', 'asc')
+                ->orderBy('booking_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->limit(8)
+                ->get()
+                ->map($mapOverviewBooking)
+            : $business->bookings()
+                ->with(['service', 'staff', 'customer', 'items'])
+                ->whereBookingDate($todayLocal)
+                ->whereIn('reservation_status', ['pending', 'confirmed'])
+                ->orderBy('start_at', 'asc')
+                ->limit(8)
+                ->get()
+                ->map($mapOverviewBooking);
+
+        $dropoffPipeline = null;
+        if ($isDropoff) {
+            $activeDropoffRows = $business->bookings()
+                ->where('booking_mode', 'dropoff')
+                ->whereIn('reservation_status', ['pending', 'confirmed'])
+                ->get(['work_status', 'estimated_ready_date']);
+
+            $dropoffPipeline = [
+                'awaiting_dropoff' => $activeDropoffRows->filter(fn ($r) => $r->work_status === null || $r->work_status === 'awaiting_dropoff')->count(),
+                'in_progress' => $activeDropoffRows->filter(fn ($r) => $r->work_status === 'in_progress')->count(),
+                'ready_for_pickup' => $activeDropoffRows->filter(fn ($r) => $r->work_status === 'ready_for_pickup')->count(),
+                'overdue' => $activeDropoffRows->filter(function ($r) use ($todayLocal): bool {
+                    if (! $r->estimated_ready_date || in_array($r->work_status, ['ready_for_pickup', 'picked_up'], true)) {
+                        return false;
+                    }
+
+                    return $r->estimated_ready_date->toDateString() < $todayLocal;
+                })->count(),
+            ];
+        }
 
         $topServices = $business->services()
             ->withCount('bookings')
@@ -150,6 +197,8 @@ class DashboardController extends Controller
             'onboarding' => $canManage ? $onboarding : null,
             'weeklyTrend' => $weeklyTrend,
             'recentBookings' => $recentBookings,
+            'todaySchedule' => $todaySchedule,
+            'dropoffPipeline' => $dropoffPipeline,
             'topServices' => $topServices,
         ]);
     }

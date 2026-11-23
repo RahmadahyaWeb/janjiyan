@@ -1,21 +1,39 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Calendar, CalendarClock, Check, CheckCircle2, ChevronDown, Download, Eye, List, MessageCircle, MoreHorizontal, Plus, Printer, Search, SlidersHorizontal, UserX, Wallet, X } from 'lucide-react';
+import {
+    ArrowUpDown,
+    Calendar,
+    CalendarClock,
+    Check,
+    CheckCircle2,
+    Download,
+    Eye,
+    FileText,
+    List,
+    MapPin,
+    MessageCircle,
+    MoreHorizontal,
+    Plus,
+    Printer,
+    Search,
+    SlidersHorizontal,
+    UserX,
+    Wallet,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { BookingCalendarView, type CalendarBookingItem, type CalendarPayload } from '@/components/BookingCalendarView';
+import { toast } from 'sonner';
+import { BookingCalendarView, type CalendarPayload } from '@/components/BookingCalendarView';
+import { BookingCancelDialog } from '@/components/BookingCancelDialog';
+import { BookingDetailDrawer } from '@/components/BookingDetailDrawer';
+import { BookingRescheduleDialog } from '@/components/BookingRescheduleDialog';
 import { CashierSettlementDialog } from '@/components/CashierSettlementDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DailyCashierSummaryCard } from '@/components/DailyCashierSummaryCard';
-import { HorizontalScrollContainer } from '@/components/HorizontalScrollContainer';
+import { DpProofVerifyDialog } from '@/components/DpProofVerifyDialog';
 import { PaginationBar, type PaginationMeta } from '@/components/PaginationBar';
 import { ReceiptPrintDialog } from '@/components/ReceiptPrintSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,7 +52,6 @@ import {
     formatDateIndo,
     formatDateShortIndo,
     formatRupiah,
-    FULFILLMENT_TYPE_LABELS,
     PAYMENT_STATUS_LABELS,
     RESERVATION_STATUS_LABELS,
     WORK_STATUS_LABELS,
@@ -47,59 +64,11 @@ import {
 } from '@/lib/whatsappTemplates';
 import { cn } from '@/lib/utils';
 import type {
-    BookingItemRecord,
-    BookingPaymentRecord,
     DailyCashierSummary,
     PageProps,
     ServiceAddon,
 } from '@/types';
-
-interface BookingRow {
-    id: number;
-    booking_code: string;
-    invoice_number?: string | null;
-    invoice_token?: string | null;
-    invoice_url?: string | null;
-    customer_id: number;
-    customer_name: string;
-    customer_phone: string;
-    customer_tags?: string[];
-    customer_no_show_count?: number;
-    customer_is_blocked?: boolean;
-    service_id: number;
-    service_name: string;
-    service_summary?: string;
-    service_assignment_mode: 'staff' | 'capacity';
-    booking_mode?: 'time_slot' | 'dropoff';
-    quantity?: number;
-    unit_label?: string;
-    fulfillment_type?: 'dropoff' | 'pickup';
-    pickup_session?: string | null;
-    pickup_address?: string | null;
-    estimated_ready_date?: string | null;
-    work_status?: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up' | null;
-    schedule_label?: string;
-    staff_id: number | null;
-    staff_name: string | null;
-    booking_date: string;
-    start_time_local: string;
-    end_time_local: string;
-    total_price: number;
-    dp_amount: number;
-    paid_amount?: number;
-    remaining_balance?: number;
-    settled_at_local?: string | null;
-    review_url?: string | null;
-    items?: BookingItemRecord[];
-    payments?: BookingPaymentRecord[];
-    reservation_status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-    payment_status: 'unpaid' | 'waiting_verification' | 'dp_verified' | 'settled';
-    has_dp_proof: boolean;
-    dp_proof_url: string | null;
-    customer_notes: string | null;
-    cancellation_reason: string | null;
-    rescheduled_count?: number;
-}
+import type { BookingRow } from '@/types/booking';
 
 interface ServiceOption {
     id: number;
@@ -152,6 +121,12 @@ const STATUS_TABS: Record<BookingMode, { value: string; label: string }[]> = {
 
 const DROPOFF_COUNTER_TABS = new Set(['active', 'awaiting_dropoff', 'in_progress', 'ready_for_pickup']);
 
+function shiftYmd(dateStr: string, deltaDays: number): string {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + deltaDays);
+    return d.toISOString().slice(0, 10);
+}
+
 interface BookingsIndexProps {
     bookings: BookingRow[];
     pagination?: PaginationMeta | null;
@@ -166,11 +141,16 @@ interface BookingsIndexProps {
         search: string;
         date_from: string;
         date_to: string;
+        sla?: string;
+        sort?: string;
         mode: BookingMode;
         view: 'list' | 'calendar';
         calendar_date: string;
     };
+    openCashierId?: number | null;
+    openReceiptId?: number | null;
     dropoffStageCounts?: Record<string, number> | null;
+    dropoffSlaCounts?: { overdue: number; due_today: number } | null;
     todayDate?: string;
     calendar: CalendarPayload;
     businessName: string;
@@ -192,7 +172,10 @@ export default function BookingsIndex({
     addons = [],
     staffOptions = [],
     filters,
+    openCashierId = null,
+    openReceiptId = null,
     dropoffStageCounts,
+    dropoffSlaCounts,
     todayDate,
     calendar,
     businessName,
@@ -215,35 +198,78 @@ export default function BookingsIndex({
     const itemSingular = config.bookings.itemSingular;
     const nounLower = itemSingular.toLowerCase();
     const todayStr = todayDate || new Date().toISOString().slice(0, 10);
+    const tomorrowStr = shiftYmd(todayStr, 1);
+    const weekEndStr = shiftYmd(todayStr, 6);
     const visibleWaTemplates = getWhatsappTemplateMetaForBusiness(activeBusiness?.business_type);
 
-    // Verifying DP and marking paid need verify_payments on the server.
     const canVerifyPayments = propCanVerifyPayments ?? activeBusiness?.can?.verify_payments ?? true;
     const canManageBookings = activeBusiness?.can?.manage_bookings ?? true;
     const canAccessPos = canVerifyPayments || canManageBookings;
     const canOpenBilling = activeBusiness?.can?.manage_settings ?? true;
+
     const [search, setSearch] = useState(filters.search);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const isInitialSearchMount = useRef(true);
+    const [detailBookingId, setDetailBookingId] = useState<number | null>(null);
+    const [proofVerifyBookingId, setProofVerifyBookingId] = useState<number | null>(null);
+    const [rescheduleBooking, setRescheduleBooking] = useState<BookingRow | null>(null);
+    const [cancelBooking, setCancelBooking] = useState<BookingRow | null>(null);
     const [noShowBooking, setNoShowBooking] = useState<Pick<BookingRow, 'id' | 'booking_code' | 'customer_name'> | null>(null);
-    const [selectedCalendarBooking, setSelectedCalendarBooking] = useState<CalendarBookingItem | null>(null);
-    const [cashierBookingId, setCashierBookingId] = useState<number | null>(null);
-    const [receiptBookingId, setReceiptBookingId] = useState<number | null>(null);
+    const [cashierState, setCashierState] = useState<{ id: number; markCompleted: boolean } | null>(() =>
+        openCashierId ? { id: openCashierId, markCompleted: false } : null
+    );
+    const [receiptBookingId, setReceiptBookingId] = useState<number | null>(openReceiptId);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
     const [desktopFilterOpen, setDesktopFilterOpen] = useState(false);
     const desktopFilterRef = useRef<HTMLDivElement>(null);
 
-    const cashierBooking =
-        cashierBookingId !== null
-            ? bookings.find((b) => b.id === cashierBookingId) ??
-              (calendar.bookings as unknown as BookingRow[]).find((b) => b.id === cashierBookingId) ??
-              null
-            : null;
-    const receiptBooking =
-        receiptBookingId !== null
-            ? bookings.find((b) => b.id === receiptBookingId) ??
-              (calendar.bookings as unknown as BookingRow[]).find((b) => b.id === receiptBookingId) ??
-              null
-            : null;
+    const findBookingById = (id: number | null): BookingRow | null => {
+        if (id === null) return null;
+        return (
+            bookings.find((b) => b.id === id) ??
+            calendar.bookings.find((b) => b.id === id) ??
+            null
+        );
+    };
+
+    const detailBooking = findBookingById(detailBookingId);
+    const proofVerifyBooking = findBookingById(proofVerifyBookingId);
+    const cashierBooking = findBookingById(cashierState?.id ?? null);
+    const receiptBooking = findBookingById(receiptBookingId);
+
+    useEffect(() => {
+        setSearch(filters.search);
+    }, [filters.search]);
+
+    useEffect(() => {
+        if (openCashierId) {
+            setCashierState({ id: openCashierId, markCompleted: false });
+        }
+    }, [openCashierId]);
+
+    useEffect(() => {
+        if (openReceiptId) {
+            setReceiptBookingId(openReceiptId);
+        }
+    }, [openReceiptId]);
+
+    // Debounced live search when typing in search box
+    useEffect(() => {
+        if (isInitialSearchMount.current) {
+            isInitialSearchMount.current = false;
+            return;
+        }
+        if (search === filters.search) return;
+
+        const timer = window.setTimeout(() => {
+            router.get(
+                route('dashboard.bookings'),
+                { ...filters, search },
+                { preserveState: true, preserveScroll: true, replace: true }
+            );
+        }, 350);
+
+        return () => window.clearTimeout(timer);
+    }, [search]);
 
     const getPaymentTotals = (b: BookingRow) => {
         const paid = b.paid_amount ?? (b.payment_status === 'settled' ? b.total_price : 0);
@@ -289,6 +315,7 @@ export default function BookingsIndex({
         filters.date_from || filters.date_to ? 'date' : '',
     ].filter(Boolean).length;
     const desktopAdvancedFilterCount = [
+        filters.service_id,
         supportsStaffFilter ? filters.staff_id : '',
         filters.date_from || filters.date_to ? 'date' : '',
     ].filter(Boolean).length;
@@ -300,7 +327,8 @@ export default function BookingsIndex({
             filters.service_id ||
             filters.search ||
             filters.date_from ||
-            filters.date_to
+            filters.date_to ||
+            filters.sla
     );
 
     const applyFilters = (next: Partial<typeof filters>) => {
@@ -328,6 +356,7 @@ export default function BookingsIndex({
         if (filters.service_id) params.set('service_id', filters.service_id);
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
+        if (filters.sla) params.set('sla', filters.sla);
         return `${route('dashboard.bookings.export')}?${params.toString()}`;
     })();
 
@@ -338,6 +367,7 @@ export default function BookingsIndex({
             | 'customer_phone'
             | 'booking_code'
             | 'service_name'
+            | 'service_summary'
             | 'booking_date'
             | 'start_time_local'
             | 'booking_mode'
@@ -356,17 +386,18 @@ export default function BookingsIndex({
         const isDropoff = b.booking_mode === 'dropoff';
         const unitLabel = b.unit_label ?? 'item';
         const timeOrMode = b.schedule_label ?? formatBookingScheduleShort(b);
+        const svcDisplay = b.service_summary || b.service_name;
         let msg = `Halo ${b.customer_name}, kami dari ${businessName}.`;
         if (b.payment_status === 'unpaid' && b.reservation_status === 'pending') {
-            msg += ` Mengingatkan untuk menyelesaikan pembayaran uang muka ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+            msg += ` Mengingatkan untuk menyelesaikan pembayaran uang muka ${nounLower} ${b.booking_code} (${svcDisplay}, ${dateLabel} · ${timeOrMode}).`;
         } else if (isDropoff && b.work_status === 'ready_for_pickup') {
-            msg += ` Pesanan ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} ${unitLabel}) sudah selesai dan siap diambil/diantar.`;
+            msg += ` Pesanan ${b.booking_code} (${svcDisplay}, ${b.quantity ?? 1} ${unitLabel}) sudah selesai dan siap diambil/diantar.`;
         } else if (b.reservation_status === 'confirmed') {
             msg += isDropoff
-                ? ` Pesanan drop-off ${b.booking_code} (${b.service_name}, ${b.quantity ?? 1} ${unitLabel}) pada ${dateLabel} telah dikonfirmasi.`
-                : ` ${itemSingular} ${b.booking_code} untuk ${b.service_name} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya.`;
+                ? ` Pesanan drop-off ${b.booking_code} (${svcDisplay}, ${b.quantity ?? 1} ${unitLabel}) pada ${dateLabel} telah dikonfirmasi.`
+                : ` ${itemSingular} ${b.booking_code} untuk ${svcDisplay} pada ${dateLabel} pukul ${b.start_time_local} telah dikonfirmasi. Kami tunggu kedatangannya.`;
         } else {
-            msg += ` Terkait ${nounLower} ${b.booking_code} (${b.service_name}, ${dateLabel} · ${timeOrMode}).`;
+            msg += ` Terkait ${nounLower} ${b.booking_code} (${svcDisplay}, ${dateLabel} · ${timeOrMode}).`;
         }
         if (b.invoice_url) {
             msg += ` Detail invoice: ${b.invoice_url}`;
@@ -423,24 +454,49 @@ export default function BookingsIndex({
         });
     };
 
-    const verifyDp = (id: number) => {
-        router.post(route('dashboard.bookings.verify-dp', id), {}, { preserveScroll: true });
-    };
-
-    const updateStatus = (id: number, reservation_status: string, cancellation_reason?: string | null) => {
+    const updateStatus = (id: number, reservation_status: string, bookingForToast?: BookingRow) => {
         router.patch(
             route('dashboard.bookings.status', id),
-            cancellation_reason ? { reservation_status, cancellation_reason } : { reservation_status },
-            { preserveScroll: true }
+            { reservation_status },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (reservation_status === 'confirmed' && bookingForToast) {
+                        const waUrl = buildTemplateWaUrl(bookingForToast, 'confirmed');
+                        toast.success(`${itemSingular} ${bookingForToast.booking_code} dikonfirmasi.`, {
+                            action: {
+                                label: 'Kirim WA',
+                                onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer'),
+                            },
+                        });
+                    }
+                },
+            }
         );
     };
 
-    const updateWorkStatus = (id: number, work_status: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up') => {
-        router.patch(route('dashboard.bookings.status', id), { work_status }, { preserveScroll: true });
-    };
-
-    const settlePayment = (id: number) => {
-        router.patch(route('dashboard.bookings.status', id), { payment_status: 'settled' }, { preserveScroll: true });
+    const updateWorkStatus = (
+        b: BookingRow,
+        work_status: 'awaiting_dropoff' | 'in_progress' | 'ready_for_pickup' | 'picked_up'
+    ) => {
+        router.patch(
+            route('dashboard.bookings.status', b.id),
+            { work_status },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (work_status === 'ready_for_pickup') {
+                        const waUrl = buildTemplateWaUrl(b, 'ready_for_pickup');
+                        toast.success(`Pesanan ${b.booking_code} siap diambil.`, {
+                            action: {
+                                label: 'Kirim WA',
+                                onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer'),
+                            },
+                        });
+                    }
+                },
+            }
+        );
     };
 
     const reservationBadge = (status: string) => {
@@ -451,27 +507,20 @@ export default function BookingsIndex({
     };
 
     const paymentBadge = (status: string) => {
-        const label = PAYMENT_STATUS_LABELS[status] ?? status;
-        const wrapClass = 'max-w-full whitespace-normal text-left';
+        const compactLabels: Record<string, string> = {
+            unpaid: 'Belum Bayar',
+            waiting_verification: 'Cek Bukti DP',
+            dp_verified: 'DP Terverifikasi',
+            settled: 'Lunas',
+        };
+        const label = compactLabels[status] ?? PAYMENT_STATUS_LABELS[status] ?? status;
         if (status === 'dp_verified' || status === 'settled') {
-            return (
-                <Badge variant="success" className={wrapClass}>
-                    {label}
-                </Badge>
-            );
+            return <Badge variant="success">{label}</Badge>;
         }
         if (status === 'waiting_verification') {
-            return (
-                <Badge variant="warning" className={wrapClass}>
-                    {label}
-                </Badge>
-            );
+            return <Badge variant="warning">{label}</Badge>;
         }
-        return (
-            <Badge variant="secondary" className={wrapClass}>
-                {label}
-            </Badge>
-        );
+        return <Badge variant="secondary">{label}</Badge>;
     };
 
     const exportButton = canExportCsv ? (
@@ -552,7 +601,6 @@ export default function BookingsIndex({
             !!b.estimated_ready_date &&
             b.work_status !== 'picked_up' &&
             b.work_status !== 'ready_for_pickup';
-        // Once a drop-off item is in the shop, rescheduling or no-show no longer apply.
         const dropoffInShop = isDropoff && !!b.work_status && b.work_status !== 'awaiting_dropoff';
         const canReschedule =
             !dropoffInShop && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed');
@@ -564,16 +612,6 @@ export default function BookingsIndex({
             b.reservation_status !== 'cancelled' &&
             b.reservation_status !== 'completed' &&
             b.reservation_status !== 'no_show';
-        const canSettle =
-            canVerifyPayments &&
-            b.payment_status !== 'settled' &&
-            b.payment_status !== 'waiting_verification' &&
-            b.reservation_status !== 'cancelled' &&
-            b.reservation_status !== 'no_show';
-        const showSettleAsPrimary =
-            b.reservation_status === 'completed' && canSettle;
-        const hasOverflowActions =
-            canReschedule || canNoShow || canCancel || (canSettle && !showSettleAsPrimary);
 
         return {
             isDropoff,
@@ -582,129 +620,123 @@ export default function BookingsIndex({
             canNoShow,
             showWorkBadge,
             canCancel,
-            canSettle,
-            showSettleAsPrimary,
-            hasOverflowActions,
         };
     };
 
     const renderBookingActions = (b: BookingRow, layout: 'mobile' | 'desktop') => {
-        const { canReschedule, canNoShow, canCancel, canSettle, showSettleAsPrimary, hasOverflowActions } = getBookingMeta(b);
+        const { isDropoff, canReschedule, canNoShow, canCancel } = getBookingMeta(b);
+        const { remaining } = getPaymentTotals(b);
         const isDesktop = layout === 'desktop';
-        const primaryBtnClass = isDesktop ? 'h-8 px-2.5 text-xs' : 'flex-1 lg:flex-initial';
-        const secondaryBtnClass = isDesktop ? 'h-8 px-2.5 text-xs' : undefined;
-        const desktopIconClass = isDesktop ? 'size-8' : undefined;
+        const primaryBtnClass = isDesktop ? 'h-8 px-2.5 text-xs' : 'min-w-0 flex-1 px-3 text-xs';
+        const iconSize = isDesktop ? 'icon-sm' : 'icon';
+
+        const isCheckoutStage =
+            remaining > 0 &&
+            canAccessPos &&
+            ((isDropoff && b.work_status === 'ready_for_pickup' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed')) ||
+                (!isDropoff && b.reservation_status === 'confirmed'));
 
         return (
             <>
                 {b.payment_status === 'waiting_verification' && canVerifyPayments ? (
-                    <Button type="button" size="sm" className={primaryBtnClass} onClick={() => verifyDp(b.id)}>
+                    <Button
+                        type="button"
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={() => setProofVerifyBookingId(b.id)}
+                    >
                         <Check className="size-3.5" aria-hidden="true" />
-                        Verifikasi Uang Muka
+                        Verifikasi DP
                     </Button>
-                ) : b.booking_mode === 'dropoff' && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
+                ) : isDropoff && (b.reservation_status === 'pending' || b.reservation_status === 'confirmed') ? (
                     b.work_status === 'awaiting_dropoff' || !b.work_status ? (
-                        <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'in_progress')}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            className={primaryBtnClass}
+                            onClick={() => updateWorkStatus(b, 'in_progress')}
+                        >
                             <Check className="size-3.5" aria-hidden="true" />
                             Terima &amp; Proses
                         </Button>
                     ) : b.work_status === 'in_progress' ? (
-                        <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'ready_for_pickup')}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            className={primaryBtnClass}
+                            onClick={() => updateWorkStatus(b, 'ready_for_pickup')}
+                        >
                             <Check className="size-3.5" aria-hidden="true" />
                             Siap Diambil
                         </Button>
+                    ) : isCheckoutStage ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            className={primaryBtnClass}
+                            onClick={() => setCashierState({ id: b.id, markCompleted: true })}
+                        >
+                            <Wallet className="size-3.5" aria-hidden="true" />
+                            Selesaikan &amp; Bayar
+                        </Button>
                     ) : (
-                        <Button type="button" variant="outline" size="sm" className={primaryBtnClass} onClick={() => updateWorkStatus(b.id, 'picked_up')}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={primaryBtnClass}
+                            onClick={() => updateWorkStatus(b, 'picked_up')}
+                        >
                             <Check className="size-3.5" aria-hidden="true" />
                             Tandai Selesai
                         </Button>
                     )
                 ) : b.reservation_status === 'pending' ? (
-                    <Button type="button" size="sm" className={primaryBtnClass} onClick={() => updateStatus(b.id, 'confirmed')}>
+                    <Button
+                        type="button"
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={() => updateStatus(b.id, 'confirmed', b)}
+                    >
                         <Check className="size-3.5" aria-hidden="true" />
                         Konfirmasi
                     </Button>
                 ) : b.reservation_status === 'confirmed' ? (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={primaryBtnClass}
-                        onClick={() => updateStatus(b.id, 'completed')}
-                    >
-                        <Check className="size-3.5" aria-hidden="true" />
-                        Tandai Selesai
-                    </Button>
-                ) : showSettleAsPrimary ? (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={primaryBtnClass}
-                        onClick={() => settlePayment(b.id)}
-                    >
-                        <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                        Tandai Lunas
-                    </Button>
-                ) : null}
-
-                {layout === 'mobile' && b.dp_proof_url && (
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className={secondaryBtnClass}
-                        onClick={() => setPreviewUrl(b.dp_proof_url)}
-                    >
-                        <Eye className="size-3.5" aria-hidden="true" />
-                        Bukti Uang Muka
-                    </Button>
-                )}
-
-                {canAccessPos && (
-                    <>
+                    isCheckoutStage ? (
                         <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            className={isDesktop ? 'h-8 px-2.5 text-xs' : undefined}
-                            onClick={() => setCashierBookingId(b.id)}
+                            className={primaryBtnClass}
+                            onClick={() => setCashierState({ id: b.id, markCompleted: true })}
                         >
                             <Wallet className="size-3.5" aria-hidden="true" />
-                            <span>Kasir / Bayar</span>
+                            Selesaikan &amp; Bayar
                         </Button>
+                    ) : (
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className={isDesktop ? 'h-8 px-2.5 text-xs' : undefined}
-                            onClick={() => setReceiptBookingId(b.id)}
+                            className={primaryBtnClass}
+                            onClick={() => updateStatus(b.id, 'completed')}
                         >
-                            <Printer className="size-3.5" aria-hidden="true" />
-                            <span>Struk / Cetak</span>
+                            <Check className="size-3.5" aria-hidden="true" />
+                            Tandai Selesai
                         </Button>
-                    </>
-                )}
+                    )
+                ) : null}
 
-                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 type="button"
                                 variant="outline"
-                                size={isDesktop ? 'icon-sm' : 'sm'}
-                                className={desktopIconClass}
-                                aria-label={isDesktop ? `Kirim WhatsApp ke ${b.customer_name}` : undefined}
-                                title={isDesktop ? 'Kirim WhatsApp' : undefined}
+                                size={iconSize}
+                                aria-label={`Kirim WhatsApp ke ${b.customer_name}`}
+                                title="Kirim WhatsApp"
                             >
-                                <MessageCircle className="size-3.5" aria-hidden="true" />
-                                {!isDesktop && (
-                                    <>
-                                        <span className="sm:hidden">WA</span>
-                                        <span className="hidden sm:inline">WhatsApp</span>
-                                        <ChevronDown className="size-3 text-mute" aria-hidden="true" />
-                                    </>
-                                )}
+                                <MessageCircle className="size-4" aria-hidden="true" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -743,82 +775,116 @@ export default function BookingsIndex({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {hasOverflowActions && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size={isDesktop ? 'icon-sm' : 'icon'}
-                                    className={desktopIconClass}
-                                    aria-label={`Aksi lainnya untuk ${b.booking_mode === 'dropoff' ? 'pesanan' : 'reservasi'} ${b.booking_code}`}
-                                >
-                                    <MoreHorizontal className="size-4" aria-hidden="true" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                className="w-52 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size={iconSize}
+                                aria-label={`Aksi lainnya untuk ${isDropoff ? 'pesanan' : 'reservasi'} ${b.booking_code}`}
                             >
-                                {canSettle && !showSettleAsPrimary && (
+                                <MoreHorizontal className="size-4" aria-hidden="true" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="w-56 max-w-[calc(100vw-2rem)] rounded-md border-hairline-soft p-2 shadow-none"
+                        >
+                            <DropdownMenuItem
+                                onClick={() => setDetailBookingId(b.id)}
+                                className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                            >
+                                <Eye className="mr-2 size-4" aria-hidden="true" />
+                                Lihat Detail Lengkap
+                            </DropdownMenuItem>
+                            {canAccessPos && (
+                                <>
                                     <DropdownMenuItem
-                                        onClick={() => settlePayment(b.id)}
+                                        onClick={() => setCashierState({ id: b.id, markCompleted: false })}
                                         className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
                                     >
-                                        <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
-                                        Tandai Lunas
+                                        <Wallet className="mr-2 size-4" aria-hidden="true" />
+                                        Kasir / Bayar
                                     </DropdownMenuItem>
-                                )}
-                                {canReschedule && (
                                     <DropdownMenuItem
-                                        asChild
+                                        onClick={() => setReceiptBookingId(b.id)}
                                         className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
                                     >
-                                        <Link href={route('dashboard.bookings.reschedule.edit', b.id)}>
-                                            <CalendarClock className="mr-2 size-4" aria-hidden="true" />
-                                            Ubah Jadwal
-                                        </Link>
+                                        <Printer className="mr-2 size-4" aria-hidden="true" />
+                                        Struk / Cetak
                                     </DropdownMenuItem>
-                                )}
-                                {canNoShow && (
+                                </>
+                            )}
+                            {b.dp_proof_url && (
+                                <DropdownMenuItem
+                                    onClick={() => setProofVerifyBookingId(b.id)}
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                >
+                                    <Eye className="mr-2 size-4" aria-hidden="true" />
+                                    Bukti Uang Muka
+                                </DropdownMenuItem>
+                            )}
+                            {isCheckoutStage && (
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        isDropoff
+                                            ? updateWorkStatus(b, 'picked_up')
+                                            : updateStatus(b.id, 'completed')
+                                    }
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                >
+                                    <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
+                                    Tandai Selesai (Tanpa Lunasi)
+                                </DropdownMenuItem>
+                            )}
+                            {canReschedule && (
+                                <DropdownMenuItem
+                                    onClick={() => setRescheduleBooking(b)}
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                >
+                                    <CalendarClock className="mr-2 size-4" aria-hidden="true" />
+                                    Ubah Jadwal
+                                </DropdownMenuItem>
+                            )}
+                            {canNoShow && (
+                                <DropdownMenuItem
+                                    onClick={() => setNoShowBooking(b)}
+                                    className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                >
+                                    <UserX className="mr-2 size-4" aria-hidden="true" />
+                                    Tandai Tidak Hadir
+                                </DropdownMenuItem>
+                            )}
+                            {canCancel && (
+                                <>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                        onClick={() => setNoShowBooking(b)}
-                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-ink"
+                                        onClick={() => setCancelBooking(b)}
+                                        className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
                                     >
-                                        <UserX className="mr-2 size-4" aria-hidden="true" />
-                                        Tandai Tidak Hadir
+                                        <X className="mr-2 size-4" aria-hidden="true" />
+                                        Batalkan {isDropoff ? 'Pesanan' : 'Reservasi'}
                                     </DropdownMenuItem>
-                                )}
-                                {canCancel && (
-                                    <>
-                                        {(canReschedule || canNoShow || (canSettle && !showSettleAsPrimary)) && (
-                                            <DropdownMenuSeparator />
-                                        )}
-                                        <DropdownMenuItem
-                                            asChild
-                                            className="min-h-10 cursor-pointer rounded-xl px-3 py-2.5 text-sm text-destructive focus:bg-destructive-soft focus:text-destructive"
-                                        >
-                                            <Link href={route('dashboard.bookings.cancel.edit', b.id)}>
-                                                <X className="mr-2 size-4" aria-hidden="true" />
-                                                Batalkan {b.booking_mode === 'dropoff' ? 'Pesanan' : 'Reservasi'}
-                                            </Link>
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </>
         );
     };
+
+    const isTodayPreset = filters.date_from === todayStr && filters.date_to === todayStr && !filters.sla;
+    const isTomorrowPreset = filters.date_from === tomorrowStr && filters.date_to === tomorrowStr && !filters.sla;
+    const isNext7DaysPreset = filters.date_from === todayStr && filters.date_to === weekEndStr && !filters.sla;
+    const isUpcomingSort = filters.sort === 'upcoming';
 
     return (
         <DashboardLayout
             title={nounTitle}
             actions={
                 <>
-                    {!supportsCalendar && exportButton}
+                    {exportButton}
                     {createButton}
                 </>
             }
@@ -865,24 +931,60 @@ export default function BookingsIndex({
                             </button>
                         </div>
 
-                        <div className="ml-auto flex shrink-0 items-center gap-2">
-                            {exportButton}
-                        </div>
+                        {filters.view === 'calendar' ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                {supportsStaffFilter && staffOptions.length > 0 && (
+                                    <NativeSelect
+                                        aria-label="Filter staff di kalender"
+                                        value={filters.staff_id ?? ''}
+                                        onChange={(e) => applyFilters({ staff_id: e.target.value })}
+                                        className="h-9 w-auto bg-canvas py-0 text-xs"
+                                    >
+                                        <option value="">Semua Staff</option>
+                                        {staffOptions.map((st) => (
+                                            <option key={st.id} value={String(st.id)}>
+                                                {st.name}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                )}
+                                <NativeSelect
+                                    aria-label="Filter layanan di kalender"
+                                    value={filters.service_id ?? ''}
+                                    onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                    className="h-9 w-auto bg-canvas py-0 text-xs"
+                                >
+                                    <option value="">Semua {config.services.pageTitle}</option>
+                                    {services.map((svc) => (
+                                        <option key={svc.id} value={String(svc.id)}>
+                                            {svc.name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => applyFilters({ sort: isUpcomingSort ? 'newest' : 'upcoming' })}
+                                className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border border-hairline-soft bg-canvas px-3 py-1 text-xs font-semibold text-mute transition-colors hover:bg-bone hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                            >
+                                <ArrowUpDown className="size-3.5" aria-hidden="true" />
+                                <span>{isUpcomingSort ? 'Terdekat dulu' : 'Terbaru'}</span>
+                            </button>
+                        )}
                     </div>
                 )}
 
                 {(supportsCalendar ? filters.view === 'list' : true) && (
                     <>
-                        {/* Quick Status Tabs */}
-                        <HorizontalScrollContainer
+                        {/* Quick Status Tabs (Wrap cleanly on mobile so nothing clips or hides) */}
+                        <div
                             role="group"
-                            ariaLabel={`Filter cepat status ${nounLower}`}
-                            wrapperClassName="-mx-4 sm:mx-0"
-                            fadeBreakpointClass="sm:hidden"
-                            className="flex gap-2 px-4 pr-10 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+                            aria-label={`Filter cepat status ${nounLower}`}
+                            className="flex flex-wrap gap-1.5 sm:gap-2"
                         >
                             {statusTabs.map((tab) => {
-                                const active = currentStatus === tab.value;
+                                const active = currentStatus === tab.value && !filters.sla;
                                 const showPendingBadge = tab.value === 'pending' && pendingBookingsCount > 0;
                                 const stageCount =
                                     isDropoffMode && dropoffStageCounts && DROPOFF_COUNTER_TABS.has(tab.value)
@@ -894,9 +996,9 @@ export default function BookingsIndex({
                                         key={tab.value}
                                         type="button"
                                         aria-pressed={active}
-                                        onClick={() => applyFilters({ status: tab.value })}
+                                        onClick={() => applyFilters({ status: tab.value, sla: '' })}
                                         className={cn(
-                                            'inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:min-h-9',
+                                            'inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:px-3.5',
                                             active
                                                 ? 'border-ink bg-ink text-canvas'
                                                 : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
@@ -930,7 +1032,86 @@ export default function BookingsIndex({
                                     </button>
                                 );
                             })}
-                        </HorizontalScrollContainer>
+                        </div>
+
+                        {/* Quick Date / SLA Presets */}
+                        {(isDropoffMode || !supportsCalendar) && (
+                            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter cepat tanggal atau tenggat">
+                                {isDropoffMode ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            aria-pressed={filters.sla === 'overdue'}
+                                            onClick={() =>
+                                                applyFilters({
+                                                    status: 'active',
+                                                    sla: filters.sla === 'overdue' ? '' : 'overdue',
+                                                    date_from: '',
+                                                    date_to: '',
+                                                })
+                                            }
+                                            className={cn(
+                                                'inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                filters.sla === 'overdue'
+                                                    ? 'border-destructive bg-destructive text-canvas'
+                                                    : (dropoffSlaCounts?.overdue ?? 0) > 0
+                                                      ? 'border-destructive/40 bg-destructive-soft text-destructive hover:bg-destructive-soft/80'
+                                                      : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                            )}
+                                        >
+                                            <span>Lewat Tenggat</span>
+                                            {(dropoffSlaCounts?.overdue ?? 0) > 0 && (
+                                                <span className="tabular-nums">({dropoffSlaCounts?.overdue})</span>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={filters.sla === 'due_today'}
+                                            onClick={() =>
+                                                applyFilters({
+                                                    status: 'active',
+                                                    sla: filters.sla === 'due_today' ? '' : 'due_today',
+                                                    date_from: '',
+                                                    date_to: '',
+                                                })
+                                            }
+                                            className={cn(
+                                                'inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                filters.sla === 'due_today'
+                                                    ? 'border-ink bg-ink text-canvas'
+                                                    : (dropoffSlaCounts?.due_today ?? 0) > 0
+                                                      ? 'border-warning-border bg-warning-soft text-warning hover:bg-warning-soft/80'
+                                                      : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                            )}
+                                        >
+                                            <span>Tenggat Hari Ini</span>
+                                            {(dropoffSlaCounts?.due_today ?? 0) > 0 && (
+                                                <span className="tabular-nums">({dropoffSlaCounts?.due_today})</span>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={isTodayPreset}
+                                            onClick={() =>
+                                                applyFilters(
+                                                    isTodayPreset
+                                                        ? { date_from: '', date_to: '' }
+                                                        : { sla: '', date_from: todayStr, date_to: todayStr }
+                                                )
+                                            }
+                                            className={cn(
+                                                'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none',
+                                                isTodayPreset
+                                                    ? 'border-ink bg-ink text-canvas'
+                                                    : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                            )}
+                                        >
+                                            Masuk Hari Ini
+                                        </button>
+                                    </>
+                                ) : null}
+                            </div>
+                        )}
 
                         {/* Mobile Search + Filter Sheet Trigger */}
                         <div className="flex items-center gap-2 md:hidden">
@@ -982,6 +1163,65 @@ export default function BookingsIndex({
 
                         {mobileFilterOpen && (
                             <div className="space-y-4 rounded-md border border-hairline-soft bg-canvas p-4 md:hidden">
+                                {!isDropoffMode && (
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-semibold text-mute">Filter Tanggal Cepat</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            <button
+                                                type="button"
+                                                aria-pressed={isTodayPreset}
+                                                onClick={() =>
+                                                    applyFilters(
+                                                        isTodayPreset
+                                                            ? { date_from: '', date_to: '', sort: '' }
+                                                            : { date_from: todayStr, date_to: todayStr, sort: 'upcoming' }
+                                                    )
+                                                }
+                                                className={cn(
+                                                    'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                    isTodayPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                )}
+                                            >
+                                                Hari Ini
+                                            </button>
+                                            <button
+                                                type="button"
+                                                aria-pressed={isTomorrowPreset}
+                                                onClick={() =>
+                                                    applyFilters(
+                                                        isTomorrowPreset
+                                                            ? { date_from: '', date_to: '', sort: '' }
+                                                            : { date_from: tomorrowStr, date_to: tomorrowStr, sort: 'upcoming' }
+                                                    )
+                                                }
+                                                className={cn(
+                                                    'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                    isTomorrowPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                )}
+                                            >
+                                                Besok
+                                            </button>
+                                            <button
+                                                type="button"
+                                                aria-pressed={isNext7DaysPreset}
+                                                onClick={() =>
+                                                    applyFilters(
+                                                        isNext7DaysPreset
+                                                            ? { date_from: '', date_to: '', sort: '' }
+                                                            : { date_from: todayStr, date_to: weekEndStr, sort: 'upcoming' }
+                                                    )
+                                                }
+                                                className={cn(
+                                                    'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                    isNext7DaysPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                )}
+                                            >
+                                                7 Hari
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mobile-filter-payment">Status Pembayaran</Label>
                                     <NativeSelect
@@ -990,9 +1230,9 @@ export default function BookingsIndex({
                                         onChange={(e) => applyFilters({ payment: e.target.value })}
                                     >
                                         <option value="">Semua Pembayaran</option>
-                                        <option value="unpaid">Belum Dibayar</option>
-                                        <option value="waiting_verification">Menunggu Verifikasi Uang Muka</option>
-                                        <option value="dp_verified">Uang Muka Terverifikasi</option>
+                                        <option value="unpaid">Belum Bayar</option>
+                                        <option value="waiting_verification">Cek Bukti DP</option>
+                                        <option value="dp_verified">DP Terverifikasi</option>
                                         <option value="settled">Lunas</option>
                                     </NativeSelect>
                                 </div>
@@ -1039,7 +1279,7 @@ export default function BookingsIndex({
                                             type="date"
                                             className="min-w-0"
                                             value={filters.date_from}
-                                            onChange={(e) => applyFilters({ date_from: e.target.value })}
+                                            onChange={(e) => applyFilters({ date_from: e.target.value, sla: '' })}
                                         />
                                     </div>
                                     <div className="min-w-0 space-y-1.5">
@@ -1049,7 +1289,7 @@ export default function BookingsIndex({
                                             type="date"
                                             className="min-w-0"
                                             value={filters.date_to}
-                                            onChange={(e) => applyFilters({ date_to: e.target.value })}
+                                            onChange={(e) => applyFilters({ date_to: e.target.value, sla: '' })}
                                         />
                                     </div>
                                 </div>
@@ -1080,7 +1320,7 @@ export default function BookingsIndex({
                         )}
 
                         {/* Desktop Single-Row Toolbar */}
-                        <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2.5 lg:flex-nowrap">
+                        <div className="hidden md:flex md:items-center md:gap-2.5">
                             <div className="relative flex min-w-[200px] flex-1 items-center lg:max-w-sm">
                                 <label htmlFor="bookings-search" className="sr-only">
                                     Cari {nounLower} berdasarkan kode, nama, atau WhatsApp
@@ -1113,27 +1353,13 @@ export default function BookingsIndex({
                                 aria-label="Filter status pembayaran"
                                 value={filters.payment}
                                 onChange={(e) => applyFilters({ payment: e.target.value })}
-                                className="h-10 w-auto min-w-[170px] max-w-[210px] shrink-0 bg-canvas py-0 text-sm"
+                                className="h-10 w-auto min-w-[175px] max-w-[220px] shrink-0 bg-canvas text-sm"
                             >
                                 <option value="">Semua Pembayaran</option>
-                                <option value="unpaid">Belum Dibayar</option>
-                                <option value="waiting_verification">Menunggu Verifikasi Uang Muka</option>
-                                <option value="dp_verified">Uang Muka Terverifikasi</option>
+                                <option value="unpaid">Belum Bayar</option>
+                                <option value="waiting_verification">Cek Bukti DP</option>
+                                <option value="dp_verified">DP Terverifikasi</option>
                                 <option value="settled">Lunas</option>
-                            </NativeSelect>
-
-                            <NativeSelect
-                                aria-label="Filter layanan"
-                                value={filters.service_id ?? ''}
-                                onChange={(e) => applyFilters({ service_id: e.target.value })}
-                                className="h-10 w-auto min-w-[175px] max-w-[220px] shrink-0 bg-canvas py-0 text-sm"
-                            >
-                                <option value="">Semua {config.services.pageTitle}</option>
-                                {services.map((svc) => (
-                                    <option key={svc.id} value={String(svc.id)}>
-                                        {svc.name}
-                                    </option>
-                                ))}
                             </NativeSelect>
 
                             <div ref={desktopFilterRef} className="relative shrink-0">
@@ -1155,7 +1381,87 @@ export default function BookingsIndex({
                                 </Button>
 
                                 {desktopFilterOpen && (
-                                    <div className="absolute top-full right-0 z-30 mt-2 w-80 space-y-4 overscroll-contain rounded-md border border-hairline bg-canvas p-4">
+                                    <div
+                                        role="dialog"
+                                        aria-label="Filter lanjutan"
+                                        className="absolute top-full right-0 z-30 mt-2 w-80 space-y-4 overscroll-contain rounded-md border border-hairline bg-canvas p-4"
+                                    >
+                                        {!isDropoffMode && (
+                                            <div className="space-y-1.5">
+                                                <span className="text-xs font-semibold text-mute">Filter Tanggal Cepat</span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        aria-pressed={isTodayPreset}
+                                                        onClick={() =>
+                                                            applyFilters(
+                                                                isTodayPreset
+                                                                    ? { date_from: '', date_to: '', sort: '' }
+                                                                    : { date_from: todayStr, date_to: todayStr, sort: 'upcoming' }
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                            isTodayPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                        )}
+                                                    >
+                                                        Hari Ini
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        aria-pressed={isTomorrowPreset}
+                                                        onClick={() =>
+                                                            applyFilters(
+                                                                isTomorrowPreset
+                                                                    ? { date_from: '', date_to: '', sort: '' }
+                                                                    : { date_from: tomorrowStr, date_to: tomorrowStr, sort: 'upcoming' }
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                            isTomorrowPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                        )}
+                                                    >
+                                                        Besok
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        aria-pressed={isNext7DaysPreset}
+                                                        onClick={() =>
+                                                            applyFilters(
+                                                                isNext7DaysPreset
+                                                                    ? { date_from: '', date_to: '', sort: '' }
+                                                                    : { date_from: todayStr, date_to: weekEndStr, sort: 'upcoming' }
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            'inline-flex min-h-8 cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                                                            isNext7DaysPreset ? 'border-ink bg-ink text-canvas' : 'border-hairline-soft bg-canvas text-mute hover:bg-bone hover:text-ink'
+                                                        )}
+                                                    >
+                                                        7 Hari
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="desktop-filter-service">{config.services.pageTitle}</Label>
+                                            <NativeSelect
+                                                id="desktop-filter-service"
+                                                value={filters.service_id ?? ''}
+                                                onChange={(e) => applyFilters({ service_id: e.target.value })}
+                                                className="h-10 bg-canvas text-sm"
+                                            >
+                                                <option value="">Semua {config.services.pageTitle}</option>
+                                                {services.map((svc) => (
+                                                    <option key={svc.id} value={String(svc.id)}>
+                                                        {svc.name}
+                                                    </option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+
                                         {supportsStaffFilter && staffOptions.length > 0 && (
                                             <div className="space-y-1.5">
                                                 <Label htmlFor="desktop-filter-staff">Staff</Label>
@@ -1163,7 +1469,7 @@ export default function BookingsIndex({
                                                     id="desktop-filter-staff"
                                                     value={filters.staff_id ?? ''}
                                                     onChange={(e) => applyFilters({ staff_id: e.target.value })}
-                                                    className="h-10 bg-canvas py-0 text-sm"
+                                                    className="h-10 bg-canvas text-sm"
                                                 >
                                                     <option value="">Semua Staff</option>
                                                     {staffOptions.map((st) => (
@@ -1182,7 +1488,7 @@ export default function BookingsIndex({
                                                     id="bookings-date-from"
                                                     type="date"
                                                     value={filters.date_from}
-                                                    onChange={(e) => applyFilters({ date_from: e.target.value })}
+                                                    onChange={(e) => applyFilters({ date_from: e.target.value, sla: '' })}
                                                     className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
                                                 />
                                             </div>
@@ -1192,7 +1498,7 @@ export default function BookingsIndex({
                                                     id="bookings-date-to"
                                                     type="date"
                                                     value={filters.date_to}
-                                                    onChange={(e) => applyFilters({ date_to: e.target.value })}
+                                                    onChange={(e) => applyFilters({ date_to: e.target.value, sla: '' })}
                                                     className="h-10 min-w-0 bg-canvas px-2.5 py-2 text-xs"
                                                 />
                                             </div>
@@ -1204,9 +1510,9 @@ export default function BookingsIndex({
                                                     type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => applyFilters({ staff_id: '', date_from: '', date_to: '' })}
+                                                    onClick={() => applyFilters({ service_id: '', staff_id: '', date_from: '', date_to: '' })}
                                                 >
-                                                    Reset Tanggal/Staff
+                                                    Reset Filter
                                                 </Button>
                                             ) : (
                                                 <span />
@@ -1221,7 +1527,7 @@ export default function BookingsIndex({
 
                             {hasActiveFilter && (
                                 <Button type="button" variant="ghost" size="sm" className="h-10 shrink-0" onClick={resetFilters}>
-                                    Reset Filter
+                                    Reset
                                 </Button>
                             )}
                         </div>
@@ -1233,8 +1539,10 @@ export default function BookingsIndex({
                 <BookingCalendarView
                     calendar={calendar}
                     businessType={activeBusiness?.business_type}
+                    todayDate={todayStr}
+                    canCreateBooking={canManageBookings && services.length > 0}
                     onSelectDate={(date) => applyFilters({ view: 'calendar', calendar_date: date })}
-                    onSelectBooking={(booking) => setSelectedCalendarBooking(booking)}
+                    onSelectBooking={(booking) => setDetailBookingId(booking.id)}
                 />
             ) : bookings.length === 0 ? (
                 <div className="space-y-3 rounded-md bg-bone p-10 text-center sm:p-12">
@@ -1281,8 +1589,8 @@ export default function BookingsIndex({
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {/* Mobile Cards (< md) */}
-                    <div className="space-y-3 md:hidden">
+                    {/* Mobile & Tablet Cards (< lg) */}
+                    <div className="grid gap-3 md:grid-cols-2 lg:hidden">
                         {bookings.map((b) => {
                             const { isDropoff, showSlaWarning, showWorkBadge } = getBookingMeta(b);
                             const { paid, remaining } = getPaymentTotals(b);
@@ -1292,13 +1600,12 @@ export default function BookingsIndex({
                             return (
                                 <div
                                     key={b.id}
-                                    className="flex flex-col justify-between gap-3.5 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5"
+                                    className="flex flex-col justify-between gap-3 rounded-md border border-hairline-soft bg-canvas p-4 sm:p-5"
                                 >
-                                    <div className="min-w-0 flex-1 space-y-3">
-                                        {/* Top Header: Customer & Service on left, Price & DP on right */}
+                                    <div className="min-w-0 flex-1 space-y-2.5">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0 flex-1">
-                                                <p className="line-clamp-2 break-words text-base font-semibold text-ink">
+                                                <p className="line-clamp-1 break-words text-base font-semibold text-ink">
                                                     <Link
                                                         href={route('dashboard.customers.show', b.customer_id)}
                                                         className="hover:underline"
@@ -1306,8 +1613,8 @@ export default function BookingsIndex({
                                                         {b.customer_name}
                                                     </Link>
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-mute">
-                                                    <span className="font-medium break-words text-body">
+                                                <p className="mt-0.5 line-clamp-1 text-xs text-mute">
+                                                    <span className="font-medium text-body">
                                                         {getServiceSummaryDisplay(b)}
                                                     </span>
                                                     {isDropoff && !hasMultiServiceItems(b) ? (
@@ -1323,18 +1630,13 @@ export default function BookingsIndex({
                                                 <p className="text-base font-semibold tabular-nums text-ink">
                                                     {formatRupiah(b.total_price)}
                                                 </p>
-                                                {paid > 0 && (
-                                                    <p className="text-xs tabular-nums text-mute">
-                                                        Dibayar {formatRupiah(paid)}
-                                                    </p>
-                                                )}
                                                 {remaining > 0 && !isClosed ? (
                                                     <p className="text-xs font-medium tabular-nums text-electric">
                                                         Sisa {formatRupiah(remaining)}
                                                     </p>
-                                                ) : paid === 0 && b.dp_amount > 0 ? (
+                                                ) : paid > 0 ? (
                                                     <p className="text-xs tabular-nums text-mute">
-                                                        Uang muka {formatRupiah(b.dp_amount)}
+                                                        Dibayar {formatRupiah(paid)}
                                                     </p>
                                                 ) : null}
                                             </div>
@@ -1344,25 +1646,22 @@ export default function BookingsIndex({
                                         {isDropoff ? (
                                             <div
                                                 className={cn(
-                                                    'grid gap-2.5 rounded-xl bg-bone/70 px-3 py-2.5 text-xs',
-                                                    b.estimated_ready_date ? 'grid-cols-1 min-[360px]:grid-cols-2' : 'grid-cols-1'
+                                                    'grid gap-1.5 rounded-xl bg-bone/70 px-2.5 py-2 text-xs min-[360px]:gap-2 min-[360px]:px-3',
+                                                    b.estimated_ready_date ? 'grid-cols-2' : 'grid-cols-1'
                                                 )}
                                             >
-                                                <div className="min-w-0 space-y-0.5">
-                                                    <p className="text-[11px] font-medium whitespace-nowrap text-mute">Masuk</p>
-                                                    <p className="font-semibold tabular-nums text-ink">
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-medium text-mute">Masuk</p>
+                                                    <p className="text-[11px] font-semibold whitespace-nowrap tabular-nums text-ink min-[360px]:text-xs">
                                                         {formatDateShortIndo(b.booking_date)}
-                                                    </p>
-                                                    <p className="break-words text-[11px] text-mute">
-                                                        {b.schedule_label ?? formatBookingScheduleShort(b)}
                                                     </p>
                                                 </div>
                                                 {b.estimated_ready_date && (
-                                                    <div className="min-w-0 space-y-0.5 border-t border-divider pt-2 min-[360px]:border-t-0 min-[360px]:border-l min-[360px]:pt-0 min-[360px]:pl-3">
-                                                        <p className="text-[11px] font-medium whitespace-nowrap text-mute">Target Selesai</p>
+                                                    <div className="min-w-0 border-l border-divider pl-2 min-[360px]:pl-3">
+                                                        <p className="text-[11px] font-medium text-mute">Target Selesai</p>
                                                         <p
                                                             className={cn(
-                                                                'font-semibold tabular-nums',
+                                                                'text-[11px] font-semibold whitespace-nowrap tabular-nums min-[360px]:text-xs',
                                                                 showSlaWarning && b.estimated_ready_date < todayStr
                                                                     ? 'text-destructive'
                                                                     : showSlaWarning && b.estimated_ready_date === todayStr
@@ -1403,52 +1702,41 @@ export default function BookingsIndex({
                                                 <Badge variant="warning">Tenggat Hari Ini</Badge>
                                             )}
                                             {paymentBadge(b.payment_status)}
-                                            {(b.rescheduled_count ?? 0) > 0 && (
-                                                <Badge variant="outline" className="tabular-nums">
-                                                    Reschedule {b.rescheduled_count}x
-                                                </Badge>
-                                            )}
-                                            {b.customer_tags?.includes('VIP') && (
-                                                <Badge variant="popular">
-                                                    VIP
-                                                </Badge>
-                                            )}
+                                            {b.customer_tags?.includes('VIP') && <Badge variant="popular">VIP</Badge>}
                                             {supportsNoShow && (b.customer_no_show_count ?? 0) > 0 && (
                                                 <Badge variant="warning" className="tabular-nums">
                                                     No-Show {b.customer_no_show_count}x
                                                 </Badge>
                                             )}
-                                            {b.customer_is_blocked && (
-                                                <Badge variant="danger">
-                                                    Diblokir
-                                                </Badge>
+                                            {b.customer_is_blocked && <Badge variant="danger">Diblokir</Badge>}
+                                            {b.dp_proof_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setProofVerifyBookingId(b.id)}
+                                                    className="inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-full bg-bone px-2.5 py-1 text-xs font-semibold text-ink hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                                >
+                                                    <Eye className="size-3" aria-hidden="true" />
+                                                    Bukti DP
+                                                </button>
                                             )}
                                         </div>
 
-                                        {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
-                                            <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
-                                                Alamat Jemput ({FULFILLMENT_TYPE_LABELS[b.fulfillment_type] ?? 'Jemput'}): {b.pickup_address}
-                                            </p>
-                                        )}
-
-                                        {b.customer_notes && (
-                                            <p className="break-words rounded-xl bg-bone px-3 py-2 text-xs text-body">
-                                                Catatan: {b.customer_notes}
-                                            </p>
-                                        )}
-
-                                        {b.reservation_status === 'cancelled' && b.cancellation_reason && (
-                                            <p className="break-words rounded-xl bg-destructive-soft px-3 py-2 text-xs text-destructive">
-                                                Alasan pembatalan: {b.cancellation_reason}
-                                            </p>
-                                        )}
-
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-ash">
-                                            <span className="font-medium text-mute">{b.booking_code}</span>
-                                            <span className="tabular-nums">+{b.customer_phone}</span>
-                                            {b.invoice_number && (
-                                                <span className="break-all">{b.invoice_number}</span>
-                                            )}
+                                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-mute">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDetailBookingId(b.id)}
+                                                className="inline-flex min-h-8 cursor-pointer flex-wrap items-center gap-x-2 rounded-sm font-mono font-semibold text-ink hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                            >
+                                                <span>{b.booking_code}</span>
+                                                <span className="font-normal text-mute tabular-nums">+{b.customer_phone}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDetailBookingId(b.id)}
+                                                className="inline-flex min-h-8 cursor-pointer items-center rounded-sm px-2 font-semibold text-electric hover:underline focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                            >
+                                                Detail
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1460,17 +1748,17 @@ export default function BookingsIndex({
                         })}
                     </div>
 
-                    {/* Desktop Table (md+) */}
-                    <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas md:block">
-                        <table className="w-full min-w-[760px] text-left text-sm">
+                    {/* Desktop Table (lg+) */}
+                    <div className="hidden overflow-x-auto rounded-md border border-hairline-soft bg-canvas lg:block">
+                        <table className="w-full text-left text-sm">
                             <thead className="border-b border-divider bg-bone text-xs font-semibold whitespace-nowrap text-mute">
                                 <tr>
-                                    <th scope="col" className="min-w-[150px] py-3 pr-2.5 pl-4">Pelanggan</th>
-                                    <th scope="col" className="min-w-[165px] px-2.5 py-3">Layanan</th>
-                                    <th scope="col" className="min-w-[120px] px-2.5 py-3">{isDropoffMode ? 'Masuk & Target' : 'Jadwal'}</th>
-                                    <th scope="col" className="min-w-[135px] px-2.5 py-3">Status</th>
-                                    <th scope="col" className="px-2.5 py-3 text-right">Total</th>
-                                    <th scope="col" className="py-3 pr-4 pl-2.5 text-right">Aksi</th>
+                                    <th scope="col" className="py-3 pr-2 pl-3">Pelanggan</th>
+                                    <th scope="col" className="px-2 py-3">Layanan</th>
+                                    <th scope="col" className="px-2 py-3">{isDropoffMode ? 'Masuk & Target' : 'Jadwal'}</th>
+                                    <th scope="col" className="px-2 py-3">Status</th>
+                                    <th scope="col" className="px-2 py-3 text-right">Total</th>
+                                    <th scope="col" className="py-3 pr-3 pl-2 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-divider">
@@ -1479,10 +1767,15 @@ export default function BookingsIndex({
                                     const { paid, remaining } = getPaymentTotals(b);
                                     const isClosed =
                                         b.reservation_status === 'cancelled' || b.reservation_status === 'no_show';
+                                    const hasSecondaryNotes = Boolean(
+                                        b.customer_notes ||
+                                            (b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address) ||
+                                            (b.reservation_status === 'cancelled' && b.cancellation_reason)
+                                    );
 
                                     return (
                                         <tr key={b.id} className="align-top transition-colors hover:bg-bone/50">
-                                            <td className="min-w-[150px] max-w-[185px] py-3.5 pr-2.5 pl-4">
+                                            <td className="max-w-[150px] py-3 pr-2 pl-3">
                                                 <div className="flex flex-wrap items-center gap-1.5">
                                                     <Link
                                                         href={route('dashboard.customers.show', b.customer_id)}
@@ -1502,55 +1795,57 @@ export default function BookingsIndex({
                                                         <Badge variant="danger">Diblokir</Badge>
                                                     )}
                                                 </div>
-                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-xs text-ash">
-                                                    <span className="font-medium text-mute">{b.booking_code}</span>
+                                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 font-mono text-xs text-ash">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDetailBookingId(b.id)}
+                                                        className="cursor-pointer font-semibold text-mute hover:text-ink hover:underline"
+                                                    >
+                                                        {b.booking_code}
+                                                    </button>
                                                     <span className="tabular-nums">+{b.customer_phone}</span>
                                                 </div>
-                                                {b.invoice_number && (
-                                                    <p className="mt-0.5 font-mono text-[11px] text-ash">{b.invoice_number}</p>
-                                                )}
                                             </td>
 
-                                            <td className="min-w-[165px] px-2.5 py-3.5">
-                                                <p className="font-medium break-words text-ink">
+                                            <td className="max-w-[165px] px-2 py-3">
+                                                <p className="line-clamp-2 font-medium break-words text-ink">
                                                     {getServiceSummaryDisplay(b)}
                                                     {isDropoff && !hasMultiServiceItems(b) && (
-                                                        <span className="font-normal text-mute tabular-nums">
-                                                            {` · ${b.quantity ?? 1} ${b.unit_label ?? 'item'}`}
+                                                        <span className="ml-1 font-normal whitespace-nowrap text-mute tabular-nums">
+                                                            ({b.quantity ?? 1} {b.unit_label ?? 'item'})
                                                         </span>
                                                     )}
                                                 </p>
                                                 {supportsStaffFilter && b.staff_name && (
                                                     <p className="mt-0.5 text-xs text-mute">{b.staff_name}</p>
                                                 )}
-                                                {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address && (
-                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-bone px-2 py-1 text-xs text-body">
-                                                        Jemput: {b.pickup_address}
-                                                    </p>
-                                                )}
-                                                {b.customer_notes && (
-                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-bone px-2 py-1 text-xs text-body">
-                                                        Catatan: {b.customer_notes}
-                                                    </p>
-                                                )}
-                                                {b.reservation_status === 'cancelled' && b.cancellation_reason && (
-                                                    <p className="mt-1.5 max-w-[190px] rounded-xs bg-destructive-soft px-2 py-1 text-xs text-destructive">
-                                                        Batal: {b.cancellation_reason}
-                                                    </p>
+                                                {hasSecondaryNotes && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDetailBookingId(b.id)}
+                                                        className="mt-1 inline-flex cursor-pointer items-center gap-1 rounded-full bg-bone px-2 py-0.5 text-[11px] font-medium text-mute hover:text-ink"
+                                                    >
+                                                        {b.booking_mode === 'dropoff' && b.fulfillment_type === 'pickup' && b.pickup_address ? (
+                                                            <>
+                                                                <MapPin className="size-3" aria-hidden="true" />
+                                                                <span>Alamat jemput</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <FileText className="size-3" aria-hidden="true" />
+                                                                <span>{b.reservation_status === 'cancelled' ? 'Alasan batal' : 'Ada catatan'}</span>
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 )}
                                             </td>
 
-                                            <td className="min-w-[120px] px-2.5 py-3.5">
+                                            <td className="px-2 py-3">
                                                 {isDropoff ? (
                                                     <div className="space-y-1 text-xs">
-                                                        <div>
-                                                            <p className="font-semibold whitespace-nowrap tabular-nums text-ink">
-                                                                {formatDateShortIndo(b.booking_date)}
-                                                            </p>
-                                                            <p className="text-mute">
-                                                                {b.schedule_label ?? formatBookingScheduleShort(b)}
-                                                            </p>
-                                                        </div>
+                                                        <p className="font-semibold whitespace-nowrap tabular-nums text-ink">
+                                                            {formatDateShortIndo(b.booking_date)}
+                                                        </p>
                                                         {b.estimated_ready_date && (
                                                             <p
                                                                 className={cn(
@@ -1562,8 +1857,7 @@ export default function BookingsIndex({
                                                                           : 'text-mute'
                                                                 )}
                                                             >
-                                                                <span className="block text-[11px] font-normal text-ash">Target selesai</span>
-                                                                <span className="whitespace-nowrap">{formatDateShortIndo(b.estimated_ready_date)}</span>
+                                                                <span className="whitespace-nowrap">Est: {formatDateShortIndo(b.estimated_ready_date)}</span>
                                                             </p>
                                                         )}
                                                     </div>
@@ -1579,32 +1873,34 @@ export default function BookingsIndex({
                                                 )}
                                             </td>
 
-                                            <td className="min-w-[180px] px-2.5 py-3.5">
-                                                <div className="flex flex-col items-start gap-1.5">
-                                                    {showWorkBadge ? (
-                                                        <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
-                                                            {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
-                                                        </Badge>
-                                                    ) : (
-                                                        reservationBadge(b.reservation_status)
-                                                    )}
-                                                    {showSlaWarning && b.estimated_ready_date! < todayStr && (
-                                                        <Badge variant="danger">Lewat Tenggat</Badge>
-                                                    )}
-                                                    {showSlaWarning && b.estimated_ready_date! === todayStr && (
-                                                        <Badge variant="warning">Tenggat Hari Ini</Badge>
-                                                    )}
+                                            <td className="px-2 py-3">
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                        {showWorkBadge ? (
+                                                            <Badge variant={b.work_status === 'picked_up' ? 'success' : b.work_status === 'awaiting_dropoff' ? 'warning' : 'outline'}>
+                                                                {WORK_STATUS_LABELS[b.work_status!] ?? b.work_status}
+                                                            </Badge>
+                                                        ) : (
+                                                            reservationBadge(b.reservation_status)
+                                                        )}
+                                                        {showSlaWarning && b.estimated_ready_date! < todayStr && (
+                                                            <Badge variant="danger">Lewat Tenggat</Badge>
+                                                        )}
+                                                        {showSlaWarning && b.estimated_ready_date! === todayStr && (
+                                                            <Badge variant="warning">Tenggat Hari Ini</Badge>
+                                                        )}
+                                                    </div>
                                                     {paymentBadge(b.payment_status)}
-                                                    {(b.rescheduled_count ?? 0) > 0 && (
-                                                        <Badge variant="outline" className="tabular-nums">
-                                                            Reschedule {b.rescheduled_count}x
-                                                        </Badge>
+                                                    {b.payment_status === 'unpaid' && b.dp_expires_at_local && !isClosed && (
+                                                        <span className="text-[11px] tabular-nums text-mute">
+                                                            Batas DP: {b.dp_expires_at_local}
+                                                        </span>
                                                     )}
                                                     {b.dp_proof_url && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => setPreviewUrl(b.dp_proof_url)}
-                                                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-bone px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                                                            onClick={() => setProofVerifyBookingId(b.id)}
+                                                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-bone px-2 py-0.5 text-[11px] font-semibold text-ink transition-colors hover:bg-hairline-soft focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                                                         >
                                                             <Eye className="size-3" aria-hidden="true" />
                                                             Bukti Uang Muka
@@ -1613,28 +1909,23 @@ export default function BookingsIndex({
                                                 </div>
                                             </td>
 
-                                            <td className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                                            <td className="px-2 py-3 text-right whitespace-nowrap">
                                                 <p className="font-semibold tabular-nums text-ink">
                                                     {formatRupiah(b.total_price)}
                                                 </p>
-                                                {paid > 0 && (
-                                                    <p className="mt-0.5 text-xs tabular-nums text-mute">
-                                                        Dibayar {formatRupiah(paid)}
-                                                    </p>
-                                                )}
                                                 {remaining > 0 && !isClosed ? (
                                                     <p className="mt-0.5 text-xs font-medium tabular-nums text-electric">
                                                         Sisa {formatRupiah(remaining)}
                                                     </p>
-                                                ) : paid === 0 && b.dp_amount > 0 ? (
+                                                ) : paid > 0 ? (
                                                     <p className="mt-0.5 text-xs tabular-nums text-mute">
-                                                        Uang muka {formatRupiah(b.dp_amount)}
+                                                        Dibayar {formatRupiah(paid)}
                                                     </p>
                                                 ) : null}
                                             </td>
 
-                                            <td className="py-3.5 pr-4 pl-2.5 text-right">
-                                                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                            <td className="py-3 pr-3 pl-2 text-right whitespace-nowrap">
+                                                <div className="inline-flex flex-nowrap items-center justify-end gap-1">
                                                     {renderBookingActions(b, 'desktop')}
                                                 </div>
                                             </td>
@@ -1649,191 +1940,53 @@ export default function BookingsIndex({
                 </div>
             )}
 
-            {/* Proof Preview Modal */}
-            <Dialog open={previewUrl !== null} onOpenChange={(open) => !open && setPreviewUrl(null)}>
-                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-semibold text-ink">Bukti Pembayaran Uang Muka</DialogTitle>
-                    </DialogHeader>
-                    {previewUrl && (
-                        <img
-                            src={previewUrl}
-                            alt="Bukti pembayaran uang muka pelanggan"
-                            className="max-h-[70dvh] w-full rounded-sm bg-bone object-contain outline-1 -outline-offset-1 outline-black/10"
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
+            <BookingDetailDrawer
+                booking={detailBooking}
+                open={detailBooking !== null}
+                onOpenChange={(open) => !open && setDetailBookingId(null)}
+                todayDate={todayStr}
+                itemSingular={itemSingular}
+                supportsStaff={supportsStaffFilter}
+                supportsNoShow={supportsNoShow}
+                canAccessPos={canAccessPos}
+                canVerifyPayments={canVerifyPayments}
+                visibleWaTemplates={visibleWaTemplates}
+                buildTemplateWaUrl={buildTemplateWaUrl}
+                buildQuickWaUrl={buildQuickWaUrl}
+                onVerifyProof={(b) => setProofVerifyBookingId(b.id)}
+                onUpdateStatus={(id, status) => updateStatus(id, status, detailBooking ?? undefined)}
+                onUpdateWorkStatus={(b, ws) => updateWorkStatus(b, ws)}
+                onOpenCashier={(b, markCompleted = false) =>
+                    setCashierState({ id: b.id, markCompleted })
+                }
+                onOpenReceipt={(id) => setReceiptBookingId(id)}
+                onOpenReschedule={(b) => setRescheduleBooking(b)}
+                onOpenNoShow={(b) => setNoShowBooking(b)}
+                onOpenCancel={(b) => setCancelBooking(b)}
+            />
 
-            {/* Calendar Booking Quick Detail Dialog */}
-            <Dialog
-                open={selectedCalendarBooking !== null}
-                onOpenChange={(open) => !open && setSelectedCalendarBooking(null)}
-            >
-                <DialogContent className="rounded-md border-hairline-soft bg-canvas p-4 sm:p-6 shadow-none sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-semibold text-ink">
-                            Detail {itemSingular} {selectedCalendarBooking?.booking_code}
-                        </DialogTitle>
-                    </DialogHeader>
-                    {selectedCalendarBooking && (
-                        <div className="space-y-4">
-                            <div className="flex flex-wrap gap-2">
-                                {reservationBadge(selectedCalendarBooking.reservation_status)}
-                                {paymentBadge(selectedCalendarBooking.payment_status)}
-                            </div>
-                            <div className="space-y-1.5 rounded-xl bg-bone/70 p-3.5 text-sm">
-                                <p className="break-words font-semibold text-ink">
-                                    <Link
-                                        href={route('dashboard.customers.show', selectedCalendarBooking.customer_id)}
-                                        className="hover:underline"
-                                    >
-                                        {selectedCalendarBooking.customer_name}
-                                    </Link>
-                                </p>
-                                <p className="font-mono text-xs tabular-nums text-mute">
-                                    +{selectedCalendarBooking.customer_phone}
-                                </p>
-                                <p className="text-xs text-body">
-                                    {selectedCalendarBooking.service_name}
-                                    {supportsStaffFilter && selectedCalendarBooking.staff_name
-                                        ? ` · ${selectedCalendarBooking.staff_name}`
-                                        : ''}
-                                </p>
-                                <p className="text-xs tabular-nums text-mute">
-                                    {formatDateIndo(selectedCalendarBooking.booking_date)} ·{' '}
-                                    {formatBookingScheduleShort(selectedCalendarBooking)}
-                                </p>
-                                <p className="pt-0.5 text-base font-semibold tabular-nums text-ink">
-                                    {formatRupiah(selectedCalendarBooking.total_price)}
-                                </p>
-                            </div>
+            <DpProofVerifyDialog
+                booking={proofVerifyBooking}
+                open={proofVerifyBooking !== null}
+                onOpenChange={(open) => !open && setProofVerifyBookingId(null)}
+                canVerifyPayments={canVerifyPayments}
+                itemSingular={itemSingular}
+                quickWaUrl={proofVerifyBooking ? buildQuickWaUrl(proofVerifyBooking) : '#'}
+            />
 
-                            <div className="flex flex-wrap gap-2 border-t border-divider pt-3">
-                                {canAccessPos && (
-                                    <>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 sm:flex-initial"
-                                            onClick={() => {
-                                                const targetId = selectedCalendarBooking.id;
-                                                setSelectedCalendarBooking(null);
-                                                setCashierBookingId(targetId);
-                                            }}
-                                        >
-                                            <Wallet className="size-3.5" aria-hidden="true" />
-                                            Kasir / Bayar
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 sm:flex-initial"
-                                            onClick={() => {
-                                                const targetId = selectedCalendarBooking.id;
-                                                setSelectedCalendarBooking(null);
-                                                setReceiptBookingId(targetId);
-                                            }}
-                                        >
-                                            <Printer className="size-3.5" aria-hidden="true" />
-                                            Struk / Cetak
-                                        </Button>
-                                    </>
-                                )}
+            <BookingRescheduleDialog
+                booking={rescheduleBooking}
+                staffOptions={staffOptions}
+                todayDate={todayStr}
+                onClose={() => setRescheduleBooking(null)}
+            />
 
-                                <Button asChild variant="outline" size="sm" className="flex-1 sm:flex-initial">
-                                    <a
-                                        href={buildQuickWaUrl(selectedCalendarBooking)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <MessageCircle className="size-3.5" aria-hidden="true" />
-                                        WhatsApp
-                                    </a>
-                                </Button>
-
-                                {(selectedCalendarBooking.reservation_status === 'pending' ||
-                                    selectedCalendarBooking.reservation_status === 'confirmed') && (
-                                    <Button asChild variant="outline" size="sm" className="flex-1 sm:flex-initial">
-                                        <Link href={route('dashboard.bookings.reschedule.edit', selectedCalendarBooking.id)}>
-                                            <CalendarClock className="size-3.5" aria-hidden="true" />
-                                            Ubah Jadwal
-                                        </Link>
-                                    </Button>
-                                )}
-
-                                {canVerifyPayments && selectedCalendarBooking.payment_status === 'waiting_verification' && (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        className="w-full sm:w-auto"
-                                        onClick={() => {
-                                            verifyDp(selectedCalendarBooking.id);
-                                            setSelectedCalendarBooking(null);
-                                        }}
-                                    >
-                                        <Check className="size-3.5" aria-hidden="true" />
-                                        Verifikasi Uang Muka
-                                    </Button>
-                                )}
-
-                                {canVerifyPayments &&
-                                    selectedCalendarBooking.payment_status !== 'settled' &&
-                                    selectedCalendarBooking.payment_status !== 'waiting_verification' &&
-                                    selectedCalendarBooking.reservation_status !== 'cancelled' &&
-                                    selectedCalendarBooking.reservation_status !== 'no_show' && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 sm:flex-initial"
-                                            onClick={() => {
-                                                settlePayment(selectedCalendarBooking.id);
-                                                setSelectedCalendarBooking(null);
-                                            }}
-                                        >
-                                            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                                            Tandai Lunas
-                                        </Button>
-                                    )}
-
-                                {selectedCalendarBooking.reservation_status === 'confirmed' && (
-                                    <>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 sm:flex-initial"
-                                            onClick={() => {
-                                                updateStatus(selectedCalendarBooking.id, 'completed');
-                                                setSelectedCalendarBooking(null);
-                                            }}
-                                        >
-                                            Tandai Selesai
-                                        </Button>
-                                        {supportsNoShow && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="w-full sm:w-auto"
-                                                onClick={() => {
-                                                    setNoShowBooking(selectedCalendarBooking);
-                                                    setSelectedCalendarBooking(null);
-                                                }}
-                                            >
-                                                Tandai Tidak Hadir
-                                            </Button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+            <BookingCancelDialog
+                booking={cancelBooking}
+                open={cancelBooking !== null}
+                onOpenChange={(open) => !open && setCancelBooking(null)}
+                itemSingular={itemSingular}
+            />
 
             <ConfirmDialog
                 open={noShowBooking !== null}
@@ -1851,7 +2004,7 @@ export default function BookingsIndex({
             <CashierSettlementDialog
                 booking={cashierBooking}
                 open={cashierBooking !== null}
-                onOpenChange={(open) => !open && setCashierBookingId(null)}
+                onOpenChange={(open) => !open && setCashierState(null)}
                 services={services.map((s) => ({
                     id: s.id,
                     name: s.name,
@@ -1860,6 +2013,8 @@ export default function BookingsIndex({
                 }))}
                 addons={addons}
                 canVerifyPayments={canVerifyPayments}
+                canManageBookings={canManageBookings}
+                defaultMarkCompleted={cashierState?.markCompleted ?? false}
                 supportsCommissions={config.nav.showCommissions}
                 businessName={businessName}
                 businessAddress={businessAddress}

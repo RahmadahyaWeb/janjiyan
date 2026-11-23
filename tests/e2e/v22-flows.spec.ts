@@ -102,8 +102,11 @@ for (const vp of VIEWPORTS) {
                 await page.goto('/dashboard/bookings');
                 await page.waitForLoadState('networkidle');
 
-                // Open Cashier Settlement dialog on the first visible booking row/card
-                const cashierBtn = page.locator('button:has-text("Kasir / Bayar"):visible').first();
+                // Open Cashier Settlement dialog via row "..." actions menu
+                const moreMenuBtn = page.locator('button[aria-label^="Aksi lainnya"]:visible').first();
+                await expect(moreMenuBtn).toBeVisible();
+                await moreMenuBtn.click();
+                const cashierBtn = page.getByRole('menuitem', { name: 'Kasir / Bayar' });
                 await expect(cashierBtn).toBeVisible();
                 await cashierBtn.click();
 
@@ -135,8 +138,9 @@ for (const vp of VIEWPORTS) {
                 await page.keyboard.press('Escape');
                 await expect(dialog).toBeHidden();
 
-                // Open dedicated Struk / Cetak dialog
-                const receiptBtn = page.locator('button:has-text("Struk / Cetak"):visible').first();
+                // Open dedicated Struk / Cetak dialog via row "..." actions menu
+                await moreMenuBtn.click();
+                const receiptBtn = page.getByRole('menuitem', { name: 'Struk / Cetak' });
                 await expect(receiptBtn).toBeVisible();
                 await receiptBtn.click();
 
@@ -212,7 +216,10 @@ for (const vp of VIEWPORTS) {
                 await page.goto('/dashboard/bookings');
                 await page.waitForLoadState('networkidle');
 
-                const receiptBtn = page.locator('button:has-text("Struk / Cetak"):visible').first();
+                const moreMenuBtn = page.locator('button[aria-label^="Aksi lainnya"]:visible').first();
+                await expect(moreMenuBtn).toBeVisible();
+                await moreMenuBtn.click();
+                const receiptBtn = page.getByRole('menuitem', { name: 'Struk / Cetak' });
                 await expect(receiptBtn).toBeVisible();
                 await receiptBtn.click();
 
