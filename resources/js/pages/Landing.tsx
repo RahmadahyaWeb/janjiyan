@@ -1,6 +1,4 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
     Bell,
     Calendar,
@@ -16,15 +14,13 @@ import {
     Star,
     X,
 } from 'lucide-react';
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRupiah } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PageProps, SubscriptionPlan } from '@/types';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface LandingProps {
     plans: SubscriptionPlan[];
@@ -319,26 +315,12 @@ function SectionHeading({ id, eyebrow, title, desc, children }: { id: string; ey
                     <span className="mb-4 inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">{eyebrow}</span>
                 )}
                 <h2 id={id} className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                    <WordReveal>{title}</WordReveal>
+                    {title}
                 </h2>
                 {desc && <p className="mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">{desc}</p>}
             </div>
             {children}
         </div>
-    );
-}
-
-// Splits a heading into word spans so GSAP can reveal them one by one on scroll.
-function WordReveal({ children }: { children: string }) {
-    return (
-        <span data-word-reveal className="inline">
-            {children.split(' ').map((word, idx) => (
-                <Fragment key={idx}>
-                    {idx > 0 && ' '}
-                    <span data-word className="inline-block">{word}</span>
-                </Fragment>
-            ))}
-        </span>
     );
 }
 
@@ -349,7 +331,6 @@ export default function Landing({ plans }: LandingProps) {
     const [scrolled, setScrolled] = useState(false);
     const [servicePrice, setServicePrice] = useState(75000);
     const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
-    const pageRef = useRef<HTMLDivElement>(null);
 
     const faqs = buildFaqs(plans);
     const basicPlan = plans.find((plan) => plan.slug === 'basic') ?? plans[0];
@@ -385,73 +366,13 @@ export default function Landing({ plans }: LandingProps) {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    useEffect(() => {
-        const root = pageRef.current;
-        if (!root) return;
-
-        const mm = gsap.matchMedia();
-
-        mm.add('(prefers-reduced-motion: no-preference)', () => {
-            // Section headings: each word fades up as its heading scrolls into view.
-            root.querySelectorAll<HTMLElement>('[data-word-reveal]').forEach((heading) => {
-                gsap.from(heading.querySelectorAll('[data-word]'), {
-                    yPercent: 60,
-                    opacity: 0,
-                    duration: 0.6,
-                    stagger: 0.04,
-                    ease: 'power3.out',
-                    clearProps: 'transform,opacity',
-                    scrollTrigger: {
-                        trigger: heading,
-                        start: 'top 85%',
-                        once: true,
-                    },
-                });
-            });
-            gsap.from('[data-hero-item]', {
-                y: 12,
-                opacity: 0,
-                duration: 0.45,
-                stagger: 0.06,
-                ease: 'power3.out',
-                clearProps: 'transform,opacity',
-            });
-
-            const staggerGroups = [
-                { selector: '[data-pain-card]', trigger: '#masalah' },
-                { selector: '[data-journey-card]', trigger: '#alur' },
-                { selector: '[data-type-card]', trigger: '#tipe-usaha' },
-                { selector: '[data-feature-tile]', trigger: '#fitur' },
-                { selector: '[data-pricing-card]', trigger: '#harga' },
-            ];
-
-            for (const group of staggerGroups) {
-                gsap.from(group.selector, {
-                    y: 16,
-                    opacity: 0,
-                    duration: 0.5,
-                    stagger: 0.07,
-                    ease: 'power3.out',
-                    clearProps: 'transform,opacity',
-                    scrollTrigger: {
-                        trigger: group.trigger,
-                        start: 'top 82%',
-                        once: true,
-                    },
-                });
-            }
-        });
-
-        return () => mm.revert();
-    }, []);
-
     const navLinkClass =
         'inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
     const footerLinkClass =
         'inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none';
 
     return (
-        <div ref={pageRef} className="min-h-screen bg-canvas text-ink">
+        <div className="min-h-screen bg-canvas text-ink">
             <Head title="Janjiyan: link booking, uang muka langsung ke rekening kamu">
                 <meta
                     head-key="description"
@@ -519,28 +440,24 @@ export default function Landing({ plans }: LandingProps) {
                 <section className={cn(CONTAINER, 'grid items-center gap-12 pt-10 pb-16 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16 lg:pt-20 lg:pb-20')}>
                     <div className="min-w-0">
                         <p
-                            data-hero-item
                             className="mb-5 inline-flex max-w-full items-center rounded-full bg-bone px-4 py-1.5 text-xs font-semibold text-ink"
                         >
                             Untuk barbershop, salon, lapangan, studio, laundry, dan bengkel
                         </p>
 
                         <h1
-                            data-hero-item
                             className="text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl lg:text-[64px] text-balance"
                         >
                             Pelanggan pesan sendiri lewat satu link.
                         </h1>
 
                         <p
-                            data-hero-item
                             className="mt-5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty"
                         >
                             Mereka pilih layanan dan jadwal yang masih kosong, lalu bayar uang muka langsung ke rekening atau QRIS kamu. Kamu tidak perlu balas chat satu per satu.
                         </p>
 
                         <div
-                            data-hero-item
                             className="mt-6 inline-flex max-w-full items-center gap-2.5 rounded-full bg-bone py-2 pr-2 pl-4 text-sm"
                         >
                             <LinkIcon className="size-4 shrink-0 text-mute" aria-hidden="true" />
@@ -550,7 +467,7 @@ export default function Landing({ plans }: LandingProps) {
                             </span>
                         </div>
 
-                        <div data-hero-item className="mt-7 flex flex-col gap-3 sm:flex-row">
+                        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                             <Button asChild size="lg" className="min-h-14 h-auto w-full py-3 whitespace-normal text-center sm:w-auto">
                                 <Link href={dashboardHref}>{primaryCtaLabel}</Link>
                             </Button>
@@ -559,14 +476,14 @@ export default function Landing({ plans }: LandingProps) {
                             </Button>
                         </div>
 
-                        <ul data-hero-item className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-mute">
+                        <ul className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-mute">
                             <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />Gratis 14 hari</li>
                             <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />0% potongan uang muka</li>
                             <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />Pelanggan tanpa install aplikasi</li>
                         </ul>
                     </div>
 
-                    <div data-hero-item className="mx-auto w-full max-w-[320px] lg:max-w-none">
+                    <div className="mx-auto w-full max-w-[320px] lg:max-w-none">
                         <FlowCarousel />
                     </div>
                 </section>
@@ -583,7 +500,7 @@ export default function Landing({ plans }: LandingProps) {
                         {PAINS.map((pain) => {
                             const Icon = pain.icon;
                             return (
-                                <li key={pain.type} data-pain-card className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-6">
+                                <li key={pain.type} className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-6">
                                     <p className="flex items-center gap-2 text-xs font-semibold text-mute">
                                         <Icon className="size-4 shrink-0 text-ink" aria-hidden="true" />
                                         <span>{pain.type} · {pain.contoh}</span>
@@ -611,7 +528,6 @@ export default function Landing({ plans }: LandingProps) {
                         {JOURNEY.map((step, idx) => (
                             <li
                                 key={step.title}
-                                data-journey-card
                                 className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6"
                             >
                                 <div className="flex h-36 items-end justify-center overflow-hidden rounded-sm bg-bone px-4 pt-3">
@@ -637,7 +553,6 @@ export default function Landing({ plans }: LandingProps) {
                     {TESTIMONIALS.map((t) => (
                         <figure
                             key={t.name}
-                            data-testimonial-card
                             className="mt-4 flex flex-col gap-6 rounded-md bg-bone p-6 sm:p-10 lg:mt-6"
                         >
                             <blockquote className="max-w-3xl text-lg leading-relaxed text-ink text-pretty sm:text-2xl">
@@ -668,7 +583,7 @@ export default function Landing({ plans }: LandingProps) {
                         {BUSINESS_TYPES.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <li key={item.name} data-type-card className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6">
+                                <li key={item.name} className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 sm:p-6">
                                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
                                         <Icon className="size-5" aria-hidden="true" />
                                     </div>
@@ -693,7 +608,7 @@ export default function Landing({ plans }: LandingProps) {
                         {FEATURES.map((tile) => {
                             const Icon = tile.icon;
                             return (
-                                <li key={tile.title} data-feature-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-6">
+                                <li key={tile.title} className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-6">
                                     <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
                                         <Icon className="size-4" aria-hidden="true" />
                                     </div>
@@ -747,7 +662,6 @@ export default function Landing({ plans }: LandingProps) {
                             return (
                                 <div
                                     key={plan.id}
-                                    data-pricing-card
                                     className={cn(
                                         'flex min-w-0 flex-col justify-between rounded-md p-5 transition-[translate,border-color,background-color] duration-300 ease-out motion-safe:hover:-translate-y-1 sm:p-6',
                                         isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas hover:border-hairline'
@@ -1038,7 +952,7 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
                         <div className="min-w-0">
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
-                                <WordReveal>Coba dulu 14 hari, gratis.</WordReveal>
+                                Coba dulu 14 hari, gratis.
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
                                 Daftar, isi layanan dan rekening, lalu pasang link di bio. Lihat sendiri berapa chat yang berkurang. Kalau cocok, baru pilih paket.

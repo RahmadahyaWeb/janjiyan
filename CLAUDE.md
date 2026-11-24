@@ -8,7 +8,7 @@
 
 - **Backend:** Laravel 13 (PHP 8.5), Inertia.js v3 (`inertiajs/inertia-laravel`), Laravel Socialite (Google OAuth), Tightenco Ziggy.
 - **Database:** SQLite (WAL mode) for local development & tests; PostgreSQL/MySQL compatible migrations and composite indexes for production.
-- **Frontend:** React 19 + TypeScript 7, Tailwind CSS v4 (`@tailwindcss/vite`), shadcn/ui (Radix UI primitives), Lucide React icons, GSAP, `date-fns`.
+- **Frontend:** React 19 + TypeScript 7, Tailwind CSS v4 (`@tailwindcss/vite`), shadcn/ui (Radix UI primitives), Lucide React icons, `date-fns`.
 - **Print, Export & QR:** `react-to-print` v3+ (`58mm`/`80mm` thermal receipts & drop-off item tags), `html-to-image` (WhatsApp PNG receipts), `qrcode` (printable posters, invoice QR, and review stickers).
 - **Testing & QA:** PHPUnit 12 (`php artisan test`), Laravel Pint (`./vendor/bin/pint`), TypeScript (`npm run typecheck`), Playwright E2E (`npx playwright test`).
 
