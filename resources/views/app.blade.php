@@ -5,7 +5,12 @@
             $appName = config('app.name', 'Janjiyan');
             $seoTitle = $seo['title'] ?? "{$appName} — Sistem booking, uang muka, dan pesanan untuk bisnis jasa";
             $seoDescription = $seo['description'] ?? 'Kelola janji temu, sewa lapangan atau studio, sampai titipan laundry lewat satu link. Uang muka langsung masuk ke rekening kamu tanpa potongan, plus pengingat sebelum jadwal. Coba gratis 14 hari.';
-            $seoImage = $seo['image'] ?? url('/og-default.png');
+            $defaultOgImage = url('/og-default.png');
+            $seoImage = $seo['image'] ?? $defaultOgImage;
+            $seoImageAlt = $seo['image_alt'] ?? $seoTitle;
+            $isDefaultOgImage = $seoImage === $defaultOgImage;
+            $seoImageWidth = $seo['image_width'] ?? ($isDefaultOgImage ? 1200 : null);
+            $seoImageHeight = $seo['image_height'] ?? ($isDefaultOgImage ? 630 : null);
             $seoUrl = $seo['url'] ?? url()->current();
             $seoNoindex = (bool) ($seo['noindex'] ?? false)
                 || request()->routeIs('dashboard', 'dashboard.*', 'admin.*', 'login', 'register', 'password.*', 'verification.*');
@@ -25,15 +30,22 @@
         <link head-key="canonical" rel="canonical" href="{{ $seoUrl }}" />
         <meta head-key="description" name="description" content="{{ $seoDescription }}" />
         <meta property="og:type" content="website" />
+        <meta property="og:locale" content="id_ID" />
         <meta property="og:site_name" content="{{ $appName }}" />
         <meta head-key="og:title" property="og:title" content="{{ $seoTitle }}" />
         <meta head-key="og:description" property="og:description" content="{{ $seoDescription }}" />
         <meta head-key="og:image" property="og:image" content="{{ $seoImage }}" />
+        <meta head-key="og:image:alt" property="og:image:alt" content="{{ $seoImageAlt }}" />
+        @if ($seoImageWidth && $seoImageHeight)
+            <meta head-key="og:image:width" property="og:image:width" content="{{ $seoImageWidth }}" />
+            <meta head-key="og:image:height" property="og:image:height" content="{{ $seoImageHeight }}" />
+        @endif
         <meta head-key="og:url" property="og:url" content="{{ $seoUrl }}" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta head-key="twitter:title" name="twitter:title" content="{{ $seoTitle }}" />
         <meta head-key="twitter:description" name="twitter:description" content="{{ $seoDescription }}" />
         <meta head-key="twitter:image" name="twitter:image" content="{{ $seoImage }}" />
+        <meta head-key="twitter:image:alt" name="twitter:image:alt" content="{{ $seoImageAlt }}" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />

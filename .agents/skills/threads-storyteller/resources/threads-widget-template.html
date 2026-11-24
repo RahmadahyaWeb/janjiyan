@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Janjiyan Threads Storyteller Studio</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-0 m-0">
+  <div class="py-2 space-y-3">
+    <!-- Top Header & Mode Filter -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--card-border)]">
+      <div class="flex flex-wrap items-center gap-1.5" id="mode-tabs"></div>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-add-post" type="button" class="px-2.5 py-1 rounded-full text-xs font-medium border border-[var(--card-border)] bg-[var(--card)] text-[var(--foreground)] hover:opacity-90 transition cursor-pointer">
+          + Tambah Utas
+        </button>
+        <button id="btn-copy-all" type="button" class="px-3 py-1 rounded-full text-xs font-medium bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition cursor-pointer">
+          Salin Semua Utas
+        </button>
+      </div>
+    </div>
+
+    <!-- Preset Story Selector & Meta Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2 flex-1 min-w-[220px]">
+        <span class="text-[var(--muted-foreground)] shrink-0">Topik Cerita:</span>
+        <select id="story-select" class="flex-1 px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--card)] text-[var(--foreground)] text-xs focus:outline-none"></select>
+      </div>
+      <div id="thread-stats" class="font-mono tabular-nums text-[var(--muted-foreground)] text-xs"></div>
+    </div>
+
+    <!-- Threads Cards Container -->
+    <div id="cards-container" class="space-y-2.5 max-h-[340px] overflow-y-auto pr-1"></div>
+  </div>
+
+  <script>
+    const THREADS_DATA = [
+      {
+        id: "soklenn-origin",
+        mode: "build_in_public",
+        modeLabel: "Catatan Founder",
+        title: "Dari Sistem Internal Cuci Sepatu Soklenn Jadi Janjiyan",
+        vertical: "dropoff",
+        posts: [
+          {
+            role: "PEMBUKA",
+            text: "Halo warga Threads, salam kenal ya. Ini utas pertama gue di sini.\n\nSehari-hari gue jalanin usaha cuci sepatu namanya Soklenn.\n\nDari awal, Soklenn sebenarnya udah punya sistem web sendiri yang gue bikin khusus buat ngurus operasional harian di toko."
+          },
+          {
+            role: "CERITA",
+            text: "Kenapa waktu itu gue bela-belain bikin sistem sendiri buat Soklenn? Karena jujur aja, ngurus sepatu pelanggan yang masuk tiap hari pakai nota kertas sama chat manual itu lama-lama bikin pusing.\n\nBelum lagi kalau pelanggan nanya sepatu udah selesai belum, atau pas malam harus nyocokin uang kasir."
+          },
+          {
+            role: "CERITA",
+            text: "Begitu semua operasional di Soklenn pindah ke sistem web itu, kerjaan di toko jadi jauh lebih tenang.\n\nSepatu masuk langsung ada catatan dan labelnya, antrean mana yang lagi dikerjain dan mana yang siap diambil kelihatan jelas, urusan kasir juga langsung nyambung."
+          },
+          {
+            role: "CERITA",
+            text: "Sampai akhirnya beberapa waktu lalu gue kepikiran satu hal:\n\nSayang banget ya kalau sistem yang udah ngebantu operasional Soklenn tiap hari ini cuma gue pake sendiri. Kenapa nggak gue buka dan gue share aja ke temen-temen UMKM lain, siapa tahu di luar sana ada yang lagi butuh juga."
+          },
+          {
+            role: "PENUTUP",
+            text: "Dari pikiran sederhana itu akhirnya lahir Janjiyan. Bukan cuma buat usaha cuci sepatu atau laundry aja, tapi gue rapiin juga biar bisa dipake temen-temen yang punya barbershop, salon, sampai studio.\n\nDi sini ada yang lagi jalanin usaha jasa juga nggak? Salam kenal ya, gue Rahmat. Cerita-cerita dong usaha lo di bidang apa!"
+          }
+        ]
+      }
+    ];
+
+    let currentMode = "all";
+    let currentStoryIndex = 0;
+
+    const MODES = [
+      { key: "all", label: "Semua Cerita" },
+      { key: "umkm_slice_of_life", label: "Cerita Keseharian" },
+      { key: "build_in_public", label: "Catatan Founder" },
+      { key: "merchant_story", label: "Cerita di Toko" },
+      { key: "behind_the_counter", label: "Di Balik Meja Kasir" }
+    ];
+
+    function getFilteredStories() {
+      if (currentMode === "all") return THREADS_DATA.map((s, idx) => ({ ...s, originalIndex: idx }));
+      return THREADS_DATA
+        .map((s, idx) => ({ ...s, originalIndex: idx }))
+        .filter(s => s.mode === currentMode);
+    }
+
+    function copyText(text, btn, defaultLabel) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showCopied(btn, defaultLabel)).catch(() => fallbackCopy(text, btn, defaultLabel));
+      } else {
+        fallbackCopy(text, btn, defaultLabel);
+      }
+    }
+
+    function fallbackCopy(text, btn, defaultLabel) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+      showCopied(btn, defaultLabel);
+    }
+
+    function showCopied(btn, defaultLabel) {
+      btn.textContent = "Tersalin!";
+      setTimeout(() => { btn.textContent = defaultLabel; }, 1400);
+    }
+
+    function renderModes() {
+      const container = document.getElementById("mode-tabs");
+      container.innerHTML = "";
+      MODES.forEach(m => {
+        const active = currentMode === m.key;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = active
+          ? "px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--primary)] text-[var(--primary-foreground)] transition cursor-pointer"
+          : "px-2.5 py-1 rounded-full text-xs font-medium border border-[var(--card-border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition cursor-pointer";
+        btn.textContent = m.label;
+        btn.onclick = () => {
+          currentMode = m.key;
+          const filtered = getFilteredStories();
+          if (filtered.length > 0) currentStoryIndex = filtered[0].originalIndex;
+          renderAll();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderSelect() {
+      const select = document.getElementById("story-select");
+      const filtered = getFilteredStories();
+      select.innerHTML = "";
+      filtered.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = String(s.originalIndex);
+        opt.textContent = `[${s.modeLabel}] ${s.title}`;
+        if (s.originalIndex === currentStoryIndex) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.onchange = (e) => {
+        currentStoryIndex = Number(e.target.value);
+        renderCards();
+      };
+    }
+
+    function updateStats() {
+      const story = THREADS_DATA[currentStoryIndex];
+      const statsEl = document.getElementById("thread-stats");
+      const overLimit = story.posts.filter(p => p.text.length > 500).length;
+      statsEl.textContent = overLimit > 0
+        ? `${story.posts.length} utas (${overLimit} melebihi 500 karakter)`
+        : `${story.posts.length} utas • Semua <= 500 karakter`;
+    }
+
+    function renderCards() {
+      const story = THREADS_DATA[currentStoryIndex];
+      const container = document.getElementById("cards-container");
+      container.innerHTML = "";
+      updateStats();
+
+      story.posts.forEach((post, idx) => {
+        const card = document.createElement("div");
+        card.className = "p-3 rounded-xl border border-[var(--card-border)] bg-[var(--card)] space-y-2";
+
+        const header = document.createElement("div");
+        header.className = "flex items-center justify-between gap-2 text-xs";
+
+        const leftBadge = document.createElement("div");
+        leftBadge.className = "flex items-center gap-2";
+        leftBadge.innerHTML = `
+          <span class="font-mono font-semibold text-[var(--foreground)]">@janjiyan.id</span>
+          <span class="text-[var(--muted-foreground)]">•</span>
+          <span class="font-mono px-2 py-0.5 rounded-full border border-[var(--card-border)] text-[var(--foreground)]">Utas ${idx + 1}/${story.posts.length}</span>
+          <span class="font-mono px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--secondary-foreground)]">${post.role}</span>
+        `;
+
+        const rightActions = document.createElement("div");
+        rightActions.className = "flex items-center gap-2";
+
+        const charCount = document.createElement("span");
+        const updateCharBadge = (len) => {
+          charCount.textContent = `${len}/500`;
+          charCount.className = len > 500
+            ? "font-mono tabular-nums text-xs font-semibold text-[var(--error)]"
+            : "font-mono tabular-nums text-xs text-[var(--muted-foreground)]";
+        };
+        updateCharBadge(post.text.length);
+
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        const defaultCopyLabel = `Salin #${idx + 1}`;
+        copyBtn.textContent = defaultCopyLabel;
+        copyBtn.className = "px-2.5 py-0.5 rounded-full text-xs font-medium border border-[var(--card-border)] text-[var(--foreground)] hover:bg-[var(--secondary)] transition cursor-pointer";
+        copyBtn.onclick = () => copyText(story.posts[idx].text, copyBtn, defaultCopyLabel);
+
+        rightActions.appendChild(charCount);
+        rightActions.appendChild(copyBtn);
+
+        if (story.posts.length > 1) {
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.textContent = "Hapus";
+          delBtn.className = "px-2 py-0.5 rounded-full text-xs text-[var(--muted-foreground)] hover:text-[var(--error)] transition cursor-pointer";
+          delBtn.onclick = () => {
+            story.posts.splice(idx, 1);
+            renderCards();
+          };
+          rightActions.appendChild(delBtn);
+        }
+
+        header.appendChild(leftBadge);
+        header.appendChild(rightActions);
+
+        const textarea = document.createElement("textarea");
+        textarea.rows = Math.max(3, Math.min(7, post.text.split("\n").length + 1));
+        textarea.value = post.text;
+        textarea.className = "w-full bg-transparent text-[var(--foreground)] text-xs leading-relaxed resize-y focus:outline-none border-t border-[var(--card-border)] pt-2 font-sans";
+        textarea.oninput = (e) => {
+          story.posts[idx].text = e.target.value;
+          updateCharBadge(e.target.value.length);
+          updateStats();
+        };
+
+        card.appendChild(header);
+        card.appendChild(textarea);
+        container.appendChild(card);
+      });
+    }
+
+    document.getElementById("btn-add-post").onclick = () => {
+      const story = THREADS_DATA[currentStoryIndex];
+      story.posts.push({
+        role: "BODY",
+        text: "Tulis lanjutan cerita utas di sini (maksimal 500 karakter)..."
+      });
+      renderCards();
+      const container = document.getElementById("cards-container");
+      container.scrollTop = container.scrollHeight;
+    };
+
+    document.getElementById("btn-copy-all").onclick = (e) => {
+      const story = THREADS_DATA[currentStoryIndex];
+      const joined = story.posts
+        .map((p, i) => `--- [Utas ${i + 1}/${story.posts.length} • ${p.role}] ---\n${p.text}`)
+        .join("\n\n");
+      copyText(joined, e.currentTarget, "Salin Semua Utas");
+    };
+
+    function renderAll() {
+      renderModes();
+      renderSelect();
+      renderCards();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>

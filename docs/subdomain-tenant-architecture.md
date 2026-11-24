@@ -222,7 +222,14 @@ Update `server_name` to accept both apex and wildcard subdomains, and add an opt
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 80;
+    server_name janjiyan.web.id *.janjiyan.web.id;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
     server_name www.janjiyan.web.id;
 
     ssl_certificate     /etc/ssl/cloudflare/janjiyan.pem;
@@ -232,7 +239,8 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name janjiyan.web.id *.janjiyan.web.id;
 
     root /var/www/janjiyan/public;

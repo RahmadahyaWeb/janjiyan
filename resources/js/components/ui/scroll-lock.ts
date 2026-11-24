@@ -33,10 +33,10 @@ function acquireBodyLock(): void {
     appInert: appEl ? appEl.inert : false,
   }
 
-  // Lock scroll via overflow + overscroll-behavior instead of position:fixed so sticky layouts stay anchored.
+  // Lock root viewport scroll via html overflow:hidden while keeping body overflow:clip so body never becomes a separate scroll container that detaches sticky layouts.
   html.style.overflow = "hidden"
   html.style.overscrollBehavior = "none"
-  body.style.overflow = "hidden"
+  body.style.overflow = "clip"
   body.style.overscrollBehavior = "none"
 
   if (scrollbarWidth > 0 && computedPaddingRight === 0) {
