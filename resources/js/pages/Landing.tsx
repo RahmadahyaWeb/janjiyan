@@ -6,14 +6,12 @@ import {
     Calendar,
     Check,
     ChevronDown,
-    Contact,
     Link as LinkIcon,
     MapPin,
     Package,
     ReceiptText,
     Scissors,
     Star,
-    Users,
     X,
 } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -39,22 +37,50 @@ const JOURNEY = [
         illustrationAlt: 'Ilustrasi pelanggan memindai poster QR booking di meja kasir studio',
     },
     {
-        title: 'Pilih jam, bayar uang muka',
+        title: 'Pilih jadwal, bayar uang muka',
         desc: 'Pilih layanan, jam, atau jumlah barang. Uang muka ditransfer langsung ke rekening atau QRIS kamu, tanpa potongan dari Janjiyan.',
         illustration: '/images/editorial-feature-dp.jpg',
         illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran uang muka di smartphone',
     },
     {
         title: 'Jadwal terkunci otomatis',
-        desc: 'Jam atau kuota harian langsung terkunci. Kalau sampai batas waktu belum dibayar, slotnya terbuka lagi. Pengingat email dikirim sendiri sebelum jadwal.',
+        desc: 'Jam atau kuota harian langsung dipegang untuk pelanggan itu. Kalau uang muka belum masuk sampai batas waktu, slotnya terbuka lagi. Pengingat email terkirim sendiri sebelum jadwal.',
         illustration: '/images/editorial-feature-calendar.jpg',
         illustrationAlt: 'Ilustrasi tim memantau papan jadwal harian dan menerima notifikasi booking di smartphone',
     },
     {
-        title: 'Datang, lunas, selesai',
-        desc: 'Kasir mencatat pelunasan dan mencetak struk atau tag barang. Setelah selesai, pelanggan dapat link ulasan Google Maps di invoice-nya.',
+        title: 'Lunas di kasir, lalu minta ulasan',
+        desc: 'Saat tamu datang atau barang diambil, kasir catat pelunasan dan cetak struk atau tag barang. Invoice pelanggan lalu berisi link ulasan Google Maps.',
         illustration: '/images/editorial-feature-commission.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis dan tim melihat grafik rekap komisi bulanan otomatis di laptop',
+    },
+];
+
+// Rotating word in the hero, one per business type example.
+const HERO_WORDS = ['barbershop', 'salon', 'klinik', 'lapangan', 'studio foto', 'laundry', 'cuci sepatu', 'bengkel'];
+
+// Same pain (everything runs through chat), told once per business type.
+const PAINS = [
+    {
+        icon: Scissors,
+        type: 'Janji temu',
+        contoh: 'Barbershop, salon, klinik',
+        chat: '“Kak, jam 4 masih bisa?”',
+        desc: 'Kamu balas di sela kerja. Lalu yang sudah janji malah tidak datang, padahal jamnya sudah kamu tolak untuk orang lain.',
+    },
+    {
+        icon: MapPin,
+        type: 'Sewa tempat',
+        contoh: 'Lapangan, studio, kelas',
+        chat: '“Sabtu sore lapangan 2 kosong?”',
+        desc: 'Jadwal dicatat di grup atau buku. Sekali salah tulis, dua tim datang di jam yang sama.',
+    },
+    {
+        icon: Package,
+        type: 'Titip barang',
+        contoh: 'Laundry, cuci sepatu, servis',
+        chat: '“Sepatu saya sudah jadi belum?”',
+        desc: 'Pertanyaan yang sama datang berkali-kali sehari, dan titipan bisa menumpuk melebihi kapasitas.',
     },
 ];
 
@@ -65,8 +91,8 @@ const BUSINESS_TYPES = [
         icon: Scissors,
         tab: 'Janji Temu & Staff',
         contoh: 'Barbershop, salon, klinik, spa, pet grooming',
-        headline: 'Pelanggan pilih kapster favoritnya, lalu ambil jam yang masih kosong.',
-        desc: 'Setiap staff punya jadwal, jam istirahat, dan cuti sendiri. Pelanggan hanya melihat jam yang benar-benar bisa dipesan.',
+        headline: 'Pelanggan pilih staff favoritnya, dan cuma melihat jam yang benar-benar bisa.',
+        desc: 'Setiap staff punya jadwal, jam istirahat, dan cuti sendiri. Jam yang sudah dipesan atau sedang libur tidak muncul di link.',
         points: [
             'Kalender per staff dengan shift, istirahat, dan cuti',
             'Durasi add-on dan jeda antar tamu ikut dihitung, jadi jadwal tidak bentrok',
@@ -79,8 +105,8 @@ const BUSINESS_TYPES = [
         icon: MapPin,
         tab: 'Booking Tempat / Sesi',
         contoh: 'Lapangan padel, studio foto, kelas yoga, ruang meeting',
-        headline: 'Pelanggan pilih lapangan atau kelas, lalu lihat sisa tempat di tiap sesi.',
-        desc: 'Tidak ada staff yang dipilih. Yang penting kapasitas per sesi, sewa perlengkapan, dan jeda bersih-bersih antar sesi.',
+        headline: 'Tidak ada lagi dua tim yang datang di jam yang sama.',
+        desc: 'Pelanggan melihat sisa tempat di tiap sesi. Begitu pesanan masuk, kapasitasnya langsung terpakai, dan jeda bersih-bersih antar sesi ikut dihitung.',
         points: [
             'Kapasitas per sesi, tanpa perlu memilih staff',
             'Add-on seperti sewa raket atau perlengkapan, plus jeda bersih-bersih antar sesi',
@@ -93,8 +119,8 @@ const BUSINESS_TYPES = [
         icon: Package,
         tab: 'Layanan Titip / Drop-off',
         contoh: 'Laundry, cuci sepatu, servis elektronik, bengkel',
-        headline: 'Pelanggan titip satu atau beberapa layanan sekaligus, lalu pantau progresnya.',
-        desc: 'Kuota harian dihitung per satuan: item, pasang, kg, pcs, atau unit. Estimasi selesai dihitung dari lama pengerjaan tiap layanan.',
+        headline: 'Pelanggan cek sendiri titipannya sudah sampai mana.',
+        desc: 'Status berjalan dari menunggu diantar, dikerjakan, siap diambil, sampai selesai. Kuota harian membatasi titipan supaya tidak melebihi kapasitas kamu.',
         points: [
             'Kuota harian per satuan: item, pasang, kg, pcs, atau unit',
             'Antar-jemput opsional, dan estimasi selesai ikut otomatis',
@@ -116,16 +142,6 @@ const DASHBOARD_TILES = [
         title: 'Notifikasi langsung',
         desc: 'Pesanan baru, bukti uang muka, dan ulasan masuk ke lonceng dashboard, Telegram, dan email.',
     },
-    {
-        icon: Contact,
-        title: 'Data pelanggan',
-        desc: 'Riwayat order, jumlah batal, tag, blokir nomor bermasalah, dan gabung profil ganda.',
-    },
-    {
-        icon: Users,
-        title: 'Akun tim',
-        desc: 'Akun kasir dan admin dengan hak akses sendiri. Jumlah akun mengikuti paket kamu.',
-    },
 ];
 
 const CASHIER_POINTS = [
@@ -136,7 +152,7 @@ const CASHIER_POINTS = [
 ];
 
 const REVIEW_POINTS = [
-    'Rating tinggi (default 4 bintang ke atas) diarahkan ke Google Maps Review, dengan tombol salin komentar',
+    'Batas bintang bisa kamu atur (default 4 ke atas), lengkap dengan tombol salin komentar untuk Google',
     'Rating rendah masuk sebagai masukan privat di dashboard, plus notifikasi Telegram ke pemilik',
     'Cetak stiker QR meja: kotak PNG, tent card A6, atau lembar A4 (2×2 dan 3×3)',
 ];
@@ -151,8 +167,8 @@ const INCLUDED_IN_ALL_PLANS = [
 ];
 
 const PLAN_TAGLINES: Record<string, string> = {
-    basic: 'Untuk usaha yang baru mulai merapikan pesanan, jadwal, dan kasir sendiri.',
-    professional: 'Untuk usaha yang sudah punya tim, butuh rekap komisi, multi-layanan, dan ulasan Google Maps.',
+    basic: 'Untuk usaha yang baru pindah dari catatan chat ke link booking dan kasir sendiri.',
+    professional: 'Untuk usaha dengan tim yang butuh rekap komisi, keranjang multi-layanan, dan ulasan Google Maps.',
     enterprise: 'Untuk usaha dengan banyak cabang dan pesanan bulanan yang tinggi.',
 };
 
@@ -167,7 +183,7 @@ const START_STEPS = [
     },
     {
         title: 'Pasang link dan poster QR',
-        desc: 'Taruh link di bio Instagram atau TikTok, lalu cetak poster QR untuk meja kasir.',
+        desc: 'Taruh link di bio Instagram atau TikTok, balas chat dengan link itu, dan cetak poster QR untuk meja kasir.',
     },
 ];
 
@@ -185,6 +201,14 @@ function buildFaqs(plans: SubscriptionPlan[]) {
     const enterpriseBranches = plans.find((plan) => plan.slug === 'enterprise')?.max_businesses;
 
     return [
+        {
+            q: 'Apa itu Janjiyan?',
+            a: 'Janjiyan adalah link booking untuk usaha jasa. Pelanggan pilih layanan dan jadwal sendiri, bayar uang muka langsung ke rekening atau QRIS kamu, dan kasir, struk, serta ulasan Google ikut ada di satu tempat.',
+        },
+        {
+            q: 'Pelanggan saya terbiasa pesan lewat WhatsApp. Masih bisa?',
+            a: 'Masih. Pesanan dari chat atau tamu yang datang langsung bisa kamu masukkan sendiri lewat dashboard, jadi semua jadwal tetap di satu kalender. Lama-lama cukup balas chat dengan link toko, biar pelanggan pesan sendiri.',
+        },
         {
             q: 'Apakah Janjiyan mengambil potongan dari uang muka pelanggan?',
             a: 'Tidak. Pelanggan transfer uang muka langsung ke rekening atau QRIS usaha kamu, lalu kirim bukti bayar di halaman invoice. Uangnya tidak lewat Janjiyan.',
@@ -238,8 +262,10 @@ export default function Landing({ plans }: LandingProps) {
     const [scrolled, setScrolled] = useState(false);
     const [servicePrice, setServicePrice] = useState(75000);
     const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
+    const [heroWord, setHeroWord] = useState(0);
     const pageRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const heroWordRef = useRef<HTMLSpanElement>(null);
 
     const faqs = buildFaqs(plans);
     const basicPlan = plans.find((plan) => plan.slug === 'basic') ?? plans[0];
@@ -309,6 +335,7 @@ export default function Landing({ plans }: LandingProps) {
             });
 
             const staggerGroups = [
+                { selector: '[data-pain-card]', trigger: '#masalah' },
                 { selector: '[data-journey-card]', trigger: '#alur' },
                 { selector: '[data-dashboard-tile]', trigger: '#setelah-pesan' },
                 { selector: '[data-start-step]', trigger: '#mulai' },
@@ -348,6 +375,22 @@ export default function Landing({ plans }: LandingProps) {
         );
     }, [activeType]);
 
+    useEffect(() => {
+        if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+        const id = window.setInterval(() => setHeroWord((i) => (i + 1) % HERO_WORDS.length), 2200);
+        return () => window.clearInterval(id);
+    }, []);
+
+    useEffect(() => {
+        const word = heroWordRef.current;
+        if (!word || heroWord === 0 || !window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+        gsap.fromTo(
+            word,
+            { yPercent: 40, opacity: 0 },
+            { yPercent: 0, opacity: 1, duration: 0.4, ease: 'power3.out', clearProps: 'transform,opacity' }
+        );
+    }, [heroWord]);
+
     const navLinkClass =
         'inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
     const footerLinkClass =
@@ -355,11 +398,11 @@ export default function Landing({ plans }: LandingProps) {
 
     return (
         <div ref={pageRef} className="min-h-screen bg-canvas text-ink">
-            <Head title="Janjiyan: pesanan masuk sendiri, uang muka langsung ke rekening">
+            <Head title="Janjiyan: link booking, uang muka langsung ke rekening kamu">
                 <meta
                     head-key="description"
                     name="description"
-                    content="Link booking untuk bisnis jasa: pelanggan pilih jadwal atau layanan sendiri, bayar uang muka langsung ke rekening kamu tanpa potongan. Ada kasir meja, struk termal, dan ulasan Google Maps. Coba gratis 14 hari."
+                    content="Link booking untuk barbershop, salon, studio, lapangan, dan laundry. Pelanggan pilih jadwal sendiri dan bayar uang muka langsung ke rekening atau QRIS kamu, tanpa potongan. Ada kasir meja, struk termal, dan ulasan Google Maps. Coba gratis 14 hari."
                 />
             </Head>
 
@@ -423,23 +466,32 @@ export default function Landing({ plans }: LandingProps) {
                             data-hero-item
                             className="mb-5 inline-flex max-w-full items-center justify-center rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
                         >
-                            Untuk barbershop, studio, lapangan, sampai laundry
+                            Untuk usaha jasa: janji temu, sewa tempat, dan titip barang
                         </p>
 
                         <h1
                             data-hero-item
                             className="text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl md:text-[68px] text-balance"
                         >
-                            Jadwal lebih pasti.
-                            <br />
-                            Pesanan lebih rapi.
+                            <span className="sr-only">Pesanan barbershop, salon, lapangan, studio, laundry, dan bengkel kamu masuk sendiri lewat link.</span>
+                            <span aria-hidden="true" className="block">
+                                Pesanan{' '}
+                                {/* Own line on phones so a longer word never rewraps the headline. */}
+                                <span
+                                    ref={heroWordRef}
+                                    className="block whitespace-nowrap underline decoration-hairline decoration-[0.08em] underline-offset-[0.12em] sm:inline-block"
+                                >
+                                    {HERO_WORDS[heroWord]}
+                                </span>
+                            </span>
+                            <span aria-hidden="true" className="block">masuk sendiri lewat link.</span>
                         </h1>
 
                         <p
                             data-hero-item
                             className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-mute sm:mt-5 sm:text-lg text-pretty"
                         >
-                            Pelanggan memilih jam atau kuota yang masih kosong, membayar uang muka, lalu menerima pengingat otomatis. Kamu tinggal fokus datang dan bekerja.
+                            Pelanggan pilih jadwal atau kuota yang masih kosong, bayar uang muka langsung ke rekening atau QRIS kamu, lalu cek status pesanannya sendiri. Kamu tinggal kerja.
                         </p>
 
                         <div
@@ -461,7 +513,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <Link href={dashboardHref}>{primaryCtaLabel}</Link>
                             </Button>
                             <Button asChild variant="outline" size="lg" className="min-h-14 h-auto w-full max-w-[260px] py-3 sm:w-auto sm:max-w-none">
-                                <a href="#alur">Lihat perjalanan pelanggan</a>
+                                <a href="#alur">Lihat cara kerjanya</a>
                             </Button>
                         </div>
 
@@ -484,32 +536,46 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* 2. Problem: no-show cost, with a simple calculator */}
-                <section id="masalah" aria-labelledby="heading-masalah" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
-                    <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
-                        <div className="grid items-center gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
-                            <div className="min-w-0 text-center md:col-span-7 md:text-start">
-                                <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
-                                    Masalah yang sering terjadi
-                                </span>
-                                <h2 id="heading-masalah" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
-                                    <WordReveal>Satu pelanggan batal tanpa kabar, satu jam kerja hilang.</WordReveal>
-                                </h2>
-                                <p className="mt-3.5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
-                                    Misalnya tarif layanan kamu Rp75.000, lalu ada pelanggan yang pesan tapi tidak datang, padahal orang lain sudah terlanjur ditolak. Geser angka di bawah untuk melihat perkiraan ruginya tiap bulan.
-                                </p>
-                            </div>
+                {/* 2. Problem: same chat pain across the three business types, then the no-show cost */}
+                <section id="masalah" aria-labelledby="heading-masalah" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mx-auto mb-12 max-w-2xl text-center">
+                        <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
+                            Kedengarannya akrab?
+                        </span>
+                        <h2 id="heading-masalah" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            <WordReveal>Usahanya beda, capeknya sama: semua pesanan lewat chat</WordReveal>
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Selama jadwal diatur lewat chat, kamu jadi admin dulu, baru bisa kerja.
+                        </p>
+                    </div>
 
-                            <div className="md:col-span-5">
-                                <img
-                                    src="/images/editorial-noshow.jpg"
-                                    alt="Ilustrasi kapster menunggu di samping kursi barber yang kosong sambil melihat jam tangan ditemani kucing"
-                                    loading="lazy"
-                                    width={867}
-                                    height={530}
-                                    className="mx-auto h-auto w-full max-w-[360px] select-none mix-blend-multiply"
-                                />
-                            </div>
+                    <ul className="grid gap-4 md:grid-cols-3">
+                        {PAINS.map((pain) => {
+                            const Icon = pain.icon;
+                            return (
+                                <li key={pain.type} data-pain-card className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-6">
+                                    <p className="flex items-center gap-2 text-xs font-semibold text-mute">
+                                        <Icon className="size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        <span>{pain.type} · {pain.contoh}</span>
+                                    </p>
+                                    <p className="mt-4 self-start rounded-2xl rounded-bl-sm bg-canvas px-4 py-2.5 text-base font-medium text-ink">
+                                        {pain.chat}
+                                    </p>
+                                    <p className="mt-4 text-sm leading-relaxed text-body text-pretty">{pain.desc}</p>
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <div className="mx-auto mt-10 max-w-5xl rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
+                        <div className="border-b border-divider pb-8 text-center md:text-start">
+                            <h3 className="text-2xl font-semibold leading-tight text-ink sm:text-3xl text-balance">
+                                Yang paling mahal: pelanggan batal tanpa kabar
+                            </h3>
+                            <p className="mt-3 max-w-2xl text-base leading-relaxed text-mute text-pretty md:max-w-none">
+                                Janji lewat chat tidak mengikat. Pelanggan bilang “oke, besok ya”, lalu tidak datang, padahal jadwal atau kuota itu sudah kamu tolak untuk orang lain. Geser angka di bawah sesuai usaha kamu.
+                            </p>
                         </div>
 
                         <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -596,7 +662,7 @@ export default function Landing({ plans }: LandingProps) {
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-on-dark-mute">
-                                    Uang muka dikunci dan pengingat dikirim otomatis sebelum jadwal, jadi jam kosong lebih jarang terbuang.
+                                    Uang muka mengikat jadwal dan pengingat terkirim otomatis. Untuk janji temu dan booking tempat, pelanggan yang sering tidak datang bisa diminta bayar penuh di awal.
                                 </p>
                             </div>
                         </div>
@@ -611,13 +677,13 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="alur" aria-labelledby="heading-alur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
-                            Perjalanan satu pelanggan
+                            Cara kerjanya
                         </span>
                         <h2 id="heading-alur" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            <WordReveal>Dari bio Instagram sampai pelanggan pulang</WordReveal>
+                            <WordReveal>Pindahkan semua itu ke satu link</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Empat langkah ini berjalan sendiri. Kamu tidak perlu membalas chat satu per satu.
+                            Empat langkah ini berjalan sendiri, apa pun tipe usaha kamu.
                         </p>
                     </div>
 
@@ -679,10 +745,10 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="tipe-usaha" aria-labelledby="heading-tipe-usaha" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto max-w-2xl text-center">
                         <h2 id="heading-tipe-usaha" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            <WordReveal>Tiga alur, sesuai cara usaha kamu bekerja</WordReveal>
+                            <WordReveal>Satu aplikasi, tiga cara kerja</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Pilih satu tipe saat daftar. Menu dashboard dan halaman pesan pelanggan ikut menyesuaikan.
+                            Pilih tipe yang sama dengan usaha kamu saat daftar. Halaman pesan, menu dashboard, dan istilahnya ikut menyesuaikan.
                         </p>
                     </div>
 
@@ -743,7 +809,7 @@ export default function Landing({ plans }: LandingProps) {
                         </div>
 
                         <div className="flex min-w-0 flex-col justify-center">
-                            <p className="mb-3 text-xs font-semibold text-mute">Alur tamu</p>
+                            <p className="mb-3 text-xs font-semibold text-mute">Yang dilihat pelanggan</p>
                             <ol className="space-y-2">
                                 {currentType.flow.map((step, idx) => (
                                     <li
@@ -765,10 +831,10 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="setelah-pesan" aria-labelledby="heading-setelah-pesan" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <h2 id="heading-setelah-pesan" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            <WordReveal>Setelah pesanan masuk, semuanya tetap di satu tempat</WordReveal>
+                            <WordReveal>Dari pelunasan sampai ulasan Google, tanpa aplikasi lain</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Kasir, struk, dan ulasan pelanggan ikut terkelola. Tidak perlu aplikasi kasir terpisah.
+                            Pesanan dari link langsung masuk ke kasir dan kalender yang sama. Tidak ada catatan yang perlu disalin ulang.
                         </p>
                     </div>
 
@@ -781,10 +847,10 @@ export default function Landing({ plans }: LandingProps) {
                                 <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">Mulai paket Basic</span>
                             </div>
                             <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                Kasir meja untuk pelunasan dan struk
+                                Kasir meja: pelunasan, cicilan, dan struk termal
                             </h3>
                             <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                Tamu datang atau mengambil barang, lalu kasir langsung mencatat pelunasan. Bisa cicilan, Tunai dengan kembalian otomatis, QRIS, Transfer, atau EDC, sekaligus tambah layanan di tempat.
+                                Saat tamu datang atau barang diambil, kasir catat sisa bayar lewat Tunai, QRIS, Transfer, atau EDC. Kembalian dihitung otomatis, dan layanan tambahan bisa dimasukkan di tempat.
                             </p>
                             <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
                                 {CASHIER_POINTS.map((point) => (
@@ -804,10 +870,10 @@ export default function Landing({ plans }: LandingProps) {
                                 <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">Mulai paket Professional</span>
                             </div>
                             <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                Lebih banyak ulasan Google Maps, masukan kritis tetap sampai ke kamu
+                                Pelanggan puas ke Google Maps. Yang kecewa bicara ke kamu dulu.
                             </h3>
                             <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                Link ulasan muncul di invoice setelah pesanan selesai, dan bisa disisipkan ke pesan follow-up WhatsApp. Pelanggan yang puas diarahkan ke Google, yang kurang puas menulis ke kamu dulu.
+                                Link ulasan muncul di invoice setelah pesanan selesai dan bisa disisipkan ke pesan WhatsApp. Bintang tinggi diarahkan ke Google Maps, bintang rendah masuk ke dashboard sebagai masukan privat.
                             </p>
                             <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
                                 {REVIEW_POINTS.map((point) => (
@@ -820,7 +886,7 @@ export default function Landing({ plans }: LandingProps) {
                         </div>
                     </div>
 
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
                         {DASHBOARD_TILES.map((tile) => {
                             const Icon = tile.icon;
                             return (
@@ -845,7 +911,7 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="rounded-md bg-bone p-6 sm:p-10">
                         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
                             <h2 id="heading-mulai" className="max-w-md text-2xl font-semibold leading-tight text-ink sm:text-3xl text-balance">
-                                <WordReveal>Mulai dalam tiga langkah. Link toko kamu bisa langsung dipakai.</WordReveal>
+                                <WordReveal>Tiga langkah, lalu link toko kamu siap dibagikan.</WordReveal>
                             </h2>
                             <Button asChild size="lg" className="min-h-12 h-auto w-full py-3 whitespace-normal text-center sm:w-auto">
                                 <Link href={dashboardHref}>{primaryCtaLabel}</Link>
@@ -872,10 +938,10 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="harga" aria-labelledby="heading-harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
                     <div className="text-center">
                         <h2 id="heading-harga" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            <WordReveal>Pilih paket sesuai ukuran usaha kamu</WordReveal>
+                            <WordReveal>Mulai gratis, pilih paket saat sudah cocok</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-2xl text-lg text-mute text-pretty">
-                            Semua akun baru dapat coba gratis 14 hari dengan fitur paket Professional. Uang muka tanpa potongan dan kasir meja sudah aktif sejak paket Basic.
+                            14 hari pertama gratis dengan fitur paket Professional. Setelah itu pilih paket sesuai ukuran usaha. Uang muka tanpa potongan dan kasir meja ada di semua paket.
                         </p>
 
                         <div className="mt-8 inline-flex min-h-12 max-w-full flex-wrap items-center justify-center rounded-full bg-bone p-1" role="group" aria-label="Siklus penagihan">
@@ -1099,7 +1165,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <WordReveal>Coba dulu 14 hari, gratis.</WordReveal>
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
-                                Buat link toko pertama kamu hari ini. Kalau cocok dengan cara kerja tim, lanjut pilih paket.
+                                Pasang link di bio minggu ini dan lihat sendiri berapa chat yang berkurang. Kalau cocok, baru pilih paket.
                             </p>
                         </div>
                         <Button
@@ -1115,7 +1181,7 @@ export default function Landing({ plans }: LandingProps) {
                         <div>
                             <JanjiyanLogo dark size="lg" />
                             <p className="mt-4 max-w-md text-lg text-on-dark-mute">
-                                Untuk janji temu dan pesanan yang ditepati.
+                                Link booking dengan uang muka, kasir, dan ulasan dalam satu tempat.
                             </p>
                         </div>
 
