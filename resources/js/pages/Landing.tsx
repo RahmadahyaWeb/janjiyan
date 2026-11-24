@@ -2,19 +2,18 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
-    BadgePercent,
+    Bell,
     Calendar,
     Check,
     ChevronDown,
+    Contact,
+    Link as LinkIcon,
     MapPin,
     Package,
-    Pause,
-    Play,
-    QrCode,
     ReceiptText,
     Scissors,
-    ShieldCheck,
     Star,
+    Users,
     X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -31,172 +30,148 @@ interface LandingProps {
     plans: SubscriptionPlan[];
 }
 
-const VERTICALS = [
-    'Barbershop',
-    'Salon & Hair Studio',
-    'Klinik Gigi',
-    'Klinik Kecantikan',
-    'Pet Grooming',
-    'Lapangan Padel',
-    'Studio Foto',
-    'Pilates & Yoga',
-    'Ruang Meeting',
-    'Laundry & Dry Clean',
-    'Cuci Sepatu & Tas',
-    'Servis Elektronik',
-    'Bengkel & Detailing',
-];
-
-const BUSINESS_TYPE_SHOWCASE = [
+// Customer journey for one booking: the story the page tells in order.
+const JOURNEY = [
     {
-        icon: Scissors,
-        badge: 'Barber · Salon · Klinik · Grooming',
-        title: 'Janji Temu & Staff',
-        desc: 'Pelanggan pilih layanan dan add-on, pilih kapster atau terapis favorit, lalu ambil jam yang masih kosong.',
-        points: [
-            'Kalender visual per staff lengkap dengan shift, cuti, dan sinkron ke Google & Apple Calendar',
-            'Jeda antar tamu dan durasi add-on otomatis dihitung agar jadwal tidak bentrok',
-            'Komisi staff (% atau nominal tetap) termasuk add-on langsung direkap tiap selesai',
-        ],
-        flow: 'Layanan (+ Add-on) → Pilih Staff → Jam Datang → Uang Muka',
-    },
-    {
-        icon: MapPin,
-        badge: 'Padel · Studio · Kelas · Meeting',
-        title: 'Booking Tempat / Sesi',
-        desc: 'Pelanggan langsung pilih lapangan, ruangan, atau kelas beserta sewa perlengkapan tambahan, lalu lihat jam dan sisa tempatnya.',
-        points: [
-            'Atur kapasitas per sesi tanpa perlu pilih staff',
-            'Opsi add-on sewa alat (misal raket atau perlengkapan) dan jeda bersih-bersih antar sesi',
-            'Pelunasan sisa tagihan dan cetak struk langsung di kasir saat tamu datang',
-        ],
-        flow: 'Fasilitas (+ Add-on) → Tanggal & Jam → Uang Muka',
-    },
-    {
-        icon: Package,
-        badge: 'Laundry · Sepatu · Servis · Bengkel',
-        title: 'Layanan Titip / Drop-off',
-        desc: 'Pelanggan pilih satu atau beberapa layanan sekaligus (item, pasang, kg, pcs, atau unit), pilih tanggal titip atau jemput, lalu pantau progresnya.',
-        points: [
-            'Batas terima barang harian plus pantauan pesanan jatuh tempo dan yang terlambat',
-            'Keranjang multi-layanan dalam 1 invoice (paket Pro ke atas) serta opsi jemput-antar',
-            'Cetak tag barang 58mm supaya titipan tidak tertukar, dan progres terlihat di invoice',
-        ],
-        flow: 'Layanan & Jumlah → Tanggal Titip → Tag & Pantau Invoice',
-    },
-];
-
-const OUTCOMES = [
-    {
-        icon: ShieldCheck,
-        illustration: '/images/editorial-feature-dp.jpg',
-        illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran uang muka di smartphone',
-        title: 'Lebih sedikit yang batal tanpa kabar',
-        desc: 'Pelanggan transfer uang muka langsung ke rekening atau QRIS kamu, tanpa potongan dari Janjiyan. Kalau lewat batas waktu belum dibayar, jam kosong atau kuota harinya otomatis terbuka lagi. Khusus janji temu dan booking tempat, pelanggan yang sering batal tanpa kabar bisa otomatis diminta bayar penuh di awal.',
-        highlights: ['Uang muka tanpa potongan', 'Jadwal dibuka lagi otomatis', 'Bayar penuh kalau sering batal', 'Pengingat email otomatis'],
-    },
-    {
-        icon: QrCode,
+        title: 'Buka link atau scan QR',
+        desc: 'Pelanggan buka link di bio Instagram atau scan poster QR di meja kasir. Tanpa install aplikasi, tanpa bikin akun.',
         illustration: '/images/editorial-feature-qr.jpg',
         illustrationAlt: 'Ilustrasi pelanggan memindai poster QR booking di meja kasir studio',
-        title: 'Satu link untuk Instagram dan meja kasir',
-        desc: 'Taruh link halaman toko di bio Instagram, atau cetak poster QR dari dashboard buat meja kasir. Tampilannya pakai warna khas usaha kamu sendiri, lengkap dengan foto tempat, galeri hasil kerja, serta pilihan add-on saat checkout. Pelanggan bisa pesan sekaligus cek riwayat invoice sendiri lewat browser, tanpa install aplikasi.',
-        highlights: ['Link toko & warna merek sendiri', 'Poster QR siap cetak', 'Add-on & cek riwayat invoice', 'Tanpa install aplikasi'],
     },
     {
-        icon: Calendar,
+        title: 'Pilih jam, bayar uang muka',
+        desc: 'Pilih layanan, jam, atau jumlah barang. Uang muka ditransfer langsung ke rekening atau QRIS kamu, tanpa potongan dari Janjiyan.',
+        illustration: '/images/editorial-feature-dp.jpg',
+        illustrationAlt: 'Ilustrasi pelanggan mengunci jadwal booking dengan pembayaran uang muka di smartphone',
+    },
+    {
+        title: 'Jadwal terkunci otomatis',
+        desc: 'Jam atau kuota harian langsung terkunci. Kalau sampai batas waktu belum dibayar, slotnya terbuka lagi. Pengingat email dikirim sendiri sebelum jadwal.',
         illustration: '/images/editorial-feature-calendar.jpg',
         illustrationAlt: 'Ilustrasi tim memantau papan jadwal harian dan menerima notifikasi booking di smartphone',
-        title: 'Semua jadwal dan titipan dalam satu layar',
-        desc: 'Pantau papan kalender harian per staff, sisa kapasitas sesi, sampai antrean titipan lengkap dengan peringatan jatuh tempo. Begitu ada pesanan baru, bukti transfer, atau ulasan masuk, kabarnya langsung muncul di lonceng notifikasi dashboard, Telegram, dan email—lengkap dengan template chat WhatsApp siap kirim.',
-        highlights: ['Papan kalender & pantauan jatuh tempo', 'Kuota harian per satuan', 'Notif dashboard, Telegram & email', 'Template chat WhatsApp'],
     },
     {
-        icon: BadgePercent,
+        title: 'Datang, lunas, selesai',
+        desc: 'Kasir mencatat pelunasan dan mencetak struk atau tag barang. Setelah selesai, pelanggan dapat link ulasan Google Maps di invoice-nya.',
         illustration: '/images/editorial-feature-commission.jpg',
         illustrationAlt: 'Ilustrasi pemilik bisnis dan tim melihat grafik rekap komisi bulanan otomatis di laptop',
-        title: 'Data pelanggan rapi, tim dan komisi gampang dicek',
-        desc: 'Simpan riwayat order, jumlah no-show, tag pelanggan (misal VIP atau Langganan), blokir nomor bermasalah, sampai gabungkan profil ganda. Saat tamu datang langsung (walk-in), data pelanggan lama tinggal dicari cepat. Kamu juga bisa bikin akun kasir atau admin, hitung komisi staff otomatis, dan pegang sampai 10 cabang.',
-        highlights: ['Tag, riwayat & gabung profil', 'Akun kasir & admin', 'Komisi staff & add-on', 'Multi-cabang (hingga 10)'],
     },
 ];
 
-const EXTRA_CAPABILITIES = [
+// Three locked business types, shown as one switchable panel instead of three stacked cards.
+const BUSINESS_TYPES = [
     {
-        icon: ReceiptText,
-        badge: 'Tersedia sejak paket Basic',
-        title: 'Kasir meja, struk termal, dan tag barang',
-        desc: 'Saat pelanggan datang atau mengambil barang, tim kamu langsung catat pelunasan di Janjiyan tanpa perlu langganan aplikasi kasir terpisah. Bisa terima cicilan, metode Tunai (hitung kembalian otomatis), QRIS, Transfer, maupun EDC—termasuk tambah layanan atau add-on di tempat.',
+        key: 'staff',
+        icon: Scissors,
+        tab: 'Janji Temu & Staff',
+        contoh: 'Barbershop, salon, klinik, spa, pet grooming',
+        headline: 'Pelanggan pilih kapster favoritnya, lalu ambil jam yang masih kosong.',
+        desc: 'Setiap staff punya jadwal, jam istirahat, dan cuti sendiri. Pelanggan hanya melihat jam yang benar-benar bisa dipesan.',
         points: [
-            'Cetak langsung ke printer termal 58mm atau 80mm lengkap dengan QR invoice',
-            'Format khusus Tag Barang 58mm untuk ditempel di sepatu, laundry, atau barang servis',
-            'Unduh struk jadi gambar PNG 1-klik untuk dikirim lewat WhatsApp',
-            'Ringkasan kasir harian per metode bayar & export CSV (mulai paket Professional)',
+            'Kalender per staff dengan shift, istirahat, dan cuti',
+            'Durasi add-on dan jeda antar tamu ikut dihitung, jadi jadwal tidak bentrok',
+            'Komisi staff (persen atau nominal) direkap otomatis dari layanan dan add-on',
         ],
+        flow: ['Layanan + add-on', 'Pilih staff', 'Pilih jam datang', 'Bayar uang muka'],
     },
     {
-        icon: Star,
-        badge: 'Mulai paket Professional',
-        title: 'Pengumpul ulasan Google Maps & stiker QR meja',
-        desc: 'Bantu usaha kamu dapat lebih banyak ulasan bagus di Google Maps, sementara masukan yang kurang puas tetap masuk ke tim kamu dulu untuk ditindaklanjuti. Link ulasan muncul di halaman invoice setelah selesai dan bisa disisipkan ke pesan follow-up WhatsApp.',
+        key: 'space',
+        icon: MapPin,
+        tab: 'Booking Tempat / Sesi',
+        contoh: 'Lapangan padel, studio foto, kelas yoga, ruang meeting',
+        headline: 'Pelanggan pilih lapangan atau kelas, lalu lihat sisa tempat di tiap sesi.',
+        desc: 'Tidak ada staff yang dipilih. Yang penting kapasitas per sesi, sewa perlengkapan, dan jeda bersih-bersih antar sesi.',
         points: [
-            'Rating tinggi (misal 4–5 bintang) diarahkan ke Google Maps Review dengan tombol salin komentar',
-            'Rating rendah masuk sebagai masukan privat di dashboard plus notifikasi Telegram ke pemilik',
-            'Cetak stiker QR kotak PNG, tent card meja A6, atau lembar stiker A4 (2×2 dan 3×3) dari dashboard',
+            'Kapasitas per sesi, tanpa perlu memilih staff',
+            'Add-on seperti sewa raket atau perlengkapan, plus jeda bersih-bersih antar sesi',
+            'Pelunasan dan cetak struk langsung di kasir saat tamu datang',
         ],
+        flow: ['Fasilitas + add-on', 'Pilih tanggal & jam', 'Bayar uang muka'],
     },
+    {
+        key: 'dropoff',
+        icon: Package,
+        tab: 'Layanan Titip / Drop-off',
+        contoh: 'Laundry, cuci sepatu, servis elektronik, bengkel',
+        headline: 'Pelanggan titip satu atau beberapa layanan sekaligus, lalu pantau progresnya.',
+        desc: 'Kuota harian dihitung per satuan: item, pasang, kg, pcs, atau unit. Estimasi selesai dihitung dari lama pengerjaan tiap layanan.',
+        points: [
+            'Kuota harian per satuan: item, pasang, kg, pcs, atau unit',
+            'Antar-jemput opsional, dan estimasi selesai ikut otomatis',
+            'Paket Professional ke atas: beberapa layanan dalam satu invoice',
+            'Tag barang 58mm supaya titipan tidak tertukar',
+        ],
+        flow: ['Layanan & jumlah', 'Tanggal titip / jemput', 'Tag barang & pantau progres'],
+    },
+];
+
+const DASHBOARD_TILES = [
+    {
+        icon: Calendar,
+        title: 'Kalender & antrean',
+        desc: 'Papan jadwal per staff, sesi, atau antrean titipan lengkap dengan peringatan jatuh tempo.',
+    },
+    {
+        icon: Bell,
+        title: 'Notifikasi langsung',
+        desc: 'Pesanan baru, bukti uang muka, dan ulasan masuk ke lonceng dashboard, Telegram, dan email.',
+    },
+    {
+        icon: Contact,
+        title: 'Data pelanggan',
+        desc: 'Riwayat order, jumlah batal, tag, blokir nomor bermasalah, dan gabung profil ganda.',
+    },
+    {
+        icon: Users,
+        title: 'Akun tim',
+        desc: 'Akun kasir dan admin dengan hak akses sendiri. Jumlah akun mengikuti paket kamu.',
+    },
+];
+
+const CASHIER_POINTS = [
+    'Cetak struk termal 58mm atau 80mm, lengkap dengan QR invoice',
+    'Tag barang 58mm untuk ditempel di sepatu, laundry, atau barang servis',
+    'Unduh struk jadi gambar PNG 1-klik untuk dikirim lewat WhatsApp',
+    'Ringkasan kasir harian per metode bayar dan export CSV (paket Professional ke atas)',
+];
+
+const REVIEW_POINTS = [
+    'Rating tinggi (default 4 bintang ke atas) diarahkan ke Google Maps Review, dengan tombol salin komentar',
+    'Rating rendah masuk sebagai masukan privat di dashboard, plus notifikasi Telegram ke pemilik',
+    'Cetak stiker QR meja: kotak PNG, tent card A6, atau lembar A4 (2×2 dan 3×3)',
 ];
 
 const INCLUDED_IN_ALL_PLANS = [
     'Uang muka langsung ke rekening atau QRIS, tanpa potongan',
-    'Wajib bayar penuh buat yang sering batal (Janji Temu & Tempat)',
-    'Kasir meja: pelunasan, cicilan, ubah item & hitung kembalian',
-    'Cetak struk termal 58/80mm, tag barang 58mm & struk PNG',
-    'Jadwal staff, sesi tempat, atau kuota drop-off harian',
-    'Add-on layanan di halaman pesan & meja kasir',
-    'Email pengingat H-1 (plus H-2 jam untuk jadwal/sesi)',
-    'Halaman toko kustom, cek invoice mandiri & poster QR',
-    'Notifikasi dashboard, Telegram & template chat WhatsApp',
-    'Akun login tim kasir & admin (plus komisi staff)',
-    'Simpan jadwal ke Google & Apple Calendar (tamu & staff)',
-    'Tag, catatan, blokir & gabung profil pelanggan ganda',
+    'Aturan bayar penuh untuk pelanggan yang sering batal (janji temu & tempat)',
+    'Kasir meja dengan pelunasan, cicilan, dan kembalian otomatis',
+    'Cetak struk termal 58/80mm dan tag barang 58mm',
+    'Halaman toko dengan link sendiri, poster QR, dan cek invoice mandiri',
+    'Pengingat email H-1, plus H-2 jam untuk janji temu dan booking tempat',
 ];
 
 const PLAN_TAGLINES: Record<string, string> = {
-    basic: 'Cocok kalau kamu baru mulai merapikan pesanan, jadwal, dan kasir toko sendiri.',
-    professional: 'Cocok kalau kamu sudah punya tim atau kasir, butuh rekap komisi, multi-layanan, dan pengumpul ulasan Google Maps.',
-    enterprise: 'Cocok kalau kamu punya banyak cabang dan jumlah pesanan bulanan tanpa batas.',
+    basic: 'Untuk usaha yang baru mulai merapikan pesanan, jadwal, dan kasir sendiri.',
+    professional: 'Untuk usaha yang sudah punya tim, butuh rekap komisi, multi-layanan, dan ulasan Google Maps.',
+    enterprise: 'Untuk usaha dengan banyak cabang dan pesanan bulanan yang tinggi.',
 };
 
-const STEPS = [
+const START_STEPS = [
     {
-        title: 'Pilih tipe bisnis & lengkapi profil',
-        desc: 'Daftar akun, pilih alur usaha kamu (Janji Temu, Booking Tempat, atau Drop-off), lalu isi rekening atau QRIS untuk terima pembayaran.',
-        illustration: '/images/editorial-step-1.jpg',
-        illustrationAlt: 'Ilustrasi pemilik bisnis menyiapkan profil bisnis dan rekening/QRIS di laptop',
+        title: 'Lengkapi profil dan rekening',
+        desc: 'Pilih tipe usaha, isi nama, lalu masukkan rekening atau QRIS untuk terima uang muka.',
     },
     {
-        title: 'Atur layanan, tarif & kuota',
-        desc: 'Masukkan daftar layanan atau paket beserta harga, nominal uang muka, durasi sesi atau kuota harian, dan jadwal tim.',
-        illustration: '/images/editorial-step-2.jpg',
-        illustrationAlt: 'Ilustrasi pengelola bisnis menyusun blok jadwal layanan dan kuota harian di papan kalender',
+        title: 'Atur layanan dan kuota',
+        desc: 'Isi daftar layanan beserta harga, nominal uang muka, durasi atau kuota harian, dan jadwal tim.',
     },
     {
-        title: 'Pasang link bio & QR kasir',
-        desc: 'Taruh link di bio Instagram/TikTok atau cetak poster QR buat meja kasir supaya pelanggan bisa langsung pesan sendiri.',
-        illustration: '/images/editorial-step-3.jpg',
-        illustrationAlt: 'Ilustrasi pemilik bisnis meletakkan poster QR di meja kasir saat pelanggan datang membawa smartphone',
+        title: 'Pasang link dan poster QR',
+        desc: 'Taruh link di bio Instagram atau TikTok, lalu cetak poster QR untuk meja kasir.',
     },
 ];
 
-interface TestimonialItem {
-    name: string;
-    role: string;
-    quote: string;
-    initials?: string;
-}
-
-const TESTIMONIALS: TestimonialItem[] = [
+const TESTIMONIALS = [
     {
         name: 'Soklenn Cuci Sepatu',
         initials: 'SK',
@@ -205,59 +180,59 @@ const TESTIMONIALS: TestimonialItem[] = [
     },
 ];
 
-const FAQS = [
-    {
-        q: 'Apakah Janjiyan mengambil potongan dari uang muka pelanggan?',
-        a: 'Tidak sama sekali. Pelanggan transfer uang muka langsung ke rekening atau QRIS usaha kamu, lalu kirim bukti bayar di halaman invoice untuk kamu verifikasi. Uangnya tidak melewati Janjiyan.',
-    },
-    {
-        q: 'Usaha apa saja yang cocok memakai Janjiyan?',
-        a: 'Usaha jasa yang pakai jadwal, sewa tempat, atau titipan barang bisa pakai. Kamu tinggal pilih alurnya saat daftar: Janji Temu & Staff (barbershop, salon, klinik), Booking Tempat / Sesi (lapangan olahraga, studio foto, kelas, ruang meeting), atau Layanan Titip / Drop-off (laundry, cuci sepatu, servis elektronik, bengkel).',
-    },
-    {
-        q: 'Apakah pelanggan harus install aplikasi atau bikin akun dulu?',
-        a: 'Tidak perlu. Pelanggan cukup buka link di bio atau scan poster QR di kasir, pilih layanan dan jadwal atau jumlah pesanannya, lalu isi nama serta nomor WhatsApp (dan email jika ingin menerima pengingat otomatis).',
-    },
-    {
-        q: 'Bagaimana cara Janjiyan mencegah pelanggan batal mendadak atau kerjaan menumpuk?',
-        a: 'Setiap pesanan bisa dikunci dengan uang muka dan batas waktu bayar. Kalau lewat batas waktu, jam kosong atau kuota harinya otomatis terbuka lagi. Untuk janji temu dan booking tempat, pelanggan yang sudah beberapa kali tidak datang bisa otomatis diminta bayar penuh di awal. Di layanan drop-off, kamu juga bisa membatasi kuota harian per satuan.',
-    },
-    {
-        q: 'Bisa bikin akun login buat admin, kasir, dan hitung komisi staff?',
-        a: 'Bisa. Semua tipe usaha bisa bikin akun login terpisah untuk admin atau kasir sesuai hak akses menu yang kamu pilih. Khusus tipe Janji Temu & Staff, tersedia juga pengaturan shift kerja, cuti, dan rekap komisi otomatis per staff dalam persen atau nominal tetap.',
-    },
-    {
-        q: 'Notifikasi pesanan baru dikirim ke mana?',
-        a: 'Langsung muncul di lonceng notifikasi dashboard secara real-time, serta terkirim ke email dan grup/chat Telegram lewat bot yang kamu hubungkan di Pengaturan—setiap ada pesanan baru, bukti uang muka masuk, atau ulasan baru. Untuk follow up ke pelanggan, sudah tersedia tombol chat WhatsApp yang pesannya terisi otomatis.',
-    },
-    {
-        q: 'Apakah perlu aplikasi kasir atau printer khusus?',
-        a: 'Tidak perlu aplikasi kasir tambahan. Di dalam Janjiyan sudah ada kasir meja untuk mencatat pelunasan atau cicilan (Tunai dengan hitung kembalian, QRIS, Transfer, dan EDC) serta menambah layanan atau add-on di tempat. Struk bisa dicetak langsung ke printer termal 58mm/80mm (termasuk Tag Barang 58mm untuk usaha drop-off), atau diunduh jadi gambar PNG untuk dikirim via WhatsApp.',
-    },
-    {
-        q: 'Bagaimana cara kerja fitur ulasan dan Google Maps Review?',
-        a: 'Pelanggan bisa scan stiker QR ulasan di meja kasir atau klik tombol Beri Ulasan di link invoice setelah pesanan selesai. Jika pelanggan memberi rating tinggi (misalnya 4–5 bintang), mereka diarahkan ke halaman Google Maps Review usaha kamu dengan tombol salin komentar. Jika ratingnya rendah, masukan tersimpan sebagai kritik privat di dashboard dan dikirim ke Telegram kamu supaya bisa langsung ditangani.',
-    },
-    {
-        q: 'Satu akun bisa dipakai untuk beberapa cabang?',
-        a: 'Bisa—paket Professional mendukung hingga 3 cabang, dan paket Enterprise hingga 10 cabang dalam satu akun. Link halaman toko, daftar layanan, data pelanggan, kasir, dan rekening tiap cabang tetap terpisah rapi.',
-    },
-];
+function buildFaqs(plans: SubscriptionPlan[]) {
+    const proBranches = plans.find((plan) => plan.slug === 'professional')?.max_businesses;
+    const enterpriseBranches = plans.find((plan) => plan.slug === 'enterprise')?.max_businesses;
+
+    return [
+        {
+            q: 'Apakah Janjiyan mengambil potongan dari uang muka pelanggan?',
+            a: 'Tidak. Pelanggan transfer uang muka langsung ke rekening atau QRIS usaha kamu, lalu kirim bukti bayar di halaman invoice. Uangnya tidak lewat Janjiyan.',
+        },
+        {
+            q: 'Usaha apa saja yang cocok memakai Janjiyan?',
+            a: 'Usaha jasa yang memakai jadwal, sewa tempat, atau titipan barang. Pilih satu tipe saat daftar: Janji Temu & Staff (barbershop, salon, klinik), Booking Tempat / Sesi (lapangan, studio, kelas, ruang meeting), atau Layanan Titip / Drop-off (laundry, cuci sepatu, servis, bengkel). Tipe ini dikunci permanen.',
+        },
+        {
+            q: 'Apakah pelanggan harus install aplikasi atau bikin akun dulu?',
+            a: 'Tidak perlu. Pelanggan cukup buka link di bio atau scan poster QR, pilih layanan dan jadwal, lalu isi nama dan nomor WhatsApp. Email hanya diisi kalau mau menerima pengingat otomatis.',
+        },
+        {
+            q: 'Bagaimana cara mencegah pelanggan batal mendadak?',
+            a: 'Setiap pesanan bisa dikunci dengan uang muka dan batas waktu bayar. Kalau lewat batas waktu, jam atau kuota harinya terbuka lagi. Untuk janji temu dan booking tempat, pelanggan yang sering tidak datang bisa otomatis diminta bayar penuh di awal.',
+        },
+        {
+            q: 'Perlu aplikasi kasir atau printer khusus?',
+            a: 'Tidak perlu aplikasi kasir tambahan. Kasir meja sudah ada di dalam Janjiyan untuk pelunasan, cicilan, dan tambah layanan di tempat (Tunai, QRIS, Transfer, atau EDC). Struk bisa dicetak ke printer termal 58mm atau 80mm, atau diunduh sebagai gambar PNG untuk WhatsApp.',
+        },
+        {
+            q: 'Bagaimana cara kerja ulasan Google Maps?',
+            a: 'Pelanggan scan stiker QR di kasir, atau klik Beri Ulasan di invoice setelah pesanan selesai. Rating tinggi diarahkan ke halaman Google Maps Review usaha kamu. Rating rendah tersimpan sebagai masukan privat untuk kamu tindaklanjuti. Fitur ini tersedia mulai paket Professional.',
+        },
+        {
+            q: 'Satu akun bisa dipakai untuk beberapa cabang?',
+            a: `Bisa. Paket Professional mendukung hingga ${proBranches ?? 3} bisnis dalam satu akun, dan Enterprise hingga ${enterpriseBranches ?? 10}. Link toko, layanan, data pelanggan, kasir, dan rekening tiap cabang tetap terpisah.`,
+        },
+    ];
+}
 
 export default function Landing({ plans }: LandingProps) {
     const { auth, activeBusiness } = usePage<PageProps>().props;
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+    const [activeType, setActiveType] = useState(0);
     const [openFaq, setOpenFaq] = useState<number | null>(0);
-    const [marqueePaused, setMarqueePaused] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [servicePrice, setServicePrice] = useState(75000);
     const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
     const pageRef = useRef<HTMLDivElement>(null);
 
+    const faqs = buildFaqs(plans);
     const basicPlan = plans.find((plan) => plan.slug === 'basic') ?? plans[0];
     const basicMonthlyPrice = basicPlan?.price_monthly ?? 49000;
     const monthlyLoss = servicePrice * noShowsPerMonth;
     const breakEvenBookings = Math.max(1, Math.ceil(basicMonthlyPrice / servicePrice));
+    const currentType = BUSINESS_TYPES[activeType];
+
     const dashboardHref = auth.user
         ? (auth.user.is_superadmin ? route('admin.index') : route('dashboard'))
         : route('register');
@@ -303,11 +278,10 @@ export default function Landing({ plans }: LandingProps) {
             });
 
             const staggerGroups = [
-                { selector: '[data-business-type-card]', trigger: '#tipe-bisnis' },
-                { selector: '[data-outcome-card]', trigger: '#fitur' },
-                { selector: '[data-extra-feature-card]', trigger: '[data-extra-features-grid]' },
+                { selector: '[data-journey-card]', trigger: '#alur' },
+                { selector: '[data-dashboard-tile]', trigger: '#setelah-pesan' },
+                { selector: '[data-start-step]', trigger: '#mulai' },
                 { selector: '[data-pricing-card]', trigger: '#harga' },
-                { selector: '[data-testimonial-card]', trigger: '[data-testimonials-grid]' },
             ];
 
             for (const group of staggerGroups) {
@@ -330,13 +304,18 @@ export default function Landing({ plans }: LandingProps) {
         return () => mm.revert();
     }, []);
 
+    const navLinkClass =
+        'inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
+    const footerLinkClass =
+        'inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none';
+
     return (
         <div ref={pageRef} className="min-h-screen bg-canvas text-ink">
-            <Head title="Sistem booking, uang muka, dan kasir untuk bisnis jasa">
+            <Head title="Janjiyan: pesanan masuk sendiri, uang muka langsung ke rekening">
                 <meta
                     head-key="description"
                     name="description"
-                    content="Kelola janji temu, sewa lapangan atau studio, titipan laundry, sampai kasir meja dan ulasan Google Maps lewat satu link. Uang muka masuk utuh ke rekening kamu tanpa potongan. Coba gratis 14 hari."
+                    content="Link booking untuk bisnis jasa: pelanggan pilih jadwal atau layanan sendiri, bayar uang muka langsung ke rekening kamu tanpa potongan. Ada kasir meja, struk termal, dan ulasan Google Maps. Coba gratis 14 hari."
                 />
             </Head>
 
@@ -347,7 +326,7 @@ export default function Landing({ plans }: LandingProps) {
                 Lewati ke konten utama
             </a>
 
-            {/* Floating Centered Nav Pill */}
+            {/* Floating centered nav pill */}
             <header className="sticky top-4 z-50 px-3 sm:px-4">
                 <nav
                     aria-label="Navigasi utama"
@@ -365,21 +344,10 @@ export default function Landing({ plans }: LandingProps) {
                     </Link>
 
                     <div className="hidden items-center gap-4 text-sm font-semibold md:flex lg:gap-6">
-                        <a href="#tipe-bisnis" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
-                            Tipe bisnis
-                        </a>
-                        <a href="#fitur" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
-                            Fitur
-                        </a>
-                        <a href="#harga" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
-                            Harga
-                        </a>
-                        <a href="#cara-mulai" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
-                            Cara mulai
-                        </a>
-                        <a href="#faq" className="inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none">
-                            FAQ
-                        </a>
+                        <a href="#alur" className={navLinkClass}>Alurnya</a>
+                        <a href="#tipe-usaha" className={navLinkClass}>Tipe usaha</a>
+                        <a href="#harga" className={navLinkClass}>Harga</a>
+                        <a href="#faq" className={navLinkClass}>FAQ</a>
                     </div>
 
                     <div className="flex items-center gap-1.5 sm:gap-2">
@@ -404,15 +372,15 @@ export default function Landing({ plans }: LandingProps) {
             </header>
 
             <main id="main-content" tabIndex={-1} className="outline-none">
-                {/* Centered Hero Section with Monochrome Editorial Character Panorama */}
+                {/* 1. Hero: the promise, the link, the one CTA */}
                 <section className="mx-auto max-w-6xl px-5 pt-8 pb-4 text-center sm:px-6 sm:pt-12 sm:pb-8">
                     <div className="mx-auto max-w-4xl">
-                        <div
+                        <p
                             data-hero-item
-                            className="mb-5 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
+                            className="mb-5 inline-flex max-w-full items-center justify-center rounded-full bg-bone px-4 py-1.5 text-center text-xs font-semibold text-ink"
                         >
-                            <span>Untuk barbershop, salon, klinik, lapangan, sampai laundry</span>
-                        </div>
+                            Untuk barbershop, studio, lapangan, sampai laundry
+                        </p>
 
                         <h1
                             data-hero-item
@@ -427,38 +395,40 @@ export default function Landing({ plans }: LandingProps) {
                             data-hero-item
                             className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-mute sm:mt-5 sm:text-lg text-pretty"
                         >
-                            Taruh link Janjiyan di bio Instagram atau tempel poster QR di meja kasir. Pelanggan bisa lihat jam kosong atau kuota harian, lalu transfer uang muka langsung ke rekening kamu tanpa potongan.
+                            Pelanggan memilih jam atau kuota yang masih kosong, membayar uang muka, lalu menerima pengingat otomatis. Kamu tinggal fokus datang dan bekerja.
                         </p>
+
+                        <div
+                            data-hero-item
+                            className="mx-auto mt-6 inline-flex max-w-full items-center gap-2.5 rounded-full bg-bone py-2 pr-2 pl-4 text-sm"
+                        >
+                            <LinkIcon className="size-4 shrink-0 text-mute" aria-hidden="true" />
+                            <span className="truncate font-medium text-ink">namausaha.janjiyan.web.id</span>
+                            <span className="hidden shrink-0 rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute sm:inline">
+                                Taruh di bio
+                            </span>
+                        </div>
 
                         <div
                             data-hero-item
                             className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row"
                         >
                             <Button asChild size="lg" className="min-h-14 h-auto w-full max-w-[260px] py-3 whitespace-normal text-center sm:w-auto sm:max-w-none">
-                                <Link href={dashboardHref}>
-                                    {primaryCtaLabel}
-                                </Link>
+                                <Link href={dashboardHref}>{primaryCtaLabel}</Link>
                             </Button>
                             <Button asChild variant="outline" size="lg" className="min-h-14 h-auto w-full max-w-[260px] py-3 sm:w-auto sm:max-w-none">
-                                <a href="#fitur">
-                                    Lihat fiturnya
-                                </a>
+                                <a href="#alur">Lihat perjalanan pelanggan</a>
                             </Button>
                         </div>
 
-                        <p
-                            data-hero-item
-                            className="mt-3 text-xs font-medium text-mute"
-                        >
-                            Gratis 14 hari. Uang muka masuk utuh ke rekening kamu.
-                        </p>
+                        <ul data-hero-item className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-mute">
+                            <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />Gratis 14 hari</li>
+                            <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />0% potongan uang muka</li>
+                            <li className="flex items-center gap-1.5"><Check className="size-3.5 text-ink" aria-hidden="true" />Pelanggan tanpa install aplikasi</li>
+                        </ul>
                     </div>
 
-                    {/* Monochrome Editorial Line-Art Panorama below CTA */}
-                    <div
-                        data-hero-item
-                        className="mx-auto mt-4 max-w-4xl sm:mt-6"
-                    >
+                    <div data-hero-item className="mx-auto mt-6 max-w-4xl sm:mt-8">
                         <img
                             src="/images/hero-editorial-panorama.jpg"
                             alt="Ilustrasi pelanggan scan QR di meja kasir, kapster barbershop memangkas rambut, pelanggan cek jadwal booking lewat HP, layanan nail studio, dan pemilik studio memantau jadwal harian"
@@ -470,166 +440,19 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* Clean Monochrome Verticals Marquee */}
-                <section aria-label="Kategori bisnis yang didukung" className="overflow-hidden py-8">
-                    <div className="marquee-mask overflow-hidden">
-                        <ul className="animate-marquee flex gap-3" data-paused={marqueePaused ? 'true' : 'false'}>
-                            {[...VERTICALS, ...VERTICALS].map((name, idx) => (
-                                <li
-                                    key={`${name}-${idx}`}
-                                    aria-hidden={idx >= VERTICALS.length}
-                                    className={cn(
-                                        'rounded-full border border-hairline-soft bg-canvas px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-ink',
-                                        idx >= VERTICALS.length && 'motion-reduce:hidden'
-                                    )}
-                                >
-                                    {name}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className="mt-3 flex justify-center motion-reduce:hidden">
-                        <button
-                            type="button"
-                            onClick={() => setMarqueePaused((p) => !p)}
-                            aria-pressed={marqueePaused}
-                            className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full bg-bone px-3 py-1 text-xs font-semibold text-mute transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none"
-                        >
-                            {marqueePaused ? (
-                                <>
-                                    <Play className="size-3" aria-hidden="true" />
-                                    Putar daftar industri
-                                </>
-                            ) : (
-                                <>
-                                    <Pause className="size-3" aria-hidden="true" />
-                                    Jeda daftar industri
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </section>
-
-                {/* 3 Locked Business Types Showcase */}
-                <section id="tipe-bisnis" aria-labelledby="heading-tipe-bisnis" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-                    <div className="mx-auto mb-12 max-w-2xl text-center">
-                        <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
-                            Tiga alur usaha
-                        </span>
-                        <h2 id="heading-tipe-bisnis" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Beda usaha, beda cara terima pesanannya
-                        </h2>
-                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Pilih sekali saat daftar. Menu dashboard sampai halaman pesan pelanggan otomatis ikut alur usaha kamu.
-                        </p>
-                    </div>
-
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        {BUSINESS_TYPE_SHOWCASE.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <div
-                                    key={item.title}
-                                    data-business-type-card
-                                    className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-7"
-                                >
-                                    <div>
-                                        <div className="flex flex-wrap items-start justify-between gap-2">
-                                            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
-                                                <Icon className="size-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="max-w-full rounded-full bg-bone px-3 py-1 text-start text-xs font-semibold text-mute">
-                                                {item.badge}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl">
-                                            {item.title}
-                                        </h3>
-
-                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                            {item.desc}
-                                        </p>
-
-                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
-                                            {item.points.map((point) => (
-                                                <li key={point} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                    <span>{point}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-
-                                    <div className="mt-6 rounded-sm bg-bone px-3.5 py-2.5 text-xs text-body">
-                                        <span className="font-semibold text-ink">Alur tamu: </span>
-                                        <span>{item.flow}</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* POS Cashier & Google Maps Review Spotlight */}
-                    <div
-                        data-extra-features-grid
-                        className="mt-6 grid gap-6 md:grid-cols-2"
-                    >
-                        {EXTRA_CAPABILITIES.map((cap) => {
-                            const Icon = cap.icon;
-                            return (
-                                <div
-                                    key={cap.title}
-                                    data-extra-feature-card
-                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
-                                >
-                                    <div>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
-                                                <Icon className="size-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
-                                                {cap.badge}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                            {cap.title}
-                                        </h3>
-
-                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                            {cap.desc}
-                                        </p>
-
-                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
-                                            {cap.points.map((point) => (
-                                                <li key={point} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                    <span>{point}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* Cost of no-show — 2-Column Editorial Story Banner + Simulator */}
-                <section aria-labelledby="heading-simulasi-bayar" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+                {/* 2. Problem: no-show cost, with a simple calculator */}
+                <section id="masalah" aria-labelledby="heading-masalah" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="rounded-md border border-hairline-soft bg-canvas p-5 sm:p-10">
-                        {/* Editorial 2-Column Header */}
                         <div className="grid items-center gap-8 border-b border-divider pb-8 md:grid-cols-12 md:gap-10">
                             <div className="min-w-0 text-center md:col-span-7 md:text-start">
                                 <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
-                                    Kenapa pesanan perlu uang muka?
+                                    Masalah yang sering terjadi
                                 </span>
-                                <h2 id="heading-simulasi-bayar" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
-                                    Satu orang batal tanpa kabar, satu jadwal terbuang.
+                                <h2 id="heading-masalah" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
+                                    Satu pelanggan batal tanpa kabar, satu jam kerja hilang.
                                 </h2>
                                 <p className="mt-3.5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
-                                    Misalnya tarif layanan kamu Rp75.000, lalu ada pelanggan yang pesan tapi tidak datang padahal orang lain sudah terlanjur ditolak. Geser angka di bawah untuk hitung perkiraan ruginya tiap bulan.
+                                    Misalnya tarif layanan kamu Rp75.000, lalu ada pelanggan yang pesan tapi tidak datang, padahal orang lain sudah terlanjur ditolak. Geser angka di bawah untuk melihat perkiraan ruginya tiap bulan.
                                 </p>
                             </div>
 
@@ -645,16 +468,13 @@ export default function Landing({ plans }: LandingProps) {
                             </div>
                         </div>
 
-                        {/* Interactive Sliders */}
                         <div className="mt-8 grid gap-6 sm:grid-cols-2">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                                     <label htmlFor="calc-service-price" className="text-sm font-medium text-body">
                                         Tarif rata-rata layanan
                                     </label>
-                                    <span className="text-base font-semibold tabular-nums text-ink">
-                                        {formatRupiah(servicePrice)}
-                                    </span>
+                                    <span className="text-base font-semibold tabular-nums text-ink">{formatRupiah(servicePrice)}</span>
                                 </div>
                                 <div className="relative mt-1 flex h-11 items-center">
                                     <div aria-hidden="true" className="pointer-events-none h-2 w-full rounded-full bg-bone" />
@@ -681,9 +501,7 @@ export default function Landing({ plans }: LandingProps) {
                                     <label htmlFor="calc-no-shows" className="text-sm font-medium text-body">
                                         Batal tanpa kabar per bulan
                                     </label>
-                                    <span className="text-base font-semibold tabular-nums text-ink">
-                                        {noShowsPerMonth} kali
-                                    </span>
+                                    <span className="text-base font-semibold tabular-nums text-ink">{noShowsPerMonth} kali</span>
                                 </div>
                                 <div className="relative mt-1 flex h-11 items-center">
                                     <div aria-hidden="true" className="pointer-events-none h-2 w-full rounded-full bg-bone" />
@@ -709,218 +527,312 @@ export default function Landing({ plans }: LandingProps) {
                         <div className="mt-8 grid gap-4 sm:grid-cols-2">
                             <div className="flex min-w-0 flex-col justify-between rounded-sm bg-bone p-4 sm:p-6">
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-mute">
-                                        Perkiraan pendapatan hilang
-                                    </p>
+                                    <p className="text-sm font-semibold text-mute">Perkiraan pendapatan hilang</p>
                                     <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                        <span className="text-2xl font-semibold tabular-nums text-ink sm:text-4xl">
-                                            {formatRupiah(monthlyLoss)}
-                                        </span>
+                                        <span className="text-2xl font-semibold tabular-nums text-ink sm:text-4xl">{formatRupiah(monthlyLoss)}</span>
                                         <span className="text-sm text-mute">/ bulan</span>
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-body">
-                                    Hitungan dari {noShowsPerMonth} pesanan × {formatRupiah(servicePrice)}, belum termasuk pelanggan lain yang sempat ditolak karena jadwalnya penuh.
+                                    Dari {noShowsPerMonth} pesanan × {formatRupiah(servicePrice)}, belum termasuk pelanggan lain yang ditolak karena jadwalnya sudah penuh.
                                 </p>
                             </div>
 
                             <div className="flex min-w-0 flex-col justify-between rounded-sm bg-dark p-4 text-on-dark sm:p-6">
                                 <div>
                                     <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-on-dark-mute">
-                                            Paket Basic Janjiyan
-                                        </p>
+                                        <p className="text-sm font-semibold text-on-dark-mute">Paket Basic Janjiyan</p>
                                         <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-on-dark">
                                             Balik modal: {breakEvenBookings} pesanan
                                         </span>
                                     </div>
                                     <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                        <span className="text-2xl font-semibold tabular-nums text-on-dark sm:text-4xl">
-                                            {formatRupiah(basicMonthlyPrice)}
-                                        </span>
+                                        <span className="text-2xl font-semibold tabular-nums text-on-dark sm:text-4xl">{formatRupiah(basicMonthlyPrice)}</span>
                                         <span className="text-sm text-on-dark-mute">/ bulan</span>
                                     </div>
                                 </div>
                                 <p className="mt-4 text-xs leading-relaxed text-on-dark-mute">
-                                    Kunci pesanan dengan uang muka langsung ke rekening kamu dan kirim pengingat otomatis sebelum jadwal.
+                                    Uang muka dikunci dan pengingat dikirim otomatis sebelum jadwal, jadi jam kosong lebih jarang terbuang.
                                 </p>
                             </div>
                         </div>
 
                         <p className="mt-5 text-center text-xs text-mute">
-                            Angka di atas hanya simulasi. Hitungan aslinya beda di tiap usaha.
+                            Angka di atas hanya simulasi. Hasil di tiap usaha berbeda.
                         </p>
                     </div>
                 </section>
 
-                {/* 4 Outcome Cards (Grid 2x2 with Editorial Character Scenes) */}
-                <section id="fitur" aria-labelledby="heading-fitur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                {/* 3. Journey: one customer, from bio link to finished order */}
+                <section id="alur" aria-labelledby="heading-alur" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
-                        <h2 id="heading-fitur" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Yang dikerjakan Janjiyan untuk usaha kamu
+                        <span className="inline-flex rounded-full bg-bone px-3.5 py-1 text-xs font-semibold text-ink">
+                            Perjalanan satu pelanggan
+                        </span>
+                        <h2 id="heading-alur" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Dari bio Instagram sampai pelanggan pulang
                         </h2>
-                        <p className="mx-auto mt-4 max-w-xl text-lg text-mute text-pretty">
-                            Mulai dari pelanggan pesan, transfer uang muka ke rekening kamu, diingatkan sebelum datang, sampai rekap tim di akhir bulan.
+                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Empat langkah ini berjalan sendiri. Kamu tidak perlu membalas chat satu per satu.
                         </p>
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {OUTCOMES.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <div
-                                    key={item.title}
-                                    data-outcome-card
-                                    className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-8"
-                                >
-                                    <div>
-                                        {/* Monochrome Editorial Scene Header inside Card */}
-                                        <div className="mb-6 flex h-44 items-end justify-center overflow-hidden rounded-sm bg-canvas px-4 pt-2">
-                                            <img
-                                                src={item.illustration}
-                                                alt={item.illustrationAlt}
-                                                loading="lazy"
-                                                className="max-h-40 w-auto object-contain select-none mix-blend-multiply"
-                                            />
-                                        </div>
-
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
-                                                <Icon className="size-4" aria-hidden="true" />
-                                            </div>
-                                            <h3 className="text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                                {item.title}
-                                            </h3>
-                                        </div>
-
-                                        <p className="mt-3 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                            {item.desc}
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-6 flex flex-wrap gap-2 border-t border-divider pt-5">
-                                        {item.highlights.map((chip) => (
-                                            <span
-                                                key={chip}
-                                                className="rounded-full bg-bone px-3 py-1 text-xs font-medium text-ink"
-                                            >
-                                                {chip}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* POS Cashier & Google Maps Review Spotlight */}
-                    <div
-                        data-extra-features-grid
-                        className="mt-6 grid gap-6 md:grid-cols-2"
-                    >
-                        {EXTRA_CAPABILITIES.map((cap) => {
-                            const Icon = cap.icon;
-                            return (
-                                <div
-                                    key={cap.title}
-                                    data-extra-feature-card
-                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
-                                >
-                                    <div>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
-                                                <Icon className="size-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
-                                                {cap.badge}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                            {cap.title}
-                                        </h3>
-
-                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                            {cap.desc}
-                                        </p>
-
-                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
-                                            {cap.points.map((point) => (
-                                                <li key={point} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                    <span>{point}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* How to start — 3 Editorial Story Cards */}
-                <section id="cara-mulai" aria-labelledby="heading-cara-mulai" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-                    <div className="mx-auto max-w-2xl text-center">
-                        <h2 id="heading-cara-mulai" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Tiga langkah, langsung jalan
-                        </h2>
-                        <p className="mx-auto mt-3 max-w-xl text-base text-mute sm:text-lg text-pretty">
-                            Sekali isi layanan dan rekening pembayaran di awal, link toko kamu langsung siap dipakai terima pesanan.
-                        </p>
-                    </div>
-
-                    <ol className="mt-12 grid gap-6 md:grid-cols-3">
-                        {STEPS.map((step, idx) => (
+                    <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                        {JOURNEY.map((step, idx) => (
                             <li
                                 key={step.title}
-                                className="flex min-w-0 flex-col justify-between rounded-md border border-hairline-soft bg-canvas p-6 transition-colors hover:border-hairline"
+                                data-journey-card
+                                className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
                             >
-                                <div>
-                                    <div className="flex h-44 items-end justify-center overflow-hidden pb-2">
-                                        <img
-                                            src={step.illustration}
-                                            alt={step.illustrationAlt}
-                                            loading="lazy"
-                                            className="max-h-40 w-auto object-contain select-none mix-blend-multiply"
-                                        />
-                                    </div>
-
-                                    <div className="mt-4 flex items-center gap-3">
-                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
-                                            {idx + 1}
-                                        </span>
-                                        <h3 className="text-lg font-semibold leading-snug text-ink">
-                                            {step.title}
-                                        </h3>
-                                    </div>
-
-                                    <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                        {step.desc}
-                                    </p>
+                                <div className="flex h-36 items-end justify-center overflow-hidden rounded-sm bg-bone px-4 pt-3">
+                                    <img
+                                        src={step.illustration}
+                                        alt={step.illustrationAlt}
+                                        loading="lazy"
+                                        className="max-h-32 w-auto object-contain select-none mix-blend-multiply"
+                                    />
                                 </div>
+
+                                <div className="mt-5 flex items-center gap-3">
+                                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
+                                        {idx + 1}
+                                    </span>
+                                    <h3 className="text-lg font-semibold leading-snug text-ink">{step.title}</h3>
+                                </div>
+                                <p className="mt-2.5 text-sm leading-relaxed text-mute text-pretty">{step.desc}</p>
                             </li>
                         ))}
                     </ol>
 
-                    <div className="mt-10 flex justify-center">
-                        <Button asChild size="lg" className="min-h-14 h-auto py-3 whitespace-normal text-center">
-                            <Link href={dashboardHref}>{primaryCtaLabel}</Link>
-                        </Button>
+                    {/* Social proof sits right after the story, before the feature detail */}
+                    <div className="mt-12">
+                        <div className="grid gap-4">
+                            {TESTIMONIALS.map((t) => (
+                                <figure
+                                    key={t.name}
+                                    data-testimonial-card
+                                    className="mx-auto flex max-w-3xl flex-col gap-6 rounded-md border border-hairline-soft bg-canvas p-6 text-center sm:p-10"
+                                >
+                                    <blockquote className="text-lg leading-relaxed text-ink text-balance sm:text-xl">
+                                        “{t.quote}”
+                                    </blockquote>
+                                    <figcaption className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink">
+                                            {t.initials}
+                                        </span>
+                                        <span className="text-sm">
+                                            <span className="block font-semibold text-ink">{t.name}</span>
+                                            <span className="block text-xs text-mute">{t.role}</span>
+                                        </span>
+                                    </figcaption>
+                                </figure>
+                            ))}
+                        </div>
                     </div>
                 </section>
 
-                {/* Pricing Section */}
+                {/* 4. Business types: one switchable panel */}
+                <section id="tipe-usaha" aria-labelledby="heading-tipe-usaha" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mx-auto max-w-2xl text-center">
+                        <h2 id="heading-tipe-usaha" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Tiga alur, sesuai cara usaha kamu bekerja
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Pilih satu tipe saat daftar. Menu dashboard dan halaman pesan pelanggan ikut menyesuaikan.
+                        </p>
+                    </div>
+
+                    <div
+                        role="tablist"
+                        aria-label="Pilih tipe usaha"
+                        className="mx-auto mt-10 grid max-w-full gap-2 sm:inline-flex sm:flex-wrap sm:justify-center sm:gap-1 sm:rounded-full sm:bg-bone sm:p-1"
+                    >
+                        {BUSINESS_TYPES.map((item, idx) => {
+                            const Icon = item.icon;
+                            const isActive = idx === activeType;
+                            return (
+                                <button
+                                    key={item.key}
+                                    type="button"
+                                    role="tab"
+                                    id={`tab-${item.key}`}
+                                    aria-selected={isActive}
+                                    aria-controls="panel-tipe-usaha"
+                                    tabIndex={isActive ? 0 : -1}
+                                    onClick={() => setActiveType(idx)}
+                                    className={cn(
+                                        'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none sm:w-auto',
+                                        isActive
+                                            ? 'bg-ink text-canvas sm:bg-canvas sm:text-ink'
+                                            : 'bg-bone text-mute hover:text-ink sm:bg-transparent'
+                                    )}
+                                >
+                                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                                    {item.tab}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div
+                        role="tabpanel"
+                        id="panel-tipe-usaha"
+                        aria-labelledby={`tab-${currentType.key}`}
+                        className="mt-6 grid gap-8 rounded-md bg-bone p-6 sm:p-10 lg:grid-cols-2 lg:gap-12"
+                    >
+                        <div className="min-w-0">
+                            <p className="text-xs font-semibold text-mute">Cocok untuk: {currentType.contoh}</p>
+                            <h3 className="mt-3 text-2xl font-semibold leading-tight text-ink sm:text-3xl text-balance">
+                                {currentType.headline}
+                            </h3>
+                            <p className="mt-3 text-sm leading-relaxed text-body sm:text-base text-pretty">{currentType.desc}</p>
+
+                            <ul className="mt-6 space-y-3 text-sm text-body">
+                                {currentType.points.map((point) => (
+                                    <li key={point} className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        <span>{point}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <div className="flex min-w-0 flex-col justify-center">
+                            <p className="mb-3 text-xs font-semibold text-mute">Alur tamu</p>
+                            <ol className="space-y-2">
+                                {currentType.flow.map((step, idx) => (
+                                    <li
+                                        key={step}
+                                        className="flex items-center gap-3 rounded-sm bg-canvas px-4 py-3 text-sm font-medium text-ink"
+                                    >
+                                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
+                                            {idx + 1}
+                                        </span>
+                                        {step}
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 5. After the order: counter, reviews, dashboard in one place */}
+                <section id="setelah-pesan" aria-labelledby="heading-setelah-pesan" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mx-auto mb-14 max-w-2xl text-center">
+                        <h2 id="heading-setelah-pesan" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
+                            Setelah pesanan masuk, semuanya tetap di satu tempat
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
+                            Kasir, struk, dan ulasan pelanggan ikut terkelola. Tidak perlu aplikasi kasir terpisah.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-8">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
+                                    <ReceiptText className="size-4" aria-hidden="true" />
+                                </div>
+                                <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">Mulai paket Basic</span>
+                            </div>
+                            <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                Kasir meja untuk pelunasan dan struk
+                            </h3>
+                            <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                Tamu datang atau mengambil barang, lalu kasir langsung mencatat pelunasan. Bisa cicilan, Tunai dengan kembalian otomatis, QRIS, Transfer, atau EDC, sekaligus tambah layanan di tempat.
+                            </p>
+                            <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                {CASHIER_POINTS.map((point) => (
+                                    <li key={point} className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        <span>{point}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-8">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
+                                    <Star className="size-4" aria-hidden="true" />
+                                </div>
+                                <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">Mulai paket Professional</span>
+                            </div>
+                            <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
+                                Lebih banyak ulasan Google Maps, masukan kritis tetap sampai ke kamu
+                            </h3>
+                            <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
+                                Link ulasan muncul di invoice setelah pesanan selesai, dan bisa disisipkan ke pesan follow-up WhatsApp. Pelanggan yang puas diarahkan ke Google, yang kurang puas menulis ke kamu dulu.
+                            </p>
+                            <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
+                                {REVIEW_POINTS.map((point) => (
+                                    <li key={point} className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
+                                        <span>{point}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {DASHBOARD_TILES.map((tile) => {
+                            const Icon = tile.icon;
+                            return (
+                                <div
+                                    key={tile.title}
+                                    data-dashboard-tile
+                                    className="flex min-w-0 flex-col rounded-sm border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline"
+                                >
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
+                                        <Icon className="size-4" aria-hidden="true" />
+                                    </div>
+                                    <h3 className="mt-4 text-base font-semibold text-ink">{tile.title}</h3>
+                                    <p className="mt-1.5 text-sm leading-relaxed text-mute text-pretty">{tile.desc}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                {/* 6. Start: three short steps, then pricing */}
+                <section id="mulai" aria-labelledby="heading-mulai" className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+                    <div className="rounded-md bg-bone p-6 sm:p-10">
+                        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+                            <h2 id="heading-mulai" className="max-w-md text-2xl font-semibold leading-tight text-ink sm:text-3xl text-balance">
+                                Mulai dalam tiga langkah. Link toko kamu bisa langsung dipakai.
+                            </h2>
+                            <Button asChild size="lg" className="min-h-12 h-auto w-full py-3 whitespace-normal text-center sm:w-auto">
+                                <Link href={dashboardHref}>{primaryCtaLabel}</Link>
+                            </Button>
+                        </div>
+
+                        <ol className="mt-8 grid gap-4 md:grid-cols-3">
+                            {START_STEPS.map((step, idx) => (
+                                <li key={step.title} data-start-step className="flex min-w-0 gap-4 rounded-sm bg-canvas p-5">
+                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-semibold tabular-nums text-canvas">
+                                        {idx + 1}
+                                    </span>
+                                    <div className="min-w-0">
+                                        <h3 className="text-base font-semibold text-ink">{step.title}</h3>
+                                        <p className="mt-1.5 text-sm leading-relaxed text-mute text-pretty">{step.desc}</p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
+                </section>
+
+                {/* 7. Pricing */}
                 <section id="harga" aria-labelledby="heading-harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
                     <div className="text-center">
                         <h2 id="heading-harga" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                             Pilih paket sesuai ukuran usaha kamu
                         </h2>
                         <p className="mx-auto mt-4 max-w-2xl text-lg text-mute text-pretty">
-                            Semua akun baru dapat coba gratis 14 hari dengan akses fitur paket Professional. Uang muka tanpa potongan, kasir meja, struk termal, pengingat email, dan aturan bayar penuh sudah aktif sejak paket Basic.
+                            Semua akun baru dapat coba gratis 14 hari dengan fitur paket Professional. Uang muka tanpa potongan dan kasir meja sudah aktif sejak paket Basic.
                         </p>
 
-                        {/* Segmented Control */}
                         <div className="mt-8 inline-flex min-h-12 max-w-full flex-wrap items-center justify-center rounded-full bg-bone p-1" role="group" aria-label="Siklus penagihan">
                             <button
                                 type="button"
@@ -1019,9 +931,7 @@ export default function Landing({ plans }: LandingProps) {
                                                 ) : (
                                                     <>
                                                         <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
-                                                        <span className="text-mute line-through">
-                                                            Keranjang multi-layanan Drop-off &amp; rincian kasir harian
-                                                        </span>
+                                                        <span className="text-mute line-through">Keranjang multi-layanan Drop-off &amp; rincian kasir harian</span>
                                                         <span className="sr-only">(Tidak tersedia di paket ini)</span>
                                                     </>
                                                 )}
@@ -1035,9 +945,7 @@ export default function Landing({ plans }: LandingProps) {
                                                 ) : (
                                                     <>
                                                         <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
-                                                        <span className="text-mute line-through">
-                                                            Export CSV (Pesanan, Pelanggan, Kasir &amp; Komisi)
-                                                        </span>
+                                                        <span className="text-mute line-through">Export CSV (Pesanan, Pelanggan, Kasir &amp; Komisi)</span>
                                                         <span className="sr-only">(Tidak tersedia di paket ini)</span>
                                                     </>
                                                 )}
@@ -1051,9 +959,7 @@ export default function Landing({ plans }: LandingProps) {
                                                 ) : (
                                                     <>
                                                         <X className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden="true" />
-                                                        <span className="text-mute line-through">
-                                                            Google Maps Review &amp; Stiker QR
-                                                        </span>
+                                                        <span className="text-mute line-through">Google Maps Review &amp; Stiker QR</span>
                                                         <span className="sr-only">(Tidak tersedia di paket ini)</span>
                                                     </>
                                                 )}
@@ -1074,12 +980,9 @@ export default function Landing({ plans }: LandingProps) {
                         })}
                     </div>
 
-                    {/* Included in All Plans Summary */}
-                    <div className="mt-8 rounded-md bg-bone p-6 sm:p-8">
-                        <p className="text-sm font-semibold text-ink">
-                            Sudah termasuk di semua paket
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-8 rounded-md border border-hairline-soft p-6 sm:p-8">
+                        <p className="text-sm font-semibold text-ink">Sudah termasuk di semua paket</p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {INCLUDED_IN_ALL_PLANS.map((feature) => (
                                 <div key={feature} className="flex items-start gap-2 text-xs leading-relaxed text-body">
                                     <Check className="mt-0.5 size-3.5 shrink-0 text-ink" aria-hidden="true" />
@@ -1090,63 +993,14 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
                 </section>
 
-                {/* Testimonials */}
-                <section aria-labelledby="heading-testimoni" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-                    <div className="mb-12 text-center">
-                        <h2 id="heading-testimoni" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Cerita dari pengguna Janjiyan
-                        </h2>
-                    </div>
-
-                    <div
-                        data-testimonials-grid
-                        className={cn(
-                            'grid gap-4',
-                            TESTIMONIALS.length === 1 && 'mx-auto max-w-2xl grid-cols-1',
-                            TESTIMONIALS.length === 2 && 'mx-auto max-w-4xl sm:grid-cols-2',
-                            TESTIMONIALS.length === 3 && 'sm:grid-cols-2 lg:grid-cols-3',
-                            TESTIMONIALS.length >= 4 && 'sm:grid-cols-2 lg:grid-cols-4'
-                        )}
-                    >
-                        {TESTIMONIALS.map((t) => (
-                            <div
-                                key={t.name}
-                                data-testimonial-card
-                                className={cn(
-                                    'flex min-w-0 flex-col justify-between rounded-sm border border-hairline-soft bg-canvas transition-colors hover:border-hairline',
-                                    TESTIMONIALS.length === 1 ? 'p-6 sm:p-8' : 'p-5 sm:p-6'
-                                )}
-                            >
-                                <p
-                                    className={cn(
-                                        'leading-relaxed text-ink text-pretty',
-                                        TESTIMONIALS.length === 1 ? 'text-base sm:text-lg' : 'text-sm'
-                                    )}
-                                >
-                                    “{t.quote}”
-                                </p>
-                                <div className="mt-6 flex items-center gap-3">
-                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bone text-xs font-semibold text-ink">
-                                        {t.initials ?? t.name.slice(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-ink">{t.name}</p>
-                                        <p className="text-xs text-mute">{t.role}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* FAQ */}
+                {/* 8. FAQ */}
                 <section id="faq" aria-labelledby="heading-faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
                     <h2 id="heading-faq" className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
                         Yang sering ditanyakan
                     </h2>
 
                     <div className="space-y-3">
-                        {FAQS.map((item, idx) => {
+                        {faqs.map((item, idx) => {
                             const isOpen = openFaq === idx;
                             const buttonId = `faq-trigger-${idx}`;
                             const panelId = `faq-panel-${idx}`;
@@ -1181,55 +1035,8 @@ export default function Landing({ plans }: LandingProps) {
                                         )}
                                     >
                                         <div className="overflow-hidden">
-                                            <p className="pt-3 text-sm leading-relaxed text-mute text-pretty">
-                                                {item.a}
-                                            </p>
+                                            <p className="pt-3 text-sm leading-relaxed text-mute text-pretty">{item.a}</p>
                                         </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* POS Cashier & Google Maps Review Spotlight */}
-                    <div
-                        data-extra-features-grid
-                        className="mt-6 grid gap-6 md:grid-cols-2"
-                    >
-                        {EXTRA_CAPABILITIES.map((cap) => {
-                            const Icon = cap.icon;
-                            return (
-                                <div
-                                    key={cap.title}
-                                    data-extra-feature-card
-                                    className="flex min-w-0 flex-col justify-between rounded-md bg-bone p-5 sm:p-8"
-                                >
-                                    <div>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
-                                                <Icon className="size-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="max-w-full rounded-full bg-canvas px-3 py-1 text-xs font-semibold text-mute">
-                                                {cap.badge}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="mt-5 text-xl font-semibold leading-snug text-ink sm:text-2xl text-balance">
-                                            {cap.title}
-                                        </h3>
-
-                                        <p className="mt-2.5 text-sm leading-relaxed text-mute sm:text-base text-pretty">
-                                            {cap.desc}
-                                        </p>
-
-                                        <ul className="mt-5 space-y-2.5 border-t border-divider pt-5 text-sm text-body">
-                                            {cap.points.map((point) => (
-                                                <li key={point} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
-                                                    <span>{point}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
                                     </div>
                                 </div>
                             );
@@ -1238,17 +1045,16 @@ export default function Landing({ plans }: LandingProps) {
                 </section>
             </main>
 
-            {/* Unified Closing CTA + Inverse Dark Footer */}
+            {/* Closing CTA + inverse footer */}
             <footer className="mt-16 rounded-t-md bg-dark px-6 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))] text-on-dark sm:px-12 sm:pt-20 sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
                 <div className="mx-auto max-w-6xl">
-                    {/* Closing CTA Band */}
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
                         <div className="min-w-0">
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
                                 Coba dulu 14 hari, gratis.
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
-                                Buat halaman toko pertama kamu hari ini, lalu lihat sendiri apakah cocok untuk kerja harian tim kamu.
+                                Buat link toko pertama kamu hari ini. Kalau cocok dengan cara kerja tim, lanjut pilih paket.
                             </p>
                         </div>
                         <Button
@@ -1256,13 +1062,10 @@ export default function Landing({ plans }: LandingProps) {
                             size="lg"
                             className="min-h-14 h-auto w-full shrink-0 py-3 whitespace-normal bg-canvas text-center text-ink hover:bg-bone focus-visible:ring-on-dark focus-visible:ring-offset-dark sm:w-auto"
                         >
-                            <Link href={dashboardHref}>
-                                {primaryCtaLabel}
-                            </Link>
+                            <Link href={dashboardHref}>{primaryCtaLabel}</Link>
                         </Button>
                     </div>
 
-                    {/* Footer Links */}
                     <div className="mt-14 flex flex-col justify-between gap-12 md:flex-row md:items-end">
                         <div>
                             <JanjiyanLogo dark size="lg" />
@@ -1275,10 +1078,10 @@ export default function Landing({ plans }: LandingProps) {
                             <div className="space-y-2.5">
                                 <p className="font-semibold text-on-dark">Produk</p>
                                 <ul className="space-y-1">
-                                    <li><a href="#tipe-bisnis" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Tipe bisnis</a></li>
-                                    <li><a href="#fitur" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Fitur</a></li>
-                                    <li><a href="#harga" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Harga</a></li>
-                                    <li><a href="#faq" className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">FAQ</a></li>
+                                    <li><a href="#alur" className={footerLinkClass}>Alurnya</a></li>
+                                    <li><a href="#tipe-usaha" className={footerLinkClass}>Tipe usaha</a></li>
+                                    <li><a href="#harga" className={footerLinkClass}>Harga</a></li>
+                                    <li><a href="#faq" className={footerLinkClass}>FAQ</a></li>
                                 </ul>
                             </div>
                             <div className="space-y-2.5">
@@ -1286,14 +1089,14 @@ export default function Landing({ plans }: LandingProps) {
                                 <ul className="space-y-1">
                                     {auth.user ? (
                                         <li>
-                                            <Link href={dashboardHref} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">
+                                            <Link href={dashboardHref} className={footerLinkClass}>
                                                 {auth.user.is_superadmin ? 'Panel Superadmin' : 'Dashboard'}
                                             </Link>
                                         </li>
                                     ) : (
                                         <>
-                                            <li><Link href={route('login')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Masuk</Link></li>
-                                            <li><Link href={route('register')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Coba gratis</Link></li>
+                                            <li><Link href={route('login')} className={footerLinkClass}>Masuk</Link></li>
+                                            <li><Link href={route('register')} className={footerLinkClass}>Coba gratis</Link></li>
                                         </>
                                     )}
                                 </ul>
@@ -1301,8 +1104,8 @@ export default function Landing({ plans }: LandingProps) {
                             <div className="space-y-2.5">
                                 <p className="font-semibold text-on-dark">Legal</p>
                                 <ul className="space-y-1">
-                                    <li><Link href={route('legal.terms')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Syarat &amp; Ketentuan</Link></li>
-                                    <li><Link href={route('legal.privacy')} className="inline-flex min-h-7 items-center rounded-sm hover:text-on-dark focus-visible:ring-2 focus-visible:ring-on-dark focus-visible:outline-none">Kebijakan Privasi</Link></li>
+                                    <li><Link href={route('legal.terms')} className={footerLinkClass}>Syarat &amp; Ketentuan</Link></li>
+                                    <li><Link href={route('legal.privacy')} className={footerLinkClass}>Kebijakan Privasi</Link></li>
                                 </ul>
                             </div>
                         </div>
