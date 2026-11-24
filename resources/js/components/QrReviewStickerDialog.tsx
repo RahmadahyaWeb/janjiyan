@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Check, Download, Grid2x2, Grid3x3, Lock, Printer, QrCode, Star } from 'lucide-react';
+import { Check, Download, Grid2x2, Grid3x3, Lock, Printer, QrCode } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -236,21 +236,11 @@ export function QrReviewStickerDialog({
             const catText = (businessCategory || 'Bisnis Jasa').toUpperCase();
             ctx.font = '600 20px Inter, system-ui, -apple-system, sans-serif';
             const catWidth = Math.min(size - 200, ctx.measureText(catText).width + 52);
-            drawRoundedRect(ctx, (size - catWidth) / 2, 86, catWidth, 44, 22);
+            drawRoundedRect(ctx, (size - catWidth) / 2, 104, catWidth, 44, 22);
             ctx.fillStyle = '#f3f3f3';
             ctx.fill();
             ctx.fillStyle = '#525252';
-            ctx.fillText(catText, size / 2, 108, catWidth - 32);
-
-            // Star badge pill
-            const starText = '★ ★ ★ ★ ★';
-            ctx.font = '700 24px Inter, system-ui, -apple-system, sans-serif';
-            const starPillW = Math.max(240, ctx.measureText(starText).width + 64);
-            drawRoundedRect(ctx, (size - starPillW) / 2, 146, starPillW, 48, 24);
-            ctx.fillStyle = '#141414';
-            ctx.fill();
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillText(starText, size / 2, 170);
+            ctx.fillText(catText, size / 2, 126, catWidth - 32);
 
             // Business Name (auto-scale up to 2 lines)
             const maxTitleWidth = size - 180;
@@ -273,7 +263,7 @@ export function QrReviewStickerDialog({
 
             ctx.fillStyle = '#141414';
             ctx.font = `700 ${titleFontSize}px Inter, system-ui, -apple-system, sans-serif`;
-            const titleStartY = titleLines.length > 1 ? 236 : 248;
+            const titleStartY = titleLines.length > 1 ? 198 : 210;
             const titleLineHeight = Math.round(titleFontSize * 1.16);
             titleLines.forEach((line, idx) => {
                 ctx.fillText(line, size / 2, titleStartY + idx * titleLineHeight, maxTitleWidth);
@@ -290,10 +280,10 @@ export function QrReviewStickerDialog({
             });
 
             // QR Card Container
-            const qrBoxSize = 500;
+            const qrBoxSize = 520;
             const qrBoxX = (size - qrBoxSize) / 2;
             const subtitleBottom = subtitleStartY + Math.max(0, subtitleLines.length - 1) * subtitleLineHeight;
-            const qrBoxY = Math.max(368, subtitleBottom + 36);
+            const qrBoxY = Math.max(336, subtitleBottom + 38);
             drawRoundedRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 32);
             ctx.fillStyle = '#f8f8f8';
             ctx.fill();
@@ -308,7 +298,7 @@ export function QrReviewStickerDialog({
                 img.src = qrDataUrl;
             });
 
-            const qrDrawSize = 432;
+            const qrDrawSize = 448;
             ctx.drawImage(
                 img,
                 (size - qrDrawSize) / 2,
@@ -373,7 +363,6 @@ export function QrReviewStickerDialog({
   .card { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 7mm; padding: 6mm 5.5mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; break-inside: avoid; }
   .top { width: 100%; }
   .pill { display: inline-block; background: #f3f3f3; color: #525252; font-size: 7.5pt; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 1.5mm 3.5mm; border-radius: 999px; }
-  .stars { margin: 2.5mm auto 0; display: inline-block; background: #141414; color: #fbbf24; font-size: 10pt; font-weight: 700; letter-spacing: 0.1em; padding: 1.5mm 4mm; border-radius: 999px; }
   h1 { font-size: 14.5pt; font-weight: 700; line-height: 1.18; margin: 3mm 0 1.5mm; color: #141414; overflow-wrap: anywhere; }
   .sub { font-size: 8.8pt; line-height: 1.35; color: #636363; margin: 0; overflow-wrap: anywhere; }
   .qr-wrap { background: #f8f8f8; border: 1px solid #e5e5e5; border-radius: 5mm; padding: 3.5mm; display: inline-flex; align-items: center; justify-content: center; margin: 2mm 0; }
@@ -389,7 +378,6 @@ export function QrReviewStickerDialog({
     <div class="card">
       <div class="top">
         <span class="pill">${escapeHtml(businessCategory || 'Bisnis Jasa')}</span>
-        <div><span class="stars">★ ★ ★ ★ ★</span></div>
         <h1>${escapeHtml(businessName)}</h1>
         <p class="sub">${escapeHtml(resolvedSubtitle)}</p>
       </div>
@@ -429,7 +417,6 @@ export function QrReviewStickerDialog({
       <div class="sticker">
         <div class="head">
           <span class="pill">${escapeHtml(businessCategory || 'Bisnis Jasa')}</span>
-          <div class="stars">★ ★ ★ ★ ★</div>
           <h2>${escapeHtml(businessName)}</h2>
           <p class="sub">${escapeHtml(resolvedSubtitle)}</p>
         </div>
@@ -483,17 +470,6 @@ export function QrReviewStickerDialog({
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: ${isCompact ? '0.8mm 2.5mm' : '1.2mm 3.2mm'};
-    border-radius: 999px;
-  }
-  .stars {
-    margin: ${isCompact ? '1.5mm' : '2.2mm'} auto 0;
-    display: inline-block;
-    background: #141414;
-    color: #fbbf24;
-    font-size: ${isCompact ? '7.5pt' : '9.5pt'};
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: ${isCompact ? '0.9mm 2.8mm' : '1.3mm 3.8mm'};
     border-radius: 999px;
   }
   h2 {
@@ -639,19 +615,9 @@ export function QrReviewStickerDialog({
 
                 {/* Live Sticker Preview */}
                 <div className="rounded-md border border-hairline-soft bg-canvas p-4 text-center sm:p-5">
-                    <div className="flex flex-col items-center gap-2">
-                        <span className="inline-block rounded-full bg-bone px-3 py-1 text-xs font-semibold tracking-wider text-mute uppercase">
-                            {businessCategory}
-                        </span>
-                        <span
-                            aria-label="5 bintang"
-                            className="inline-flex items-center gap-1 rounded-full bg-ink px-3.5 py-1 text-xs font-semibold text-amber-400"
-                        >
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <Star key={star} className="size-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
-                            ))}
-                        </span>
-                    </div>
+                    <span className="inline-block rounded-full bg-bone px-3 py-1 text-xs font-semibold tracking-wider text-mute uppercase">
+                        {businessCategory}
+                    </span>
 
                     <h3 className="mt-2.5 break-words text-xl font-semibold tracking-tight text-ink">
                         {businessName}
