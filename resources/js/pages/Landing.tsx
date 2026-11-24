@@ -16,7 +16,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { JanjiyanLogo } from '@/components/JanjiyanLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -216,6 +216,20 @@ function buildFaqs(plans: SubscriptionPlan[]) {
     ];
 }
 
+// Splits a heading into word spans so GSAP can reveal them one by one on scroll.
+function WordReveal({ children }: { children: string }) {
+    return (
+        <span data-word-reveal className="inline">
+            {children.split(' ').map((word, idx) => (
+                <Fragment key={idx}>
+                    {idx > 0 && ' '}
+                    <span data-word className="inline-block">{word}</span>
+                </Fragment>
+            ))}
+        </span>
+    );
+}
+
 export default function Landing({ plans }: LandingProps) {
     const { auth, activeBusiness } = usePage<PageProps>().props;
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -225,6 +239,7 @@ export default function Landing({ plans }: LandingProps) {
     const [servicePrice, setServicePrice] = useState(75000);
     const [noShowsPerMonth, setNoShowsPerMonth] = useState(26);
     const pageRef = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
 
     const faqs = buildFaqs(plans);
     const basicPlan = plans.find((plan) => plan.slug === 'basic') ?? plans[0];
@@ -268,6 +283,22 @@ export default function Landing({ plans }: LandingProps) {
         const mm = gsap.matchMedia();
 
         mm.add('(prefers-reduced-motion: no-preference)', () => {
+            // Section headings: each word fades up as its heading scrolls into view.
+            root.querySelectorAll<HTMLElement>('[data-word-reveal]').forEach((heading) => {
+                gsap.from(heading.querySelectorAll('[data-word]'), {
+                    yPercent: 60,
+                    opacity: 0,
+                    duration: 0.6,
+                    stagger: 0.04,
+                    ease: 'power3.out',
+                    clearProps: 'transform,opacity',
+                    scrollTrigger: {
+                        trigger: heading,
+                        start: 'top 85%',
+                        once: true,
+                    },
+                });
+            });
             gsap.from('[data-hero-item]', {
                 y: 12,
                 opacity: 0,
@@ -303,6 +334,19 @@ export default function Landing({ plans }: LandingProps) {
 
         return () => mm.revert();
     }, []);
+
+    useEffect(() => {
+        const panel = panelRef.current;
+        if (!panel || !window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+
+        // Swap content of the business-type card: fade and rise in on each tab change.
+        gsap.killTweensOf(panel);
+        gsap.fromTo(
+            panel,
+            { opacity: 0, y: 14 },
+            { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out', clearProps: 'transform,opacity' }
+        );
+    }, [activeType]);
 
     const navLinkClass =
         'inline-flex min-h-8 items-center rounded-full px-1 whitespace-nowrap text-ink transition-colors hover:text-mute focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:outline-none';
@@ -449,7 +493,7 @@ export default function Landing({ plans }: LandingProps) {
                                     Masalah yang sering terjadi
                                 </span>
                                 <h2 id="heading-masalah" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[40px] text-balance">
-                                    Satu pelanggan batal tanpa kabar, satu jam kerja hilang.
+                                    <WordReveal>Satu pelanggan batal tanpa kabar, satu jam kerja hilang.</WordReveal>
                                 </h2>
                                 <p className="mt-3.5 max-w-xl text-base leading-relaxed text-mute sm:text-lg text-pretty">
                                     Misalnya tarif layanan kamu Rp75.000, lalu ada pelanggan yang pesan tapi tidak datang, padahal orang lain sudah terlanjur ditolak. Geser angka di bawah untuk melihat perkiraan ruginya tiap bulan.
@@ -570,7 +614,7 @@ export default function Landing({ plans }: LandingProps) {
                             Perjalanan satu pelanggan
                         </span>
                         <h2 id="heading-alur" className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Dari bio Instagram sampai pelanggan pulang
+                            <WordReveal>Dari bio Instagram sampai pelanggan pulang</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
                             Empat langkah ini berjalan sendiri. Kamu tidak perlu membalas chat satu per satu.
@@ -582,14 +626,14 @@ export default function Landing({ plans }: LandingProps) {
                             <li
                                 key={step.title}
                                 data-journey-card
-                                className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline sm:p-6"
+                                className="flex min-w-0 flex-col rounded-md border border-hairline-soft bg-canvas p-5 transition-[translate,border-color] duration-300 ease-out group motion-safe:hover:-translate-y-1 hover:border-hairline sm:p-6"
                             >
                                 <div className="flex h-36 items-end justify-center overflow-hidden rounded-sm bg-bone px-4 pt-3">
                                     <img
                                         src={step.illustration}
                                         alt={step.illustrationAlt}
                                         loading="lazy"
-                                        className="max-h-32 w-auto object-contain select-none mix-blend-multiply"
+                                        className="max-h-32 w-auto object-contain select-none mix-blend-multiply transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
                                     />
                                 </div>
 
@@ -611,7 +655,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <figure
                                     key={t.name}
                                     data-testimonial-card
-                                    className="mx-auto flex max-w-3xl flex-col gap-6 rounded-md border border-hairline-soft bg-canvas p-6 text-center sm:p-10"
+                                    className="mx-auto flex max-w-3xl flex-col gap-6 rounded-md border border-hairline-soft bg-canvas p-6 text-center transition-[translate,border-color] duration-300 ease-out motion-safe:hover:-translate-y-0.5 hover:border-hairline sm:p-10"
                                 >
                                     <blockquote className="text-lg leading-relaxed text-ink text-balance sm:text-xl">
                                         “{t.quote}”
@@ -635,7 +679,7 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="tipe-usaha" aria-labelledby="heading-tipe-usaha" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto max-w-2xl text-center">
                         <h2 id="heading-tipe-usaha" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Tiga alur, sesuai cara usaha kamu bekerja
+                            <WordReveal>Tiga alur, sesuai cara usaha kamu bekerja</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
                             Pilih satu tipe saat daftar. Menu dashboard dan halaman pesan pelanggan ikut menyesuaikan.
@@ -676,6 +720,7 @@ export default function Landing({ plans }: LandingProps) {
 
                     <div
                         role="tabpanel"
+                        ref={panelRef}
                         id="panel-tipe-usaha"
                         aria-labelledby={`tab-${currentType.key}`}
                         className="mt-6 grid gap-8 rounded-md bg-bone p-6 sm:p-10 lg:grid-cols-2 lg:gap-12"
@@ -703,7 +748,7 @@ export default function Landing({ plans }: LandingProps) {
                                 {currentType.flow.map((step, idx) => (
                                     <li
                                         key={step}
-                                        className="flex items-center gap-3 rounded-sm bg-canvas px-4 py-3 text-sm font-medium text-ink"
+                                        className="flex items-center gap-3 rounded-sm bg-canvas px-4 py-3 text-sm font-medium text-ink transition-transform duration-300 ease-out motion-safe:hover:translate-x-1"
                                     >
                                         <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold tabular-nums text-canvas">
                                             {idx + 1}
@@ -720,7 +765,7 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="setelah-pesan" aria-labelledby="heading-setelah-pesan" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mx-auto mb-14 max-w-2xl text-center">
                         <h2 id="heading-setelah-pesan" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Setelah pesanan masuk, semuanya tetap di satu tempat
+                            <WordReveal>Setelah pesanan masuk, semuanya tetap di satu tempat</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-xl text-base text-mute sm:text-lg text-pretty">
                             Kasir, struk, dan ulasan pelanggan ikut terkelola. Tidak perlu aplikasi kasir terpisah.
@@ -728,7 +773,7 @@ export default function Landing({ plans }: LandingProps) {
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2">
-                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-8">
+                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 transition-transform duration-300 ease-out motion-safe:hover:-translate-y-1 sm:p-8">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
                                     <ReceiptText className="size-4" aria-hidden="true" />
@@ -751,7 +796,7 @@ export default function Landing({ plans }: LandingProps) {
                             </ul>
                         </div>
 
-                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 sm:p-8">
+                        <div data-dashboard-tile className="flex min-w-0 flex-col rounded-md bg-bone p-5 transition-transform duration-300 ease-out motion-safe:hover:-translate-y-1 sm:p-8">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-canvas text-ink">
                                     <Star className="size-4" aria-hidden="true" />
@@ -782,7 +827,7 @@ export default function Landing({ plans }: LandingProps) {
                                 <div
                                     key={tile.title}
                                     data-dashboard-tile
-                                    className="flex min-w-0 flex-col rounded-sm border border-hairline-soft bg-canvas p-5 transition-colors hover:border-hairline"
+                                    className="flex min-w-0 flex-col rounded-sm border border-hairline-soft bg-canvas p-5 transition-[translate,border-color] duration-300 ease-out motion-safe:hover:-translate-y-1 hover:border-hairline"
                                 >
                                     <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-bone text-ink">
                                         <Icon className="size-4" aria-hidden="true" />
@@ -800,7 +845,7 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="rounded-md bg-bone p-6 sm:p-10">
                         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
                             <h2 id="heading-mulai" className="max-w-md text-2xl font-semibold leading-tight text-ink sm:text-3xl text-balance">
-                                Mulai dalam tiga langkah. Link toko kamu bisa langsung dipakai.
+                                <WordReveal>Mulai dalam tiga langkah. Link toko kamu bisa langsung dipakai.</WordReveal>
                             </h2>
                             <Button asChild size="lg" className="min-h-12 h-auto w-full py-3 whitespace-normal text-center sm:w-auto">
                                 <Link href={dashboardHref}>{primaryCtaLabel}</Link>
@@ -809,7 +854,7 @@ export default function Landing({ plans }: LandingProps) {
 
                         <ol className="mt-8 grid gap-4 md:grid-cols-3">
                             {START_STEPS.map((step, idx) => (
-                                <li key={step.title} data-start-step className="flex min-w-0 gap-4 rounded-sm bg-canvas p-5">
+                                <li key={step.title} data-start-step className="flex min-w-0 gap-4 rounded-sm bg-canvas p-5 transition-transform duration-300 ease-out motion-safe:hover:-translate-y-1">
                                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-semibold tabular-nums text-canvas">
                                         {idx + 1}
                                     </span>
@@ -827,7 +872,7 @@ export default function Landing({ plans }: LandingProps) {
                 <section id="harga" aria-labelledby="heading-harga" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
                     <div className="text-center">
                         <h2 id="heading-harga" className="text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                            Pilih paket sesuai ukuran usaha kamu
+                            <WordReveal>Pilih paket sesuai ukuran usaha kamu</WordReveal>
                         </h2>
                         <p className="mx-auto mt-4 max-w-2xl text-lg text-mute text-pretty">
                             Semua akun baru dapat coba gratis 14 hari dengan fitur paket Professional. Uang muka tanpa potongan dan kasir meja sudah aktif sejak paket Basic.
@@ -870,7 +915,7 @@ export default function Landing({ plans }: LandingProps) {
                                     key={plan.id}
                                     data-pricing-card
                                     className={cn(
-                                        'flex min-w-0 flex-col justify-between rounded-md p-5 transition-colors sm:p-6',
+                                        'flex min-w-0 flex-col justify-between rounded-md p-5 transition-[translate,border-color,background-color] duration-300 ease-out motion-safe:hover:-translate-y-1 sm:p-6',
                                         isPopular ? 'bg-bone' : 'border border-hairline-soft bg-canvas hover:border-hairline'
                                     )}
                                 >
@@ -996,7 +1041,7 @@ export default function Landing({ plans }: LandingProps) {
                 {/* 8. FAQ */}
                 <section id="faq" aria-labelledby="heading-faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
                     <h2 id="heading-faq" className="mb-10 text-center text-3xl font-semibold leading-tight text-ink sm:text-[44px] text-balance">
-                        Yang sering ditanyakan
+                        <WordReveal>Yang sering ditanyakan</WordReveal>
                     </h2>
 
                     <div className="space-y-3">
@@ -1051,7 +1096,7 @@ export default function Landing({ plans }: LandingProps) {
                     <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-14 md:flex-row md:items-center">
                         <div className="min-w-0">
                             <h2 className="text-3xl font-semibold leading-tight text-on-dark sm:text-4xl text-balance">
-                                Coba dulu 14 hari, gratis.
+                                <WordReveal>Coba dulu 14 hari, gratis.</WordReveal>
                             </h2>
                             <p className="mt-2.5 max-w-xl text-base text-on-dark-mute text-pretty">
                                 Buat link toko pertama kamu hari ini. Kalau cocok dengan cara kerja tim, lanjut pilih paket.
